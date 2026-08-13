@@ -12,6 +12,16 @@ module.exports = {
         canvas: { DEFAULT: "#0A0B0D", raised: "#141519", inset: "#1C1E24" },
         silver: { DEFAULT: "#C7CCD1", muted: "#8A9096", faint: "#4A4F56" },
       },
+      // Mirrors `F` in src/theme/tokens.ts — keep the two in step.
+      fontFamily: {
+        display: ["SpaceGrotesk-SemiBold"],
+        "display-bold": ["SpaceGrotesk-Bold"],
+        body: ["Geist-Regular"],
+        "body-medium": ["Geist-Medium"],
+        "body-semibold": ["Geist-SemiBold"],
+        mono: ["GeistMono-Regular"],
+        "mono-semibold": ["GeistMono-SemiBold"],
+      },
     },
   },
   plugins: [],

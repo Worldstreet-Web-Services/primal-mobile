@@ -6,13 +6,13 @@ import { Screen, Card, Label, Mono, Body, Shine } from '../components/ui';
 import { hubTiles, user } from '../data/mock';
 
 // Design 2a: hub home — tiles with per-space balances, metallic system.
-export default function HubHomeScreen({ onOpen }: { onOpen?: (space: string) => void }) {
+export default function HubHomeScreen({ onOpen, onProfile }: { onOpen?: (space: string) => void; onProfile?: () => void }) {
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, paddingTop: 6 }}>
-        <View style={{ width: 38, height: 38, borderRadius: 20, backgroundColor: C.key, borderWidth: 1.5, borderColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={onProfile} style={{ width: 38, height: 38, borderRadius: 20, backgroundColor: C.key, borderWidth: 1.5, borderColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontFamily: F.display, fontSize: 16, color: C.text }}>{user.initial}</Text>
-        </View>
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Body size={11} color={C.dim}>Good morning</Body>
           <Body size={14.5} semibold>Denga <Body size={14.5} color={C.dim}>· {user.tag}</Body></Body>
@@ -33,23 +33,19 @@ export default function HubHomeScreen({ onOpen }: { onOpen?: (space: string) => 
                   </LinearGradient>
                 </View>
               ) : null}
-              <View style={{ width: 34, height: 34, borderRadius: 18, backgroundColor: t.key === 'fiat' ? C.upBg : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-                <Mono size={13} color={t.key === 'fiat' ? C.up : C.accent}>{t.key === 'fiat' ? '₦' : t.key === 'games' ? '★' : '◇'}</Mono>
+              <View style={{ width: 34, height: 34, borderRadius: 18, backgroundColor: t.key === 'earn' ? C.upBg : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                <Mono size={13} color={t.key === 'earn' ? C.up : C.accent}>{t.key === 'earn' ? '◆' : t.key === 'games' ? '★' : t.key === 'trade' ? '↗' : '◇'}</Mono>
               </View>
               <Body size={13} semibold style={{ marginTop: 12 }}>{t.title}</Body>
-              <Mono size={15} color={C.text} style={{ marginTop: 6, fontFamily: F.monoSemibold }}>
+              <Mono size={9} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.2 }}>POWERED BY {t.powered}</Mono>
+              <Mono size={15} color={C.text} style={{ marginTop: 7, fontFamily: F.monoSemibold }}>
                 {t.value}{t.delta ? <Mono size={10.5} color={C.up}>  {t.delta}</Mono> : null}
               </Mono>
-              <Body size={10} color={t.warn ? C.amber : C.dim} style={{ marginTop: 4 }}>{t.warn || t.sub}</Body>
+              <Body size={10} color={C.dim} style={{ marginTop: 4 }}>{t.sub}</Body>
             </Card>
           </Pressable>
         ))}
       </View>
-      <Card style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 }}>
-        <Mono size={15} color={C.accent}>◆</Mono>
-        <Body size={12} color={C.sub} style={{ flex: 1 }}><Body size={12} color={C.accent} semibold>Auto-earn</Body> · 1,240 pts this week · ≈ $16.90</Body>
-        <Body size={14} color={C.dim}>›</Body>
-      </Card>
       <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 20 }}>Move money between spaces anytime — one ledger underneath.</Body>
     </Screen>
   );

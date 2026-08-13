@@ -3,12 +3,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import HubHomeScreen from "@/screens/HubHomeScreen";
 
-// Spaces that exist in the kit today; the rest of the tiles (trade, earn,
-// games, remit) present but don't navigate yet — their screens land with the
-// next design drop (3a-3f in the README mapping).
+// The four locked spaces: Auto Earn (Kash), Copy Trading (Worldstreet),
+// Crypto (LinkPay), Games (Ark).
 const ROUTES: Record<string, Href> = {
-  fiat: "/fiat",
+  earn: "/earn",
+  trade: "/trade",
   crypto: "/crypto",
+  games: "/games",
 };
 
 export default function Hub() {
@@ -19,6 +20,7 @@ export default function Hub() {
           const href = ROUTES[space];
           if (href) router.push(href);
         }}
+        onProfile={() => router.push("/profile")}
       />
     </SafeAreaView>
   );

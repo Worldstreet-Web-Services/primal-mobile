@@ -1,12 +1,23 @@
 export const user = { name: 'Denga Kadiri', tag: '@denga', initial: 'D', va: '9012 883 774', bank: 'Rubies MFB', evm: '0x7A3fD24b81cE5501a2Fb44C09E4c88A1', sol: '9xJdW2vNqPh4tR8kFzLm3QbC5sYwQm2P' };
 
-export const hubTiles = [
-  { key: 'fiat', title: 'Fiat account', value: '\u20a6482,650.00', sub: '9012 883 774 · Rubies MFB' },
-  { key: 'crypto', title: 'Crypto', value: '$312.40', sub: 'ETH · SOL · USDC · 4 networks' },
-  { key: 'trade', title: 'Copy trading', value: '$261.20', delta: '+4.5%', sub: 'Copying Amara · 3 positions' },
-  { key: 'earn', title: 'Earn · Kash', value: '128.40 KSH', sub: '1,240 pts settle Sat 00:00 UTC' },
-  { key: 'games', title: 'Games', value: '$85.00', badge: 'CLAIM $920', sub: 'Last Man round #63 live · 04:32' },
-  { key: 'remit', title: 'Cross-border', value: 'NGN \u2192 GHS', warn: '\u20a682,300 in transit to Kofi'.replace('\u20a6','\u20a6'), sub: '' },
+// The four Primal spaces (locked 2026-08-13): each is powered by one of the
+// source platforms. Fiat rails and cross-border live INSIDE the LinkPay-powered
+// crypto space now, not as top-level tiles.
+export interface HubTile {
+  key: string;
+  title: string;
+  powered: string;
+  value: string;
+  sub: string;
+  delta?: string;
+  badge?: string;
+}
+
+export const hubTiles: HubTile[] = [
+  { key: 'earn', title: 'Auto Earn', powered: 'KASH', value: '128.40 KSH', sub: '1,240 pts settle Sat 00:00 UTC' },
+  { key: 'trade', title: 'Copy Trading', powered: 'WORLDSTREET', value: '$261.20', delta: '+4.5%', sub: 'Copying Amara · 3 positions' },
+  { key: 'crypto', title: 'Crypto', powered: 'LINKPAY', value: '$312.40', sub: 'ETH · SOL · USDC · 4 networks' },
+  { key: 'games', title: 'Games', powered: 'ARK', value: '$85.00', badge: 'CLAIM $920', sub: 'Last Man round #63 live · 04:32' },
 ];
 
 export const fiatActivity = [

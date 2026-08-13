@@ -1,12 +1,12 @@
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import FiatSpaceScreen from "@/screens/FiatSpaceScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
 
-export default function Fiat() {
+export default function Profile() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
-      <FiatSpaceScreen onBack={() => router.back()} />
+      <ProfileScreen onBack={() => router.back()} />
     </SafeAreaView>
   );
 }

@@ -17,7 +17,7 @@ Primal is a **super app** that folds the best features of our existing platforms
 | **Ark** | Auto-earn ("Kash"), cross-chain crypto deposit & withdrawal, "The Last Man Standing" game with a $50 staking power |
 | **LinkPay** | Fiat deposit & withdrawal via per-user account numbers, cross-border payments, the optimistic-fill ledger |
 
-One user, one identity (Privy), two money surfaces — a **fiat account** (bank account number, local currency) and a **crypto account** (embedded wallets + cross-chain deposit addresses) — with money moving fluidly between them because **we run the ledger** and can credit optimistically.
+One user, one identity (Decane), two money surfaces — a **fiat account** (bank account number, local currency) and a **crypto account** (embedded wallets + cross-chain deposit addresses) — with money moving fluidly between them because **we run the ledger** and can credit optimistically.
 
 ---
 
@@ -181,7 +181,7 @@ Ported from Ark's live implementation:
 | **1 — NOW** | Decane auth end-to-end (**KingsChat bridge** + Google/email, hosted auth surface) + backend session exchange + user model + **VA provisioning (account number per user)** + onboarding UI | Sign in with KingsChat on a device → see your own account number on the Receive screen |
 | 2 | Fiat rails: deposit webhook → ledger → activity feed; send/withdraw with PIN; transaction history | Money in via bank transfer shows in-app in <10s; money out settles with idempotent safety |
 | 3 | Crypto: static deposit addresses + optimistic fill + embedded-wallet balances + on-chain send | Crypto deposit credits fiat balance optimistically; failure → refund path visible |
-| 4 | Cross-border (both rails) + Earn integration | Live corridor quote → payout; bounty feed authenticated by Privy token |
+| 4 | Cross-border (both rails) + Earn integration | Live corridor quote → payout; bounty feed authenticated by Decane token (needs §7.3) |
 | 5 | Games (Last Man @ $50) + copy trading **(gated on Worldstreet endpoints)** | First round completes with real claims; first mirrored trade |
 
 ---

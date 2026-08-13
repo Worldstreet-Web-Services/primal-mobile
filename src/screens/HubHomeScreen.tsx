@@ -1,9 +1,19 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, F } from '../theme/tokens';
 import { Screen, Card, Label, Mono, Body, Shine } from '../components/ui';
 import { hubTiles, user } from '../data/mock';
+
+// Glass-render tile art (Higgsfield Cinema Studio, 2026-08-13). Black-background
+// renders composite seamlessly onto the near-black cards.
+const TILE_ART: Record<string, number> = {
+  earn: require('@/assets/images/hub/earn.png'),
+  trade: require('@/assets/images/hub/trade.png'),
+  crypto: require('@/assets/images/hub/crypto.png'),
+  games: require('@/assets/images/hub/games.png'),
+};
 
 // Design 2a: hub home — tiles with per-space balances, metallic system.
 export default function HubHomeScreen({ onOpen, onProfile }: { onOpen?: (space: string) => void; onProfile?: () => void }) {
@@ -33,9 +43,12 @@ export default function HubHomeScreen({ onOpen, onProfile }: { onOpen?: (space: 
                   </LinearGradient>
                 </View>
               ) : null}
-              <View style={{ width: 34, height: 34, borderRadius: 18, backgroundColor: t.key === 'earn' ? C.upBg : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-                <Mono size={13} color={t.key === 'earn' ? C.up : C.accent}>{t.key === 'earn' ? '◆' : t.key === 'games' ? '★' : t.key === 'trade' ? '↗' : '◇'}</Mono>
-              </View>
+              <Image
+                source={TILE_ART[t.key]}
+                style={{ width: '100%', height: 116, borderRadius: 12, backgroundColor: '#050607' }}
+                contentFit='cover'
+                transition={200}
+              />
               <Body size={13} semibold style={{ marginTop: 12 }}>{t.title}</Body>
               <Mono size={9} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.2 }}>POWERED BY {t.powered}</Mono>
               <Mono size={15} color={C.text} style={{ marginTop: 7, fontFamily: F.monoSemibold }}>

@@ -1,9 +1,8 @@
 import { type ImageSource } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { PressableScale, Shine } from "../ui";
+import { GlassSurface, PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 
 export type FeatureTone = "dark" | "lime";
@@ -11,6 +10,8 @@ export type FeatureTone = "dark" | "lime";
 export interface Feature {
   key: string;
   title: string;
+  /** Small line above the title — the one-phrase pitch. */
+  kicker?: string;
   /** The platform the capability is inherited from — "ark", "worldstreet"… */
   poweredBy?: string;
   tone?: FeatureTone;
@@ -18,13 +19,14 @@ export interface Feature {
 }
 
 /**
- * A promoted capability (auto-earn, copy trading…). Two tones so a row can
- * carry one loud card and one quiet one without either fighting the hero.
+ * A promoted capability (auto-earn, copy trading…). The product render fills
+ * the card and a translucent panel sits over its lower half carrying the copy
+ * — so the art reads as the card, not as decoration beside it.
  */
 export function FeatureCard({
   feature,
   onPress,
-  height = 132,
+  height = 182,
 }: {
   feature: Feature;
   onPress?: (key: string) => void;
@@ -38,59 +40,99 @@ export function FeatureCard({
       style={{ flex: 1, minWidth: 132 }}
       scale={0.97}
     >
-      <LinearGradient
-        colors={lime ? C.leafGrad : ["#1B2412", "#0C0E0B"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          height,
-          borderRadius: 18,
-          overflow: "hidden",
-          borderWidth: lime ? 0 : 1,
-          borderColor: C.hairline,
-          justifyContent: "flex-end",
-          padding: 12,
-        }}
+      <View
         accessibilityRole="button"
         accessibilityLabel={feature.title}
+        style={{
+          height,
+          borderRadius: 20,
+          overflow: "hidden",
+          backgroundColor: C.canvas,
+          borderWidth: 1,
+          borderColor: C.hairline,
+        }}
       >
-        <Shine />
+        {/* Art runs the full card; the panel below crops it optically. */}
         <ArtSlot
+          fill
+          contentFit="cover"
+          contentPosition="left"
           source={feature.artwork}
-          size={height * 0.78}
-          tint={lime ? C.leafInk : C.leaf}
+          size={height * 0.66}
+          tint={lime ? C.lime : C.leaf}
+        />
+
+        <View
           style={{
             position: "absolute",
-            right: -height * 0.06,
-            top: height * 0.02,
-          }}
-        />
-        <Text
-          numberOfLines={1}
-          style={{
-            fontFamily: F.display,
-            fontSize: 16,
-            letterSpacing: 0.2,
-            color: lime ? "#FFFFFF" : C.text,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingHorizontal: 13,
+            paddingTop: 12,
+            paddingBottom: 14,
+            borderTopLeftRadius: 25,
           }}
         >
-          {feature.title.toUpperCase()}
-        </Text>
-        {feature.poweredBy ? (
+          <GlassSurface bordered={false} />
+          {/* Bright edge where the panel meets the art. */}
+          {/* <Shine /> */}
+          {lime ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(155,201,90,0.10)",
+              }}
+            />
+          ) : null}
+
+          {feature.kicker ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: F.body,
+                fontSize: 11.5,
+                color: C.silver,
+              }}
+            >
+              {feature.kicker}
+            </Text>
+          ) : null}
+
           <Text
             numberOfLines={1}
             style={{
-              fontFamily: F.mono,
-              fontSize: 7.5,
-              letterSpacing: 1.1,
-              marginTop: 4,
-              color: lime ? "rgba(255,255,255,0.82)" : C.sub,
+              fontFamily: F.display,
+              fontSize: 19,
+              letterSpacing: 0.2,
+              color: C.text,
+              marginTop: feature.kicker ? 5 : 0,
             }}
           >
-            {`POWERED BY ${feature.poweredBy}`.toUpperCase()}
+            {feature.title.toUpperCase()}
           </Text>
-        ) : null}
-      </LinearGradient>
+
+          {feature.poweredBy ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: F.mono,
+                fontSize: 8.5,
+                letterSpacing: 1.2,
+                marginTop: 7,
+                color: C.sub,
+              }}
+            >
+              {`POWERED BY ${feature.poweredBy}`.toUpperCase()}
+            </Text>
+          ) : null}
+        </View>
+      </View>
     </PressableScale>
   );
 }

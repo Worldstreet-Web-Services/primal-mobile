@@ -7,6 +7,9 @@ import type { Feature, MediaItem, Space } from "@/components/home";
  * until the renders land in assets/images.
  */
 
+/** Everything the user holds, across every space — one ledger underneath. */
+export const portfolioTotal = "$18,585.60";
+
 export const spaces: Space[] = [
   {
     key: "market",
@@ -23,21 +26,33 @@ export const spaces: Space[] = [
 ];
 
 export const features: Feature[] = [
-  { key: "auto-earn", title: "Auto Earn", poweredBy: "Ark", tone: "dark" },
+  {
+    key: "auto-earn",
+    title: "Auto Earn",
+    kicker: "Points settle weekly",
+    poweredBy: "Ark",
+    artwork: require("../../assets/images/auto-earn.png"),
+  },
   {
     key: "copy-trading",
     title: "Copy Trading",
+    kicker: "Mirror top traders",
     poweredBy: "Worldstreet",
+    artwork: require("../../assets/images/copy-trade.png"),
   },
   {
     key: "crypto",
-    title: "Cypto",
+    title: "Crypto",
+    kicker: "Every chain, one address",
     poweredBy: "LinkPay",
+    artwork: require("../../assets/images/crypto.png"),
   },
   {
     key: "games",
     title: "Games$",
+    kicker: "Outlast the clock",
     poweredBy: "Ark",
+    artwork: require("../../assets/images/games.png"),
   },
 ];
 

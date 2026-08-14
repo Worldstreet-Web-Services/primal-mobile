@@ -1,4 +1,8 @@
-import { Image, type ImageSource } from "expo-image";
+import {
+  Image,
+  type ImageContentPosition,
+  type ImageSource,
+} from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { View, type ViewStyle } from "react-native";
 
@@ -14,22 +18,34 @@ export function ArtSlot({
   size = 120,
   style,
   tint = C.leaf,
+  fill = false,
+  contentFit = "contain",
+  contentPosition = "center",
 }: {
   source?: ImageSource | number;
   size?: number;
   style?: ViewStyle;
   tint?: string;
+  /** Stretch to the parent instead of holding a square of `size`. */
+  fill?: boolean;
+  contentFit?: "contain" | "cover";
+  /** Which edge the art anchors to when `contentFit` crops it. */
+  contentPosition?: ImageContentPosition;
 }) {
   return (
     <View
       pointerEvents="none"
-      style={[{ width: size, height: size }, style]}
+      style={[
+        fill ? { width: "100%", height: "100%" } : { width: size, height: size },
+        style,
+      ]}
       accessible={false}
     >
       {source ? (
         <Image
           source={source}
-          contentFit="contain"
+          contentFit={contentFit}
+          contentPosition={contentPosition}
           style={{
             width: "100%",
             height: "100%",

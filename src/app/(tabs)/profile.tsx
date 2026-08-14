@@ -4,7 +4,7 @@ import { Text } from "react-native";
 
 const ProfileScreen = () => {
   return (
-    <Screen>
+    <Screen center bottom={110}>
       <Text style={{ fontSize: 24, fontWeight: "bold", color: C.text }}>
         Profile
       </Text>

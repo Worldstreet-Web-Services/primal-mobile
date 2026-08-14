@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { C, F } from "../../theme/tokens";
 import { ArtSlot } from "../home/ArtSlot";
 import { TrendUpIcon } from "../icons";
-import { Body, Display, Mono, PulseDot } from "../ui";
+import { AmountText, Body, Mono, PulseDot } from "../ui";
 
 export interface BalanceStats {
   /** Formatted, currency-tagged — no math happens in the UI. */
@@ -142,7 +142,6 @@ export function BalanceSummary({
   );
 }
 
-/** Splits on the decimal separator so the cents can ride smaller. */
 function Amount({
   total,
   emphasizeCents,
@@ -150,23 +149,12 @@ function Amount({
   total: string;
   emphasizeCents: boolean;
 }) {
-  const size = 40;
-  const dot = emphasizeCents ? total.lastIndexOf(".") : -1;
-
-  if (dot === -1) {
-    return (
-      <Display size={size} style={{ marginTop: 8 }}>
-        {total}
-      </Display>
-    );
-  }
-
   return (
-    <Display size={size} style={{ marginTop: 8 }}>
-      {total.slice(0, dot)}
-      <Text style={{ fontFamily: F.display, fontSize: size * 0.55 }}>
-        {total.slice(dot)}
-      </Text>
-    </Display>
+    <AmountText
+      value={total}
+      size={40}
+      emphasizeCents={emphasizeCents}
+      style={{ marginTop: 8 }}
+    />
   );
 }

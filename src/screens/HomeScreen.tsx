@@ -13,6 +13,7 @@ import { Screen } from "@/components/ui";
 import {
   features as defaultFeatures,
   media as defaultMedia,
+  portfolioTotal,
   spaces as defaultSpaces,
 } from "@/data/home";
 import { user } from "@/data/mock";
@@ -23,6 +24,8 @@ const heroArtwork = require("../../assets/images/pills.png");
 export interface HomeScreenProps {
   name?: string;
   greeting?: string;
+  /** Preformatted total across every space. */
+  balance?: string;
   // heroArtwork?: ImageSource | number;
   spaces?: Space[];
   features?: Feature[];
@@ -45,6 +48,7 @@ export interface HomeScreenProps {
 export default function HomeScreen({
   name = firstNameOf(user.name),
   greeting = greetingFor(),
+  balance = portfolioTotal,
   spaces = defaultSpaces,
   features = defaultFeatures,
   media = defaultMedia,
@@ -60,6 +64,7 @@ export default function HomeScreen({
         <GreetingHero
           greeting={greeting}
           name={name}
+          balance={balance}
           artwork={heroArtwork}
           onPress={onOpenHero}
         />

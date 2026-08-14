@@ -18,6 +18,7 @@ export function Screen({
   pad = 20,
   top = 0,
   bottom = 40,
+  center = false,
   showsScrollIndicator = false,
 }: {
   children: React.ReactNode;
@@ -26,6 +27,8 @@ export function Screen({
   top?: number;
   /** Tail space — raise it on tab screens so the floating bar can't cover content. */
   bottom?: number;
+  /** Center short content in the viewport — placeholders and empty states. */
+  center?: boolean;
   showsScrollIndicator?: boolean;
 }) {
   return (
@@ -35,6 +38,15 @@ export function Screen({
         paddingHorizontal: pad,
         paddingTop: top,
         paddingBottom: bottom,
+        // flexGrow lets the container fill the viewport so centering has room,
+        // while still growing past it once the content is taller.
+        ...(center
+          ? {
+              flexGrow: 1,
+              justifyContent: "center" as const,
+              alignItems: "center" as const,
+            }
+          : null),
       }}
       showsVerticalScrollIndicator={showsScrollIndicator}
     >
@@ -53,12 +65,15 @@ export function PressableScale({
   style,
   scale = 0.97,
   disabled,
+  accessibilityLabel,
 }: {
   children: React.ReactNode;
   onPress?: () => void;
   style?: ViewStyle;
   scale?: number;
   disabled?: boolean;
+  /** Set when the press target itself is the control, not something inside it. */
+  accessibilityLabel?: string;
 }) {
   const v = useRef(new Animated.Value(1)).current;
   const to = (value: number) =>
@@ -75,6 +90,8 @@ export function PressableScale({
       disabled={disabled}
       onPressIn={() => to(scale)}
       onPressOut={() => to(1)}
+      accessibilityRole={accessibilityLabel ? "button" : undefined}
+      accessibilityLabel={accessibilityLabel}
       style={style}
     >
       <Animated.View style={{ transform: [{ scale: v }] }}>
@@ -328,6 +345,46 @@ export function Display({
     >
       {children}
     </Text>
+  );
+}
+
+/**
+ * A money figure with its decimals dropped a size, so the whole units carry
+ * the glance. Splits on the last separator — the string is already formatted
+ * upstream, since the UI never does the math.
+ */
+export function AmountText({
+  value,
+  size = 40,
+  color = C.text,
+  emphasizeCents = true,
+  style,
+}: {
+  value: string;
+  size?: number;
+  color?: string;
+  emphasizeCents?: boolean;
+  style?: TextStyle;
+}) {
+  const dot = emphasizeCents ? value.lastIndexOf(".") : -1;
+
+  if (dot === -1) {
+    return (
+      <Display size={size} color={color} style={style}>
+        {value}
+      </Display>
+    );
+  }
+
+  return (
+    <Display size={size} color={color} style={style}>
+      {value.slice(0, dot)}
+      <Text
+        style={{ fontFamily: F.display, fontSize: size * 0.55, color: C.sub }}
+      >
+        {value.slice(dot)}
+      </Text>
+    </Display>
   );
 }
 

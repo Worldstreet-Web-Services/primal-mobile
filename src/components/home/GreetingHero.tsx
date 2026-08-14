@@ -6,7 +6,6 @@ import { Text, View } from "react-native";
 import { C, F } from "../../theme/tokens";
 import { RingDecor } from "../icons";
 import { AmountText, Display, PressableScale, Shine } from "../ui";
-import { ArtSlot } from "./ArtSlot";
 
 /** What replaces the figure when it's hidden. */
 const MASK = "••••••";
@@ -74,7 +73,7 @@ export function GreetingHero({
           meant to break the frame cannot live inside it. */}
       <View>
         <LinearGradient
-          colors={["#141A0E", "#0D0F0C"]}
+          colors={["#1A1508", "#0F0E0C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -91,7 +90,7 @@ export function GreetingHero({
             pointerEvents="none"
             style={{ position: "absolute", left: 0, top: 40 }}
           >
-            <RingDecor size={290} color={C.leaf} opacity={0.2} />
+            <RingDecor size={290} color={C.brandSoft} opacity={0.2} />
           </View>
 
           {/* Greeting is the eyebrow; the NAME and the BALANCE carry the
@@ -139,11 +138,11 @@ export function GreetingHero({
 
         {/* Art sits low-right so it never crowds the name; overhang is capped
             at the screen gutter — the ScrollView clips at its own edges. */}
-        <ArtSlot
+        {/* <ArtSlot
           source={artwork}
           size={148}
           style={{ position: "absolute", right: -10, bottom: -4 }}
-        />
+        /> */}
       </View>
     </PressableScale>
   );

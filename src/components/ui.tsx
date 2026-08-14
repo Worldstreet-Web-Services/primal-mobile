@@ -25,7 +25,7 @@ export function Screen({
   pad?: number;
   /** Head space — set to the nav header's height when it overlays the scroll view. */
   top?: number;
-  /** Tail space — raise it on tab screens so the floating bar can't cover content. */
+  /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
   /** Center short content in the viewport — placeholders and empty states. */
   center?: boolean;
@@ -772,10 +772,10 @@ export function Chip({
   active?: boolean;
   onPress?: () => void;
   /** Which accent marks the selected chip — chrome by default, brand on trade surfaces. */
-  tone?: "silver" | "lime";
+  tone?: "silver" | "brand";
 }) {
-  const lime = tone === "lime";
-  const accent = lime ? C.leaf : C.accent;
+  const brandTone = tone === "brand";
+  const accent = brandTone ? C.brandSoft : C.accent;
   return (
     <Pressable
       onPress={onPress}
@@ -788,8 +788,8 @@ export function Chip({
         borderWidth: 1,
         borderColor: active ? accent : C.border,
         backgroundColor: active
-          ? lime
-            ? "rgba(155,201,90,0.14)"
+          ? brandTone
+            ? C.brandGlow
             : "rgba(255,255,255,0.1)"
           : C.card,
       }}
@@ -798,7 +798,7 @@ export function Chip({
         style={{
           fontFamily: F.bodySemibold,
           fontSize: 12,
-          color: active ? (lime ? C.leaf : "#e8e8ea") : C.silver,
+          color: active ? (brandTone ? C.brandSoft : "#e8e8ea") : C.silver,
         }}
       >
         {label}
@@ -832,7 +832,7 @@ export function PrimaryButton({
         style={{
           height,
           borderRadius: radius,
-          backgroundColor: C.leaf,
+          backgroundColor: C.brandSoft,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
@@ -845,7 +845,7 @@ export function PrimaryButton({
             fontFamily: F.bodySemibold,
             fontSize: 14,
             letterSpacing: 1.4,
-            color: C.leafInk,
+            color: C.brandSoftInk,
           }}
         >
           {label.toUpperCase()}
@@ -866,7 +866,7 @@ export function OutlineButton({
   icon,
   height = 54,
   radius = 14,
-  color = C.leaf,
+  color = C.brandSoft,
 }: {
   label: string;
   onPress?: () => void;

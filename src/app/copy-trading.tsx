@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -16,6 +17,7 @@ export default function CopyTrading() {
         tagline="POWERED BY WORLDSTREET"
         direction="column"
         unread
+        onBack={() => router.back()}
         onHeightChange={setHeaderHeight}
       />
     </View>

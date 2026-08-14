@@ -59,7 +59,7 @@ export default function HomeScreen({
   onOpenHero,
 }: HomeScreenProps) {
   return (
-    <Screen pad={16} top={top} bottom={130}>
+    <Screen pad={16} top={top}>
       <View style={{ marginTop: 14 }}>
         <GreetingHero
           greeting={greeting}

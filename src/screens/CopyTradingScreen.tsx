@@ -68,12 +68,12 @@ export default function CopyTradingScreen({
                 width: 22,
                 height: 22,
                 borderRadius: 7,
-                backgroundColor: C.leaf,
+                backgroundColor: C.brandSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <PlusIcon size={13} color={C.leafInk} />
+              <PlusIcon size={13} color={C.brandSoftInk} />
             </View>
           }
         />
@@ -84,7 +84,7 @@ export default function CopyTradingScreen({
           <Chip
             key={f}
             label={f.toUpperCase()}
-            tone="lime"
+            tone="brand"
             active={f === filter}
             onPress={() => setFilter(f)}
           />

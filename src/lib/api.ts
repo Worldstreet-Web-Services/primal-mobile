@@ -72,8 +72,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const body = (await res.json().catch(() => null)) as
-    | ({ message?: string; code?: string } & Record<string, unknown>)
-    | null;
+    ({ message?: string; code?: string } & Record<string, unknown>) | null;
 
   if (!res.ok) {
     throw new ApiError(

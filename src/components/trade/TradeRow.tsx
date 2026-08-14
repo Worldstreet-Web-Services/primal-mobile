@@ -84,16 +84,16 @@ export function TradeRow({
               paddingHorizontal: 18,
               paddingVertical: 12,
               borderRadius: 12,
-              backgroundColor: position.copying ? C.card : C.leaf,
+              backgroundColor: position.copying ? C.card : C.brandSoft,
               borderWidth: position.copying ? 1 : 0,
-              borderColor: C.leaf,
+              borderColor: C.brandSoft,
             }}
           >
             <Text
               style={{
                 fontFamily: F.bodySemibold,
                 fontSize: 13,
-                color: position.copying ? C.leaf : C.leafInk,
+                color: position.copying ? C.brandSoft : C.brandSoftInk,
               }}
             >
               {position.copying ? "Copying" : "Copy Trade"}

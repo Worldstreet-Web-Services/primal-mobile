@@ -2,7 +2,12 @@ import { type ImageSource } from "expo-image";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { AssetList, ChartCard, type Asset, type Quote } from "@/components/earn";
+import {
+  AssetList,
+  ChartCard,
+  type Asset,
+  type Quote,
+} from "@/components/earn";
 import { ClockIcon, PlusIcon } from "@/components/icons";
 import { BalanceSummary, type BalanceStats } from "@/components/trade";
 import { Display, Label, OutlineButton, Screen } from "@/components/ui";
@@ -26,7 +31,7 @@ export interface AutoEarnScreenProps {
   artwork?: ImageSource | number;
   /** Head space for the floating nav header. */
   top?: number;
-  /** Tail space for the sticky action above the tab bar. */
+  /** Tail space so the sticky action can't cover the last row. */
   bottom?: number;
   onFund?: () => void;
   onOpenAsset?: (key: string) => void;
@@ -82,12 +87,12 @@ export default function AutoEarnScreen({
                 width: 22,
                 height: 22,
                 borderRadius: 7,
-                backgroundColor: C.leaf,
+                backgroundColor: C.brandSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <PlusIcon size={13} color={C.leafInk} />
+              <PlusIcon size={13} color={C.brandSoftInk} />
             </View>
           }
         />

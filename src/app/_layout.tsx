@@ -10,8 +10,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    "ClashDisplay-Semibold": require("@/assets/fonts/ClashDisplay-Semibold.ttf"),
-    "ClashDisplay-Bold": require("@/assets/fonts/ClashDisplay-Bold.ttf"),
+    // Display face. Static instances rather than the variable TTF — RN maps
+    // fontFamily to a concrete face, so weight axes don't resolve on Android.
+    "SpaceGrotesk-SemiBold": require("@/assets/fonts/SpaceGrotesk-SemiBold.ttf"),
+    "SpaceGrotesk-Bold": require("@/assets/fonts/SpaceGrotesk-Bold.ttf"),
     "Geist-Regular": require("@/assets/fonts/Geist-Regular.ttf"),
     "Geist-Medium": require("@/assets/fonts/Geist-Medium.ttf"),
     "Geist-SemiBold": require("@/assets/fonts/Geist-SemiBold.ttf"),

@@ -12,6 +12,9 @@ export const C = {
   up: "#7ce7b0", // gain / money-in (semantic, from wsws-frontend)
   upBg: "rgba(124,231,176,0.12)",
   down: "#f6a5a5",
+  // Liveness: markets open, a round in play, a stream running. Saturated so it
+  // reads as a signal light rather than a gain figure — never used for money.
+  live: "#4ADE80",
   amber: "#F5B83D",
   ink: "#0a0a0a",
   sheet: "#0f1012",

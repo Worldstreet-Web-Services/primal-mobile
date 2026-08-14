@@ -1,15 +1,20 @@
-import { Screen } from "@/components/ui";
+import { useState } from "react";
+import { View } from "react-native";
+
+import { NavHeader } from "@/components/home";
+import PulseScreen from "@/screens/PulseScreen";
 import { C } from "@/theme/tokens";
-import { Text } from "react-native";
 
-const PulseScreen = () => {
+export default function Pulse() {
+  // The header floats over the scroll view, so the content needs to start
+  // below it — measured, since the safe area moves it per device.
+  const [headerHeight, setHeaderHeight] = useState(0);
+
   return (
-    <Screen center bottom={110}>
-      <Text style={{ fontSize: 24, fontWeight: "bold", color: C.text }}>
-        PulseScreen
-      </Text>
-    </Screen>
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <PulseScreen top={headerHeight} />
+      {/* Wordmark only, matching Home — the screen's own Display carries the tab name. */}
+      <NavHeader unread tagline="" onHeightChange={setHeaderHeight} />
+    </View>
   );
-};
-
-export default PulseScreen;
+}

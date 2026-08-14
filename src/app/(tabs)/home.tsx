@@ -24,7 +24,10 @@ const FEATURE_ROUTES: Record<string, Href> = {
   crypto: "/crypto",
   games: "/games",
 };
-const MEDIA_ROUTES: Record<string, Href> = {};
+const MEDIA_ROUTES: Record<string, Href> = {
+  podcast: "/podcast",
+  news: "/news",
+};
 
 function open(table: Record<string, Href>, key: string) {
   const href = table[key];

@@ -9,7 +9,7 @@ export default function Fiat() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
       <FiatSpaceScreen
         onBack={() => router.back()}
-        onAdd={() => router.push("/receive")}
+        onAdd={() => router.push("/fund")}
         onSend={() => router.push("/send")}
         onRemit={() => router.push("/remit")}
       />

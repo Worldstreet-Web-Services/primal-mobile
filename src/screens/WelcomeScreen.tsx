@@ -8,7 +8,7 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: (method: string) 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22, paddingBottom: 30 }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <View style={{ shadowColor: '#B4FF39', shadowOpacity: 0.25, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+        <View style={{ shadowColor: '#F5C842', shadowOpacity: 0.25, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
           <Image
             source={require('@/assets/images/logo.png')}
             style={{ width: 108, height: 108, borderRadius: 28 }}

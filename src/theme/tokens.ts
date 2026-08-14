@@ -9,25 +9,28 @@ export const C = {
   dim: '#6A7078',
   silver: '#C7CCD1',
   accent: '#d4d4d8',   // Ark silver accent
-  up: '#7ce7b0',       // gain / money-in (semantic, from wsws-frontend)
-  upBg: 'rgba(124,231,176,0.12)',
+  up: '#E9D08A',       // gain / money-in — pale gold (semantic, distinct from action gold)
+  upBg: 'rgba(233,208,138,0.12)',
   down: '#f6a5a5',
-  amber: '#F5B83D',
+  // Pending/warning. Pushed orange so it can't be mistaken for action gold.
+  amber: '#F59A3D',
   ink: '#0a0a0a',
   sheet: '#0f1012',
   key: '#14161A',
   metal: ['#e8e8ea', '#b6b6bc'] as [string, string], // Last Man CTA gradient
 
-  // Brand greens (PRD §5). `lime` is the action color; `leaf` is the muted
-  // surface cousin the ecosystem art sits on — never mix the two roles.
-  lime: '#B4FF39',
-  limeInk: '#101400',
-  leaf: '#9BC95A',
-  leafGrad: ['#A8D465', '#7BA83F'] as [string, string],
-  leafInk: '#0E1503',
-  limeGlow: 'rgba(180,255,57,0.14)',
-  dollar: '#118C4F',
-  dollarTint: 'rgba(17,140,79,0.15)',
+  // Brand golds (rebrand 2026-08-14, was the green family). `lime` keeps its
+  // token NAME so no call site churns — it is the action color, now golden;
+  // `leaf` is the muted surface cousin the ecosystem art sits on — never mix
+  // the two roles.
+  lime: '#F5C842',
+  limeInk: '#171200',
+  leaf: '#B99A45',
+  leafGrad: ['#D4B465', '#A8833F'] as [string, string],
+  leafInk: '#151003',
+  limeGlow: 'rgba(245,200,66,0.14)',
+  dollar: '#9A7B1C',
+  dollarTint: 'rgba(154,123,28,0.15)',
 
   // Elevation steps above the canvas.
   raised: '#141519',

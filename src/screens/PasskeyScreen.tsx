@@ -17,7 +17,7 @@ export default function PasskeyScreen({ onEnable, onSkip }: { onEnable?: () => v
           </Svg>
         </View>
         <Display size={26}>Add a passkey</Display>
-        <Body size={13.5} color={C.sub} style={{ textAlign: 'center', lineHeight: 22 }}>Unlock Primal and sign transactions with Face ID. Your key is split across this device, Decane, and recovery — no one can sign without you.</Body>
+        <Body size={13.5} color={C.sub} style={{ textAlign: 'center', lineHeight: 22 }}>Unlock Paradigm and sign transactions with Face ID. Your key is split across this device, Decane, and recovery — no one can sign without you.</Body>
       </View>
       <View style={{ gap: 10 }}>
         <MetallicButton label='Enable Face ID' onPress={onEnable} />

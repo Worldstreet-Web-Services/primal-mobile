@@ -71,7 +71,7 @@ export default function HubHomeScreen({ onOpen, onProfile }: { onOpen?: (space: 
         </View>
       </View>
       <View style={{ marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-        <Label>Across Primal</Label>
+        <Label>Across Paradigm</Label>
         <Mono size={12.5}>≈ ₦748,300 · $487.10</Mono>
       </View>
       <View style={{ marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>
@@ -87,7 +87,9 @@ export default function HubHomeScreen({ onOpen, onProfile }: { onOpen?: (space: 
                 </View>
               ) : null}
               <Body size={13} semibold style={{ marginTop: 12 }}>{t.title}</Body>
-              <Mono size={9} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.2 }}>POWERED BY {t.powered}</Mono>
+              {'powered' in t && t.powered ? (
+                <Mono size={9} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.2 }}>POWERED BY {String(t.powered)}</Mono>
+              ) : null}
               <Mono size={15} color={C.text} style={{ marginTop: 7, fontFamily: F.monoSemibold }}>
                 {t.value}{t.delta ? <Mono size={10.5} color={C.up}>  {t.delta}</Mono> : null}
               </Mono>

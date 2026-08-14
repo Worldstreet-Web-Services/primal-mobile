@@ -15,7 +15,7 @@ export default function CreatePinScreen({ onDone }: { onDone?: (pin: string) => 
       <View style={{ paddingTop: 10 }}><Label>Step 2 of 3</Label></View>
       <View style={{ marginTop: 26 }}>
         <Display size={26}>Create your{'\n'}transaction PIN</Display>
-        <Body size={13.5} color={C.sub} style={{ marginTop: 10, lineHeight: 21 }}>4 digits. You’ll enter it every time money leaves Primal.</Body>
+        <Body size={13.5} color={C.sub} style={{ marginTop: 10, lineHeight: 21 }}>4 digits. You’ll enter it every time money leaves Paradigm.</Body>
       </View>
       <View style={{ marginTop: 44 }}><PinDots filled={pin.length} /></View>
       <View style={{ flex: 1 }} />

@@ -40,7 +40,7 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
               <View style={{ flex: 1 }}><MetallicButton label='Copy number' height={48} radius={14} size={13.5} /></View>
               <View style={{ flex: 1 }}><GhostButton label='Share details' height={48} /></View>
             </View>
-            <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 14, lineHeight: 17.5 }}>Anyone can bank-transfer to this number.{'\n'}Funds land as your Primal balance — usually under 10s.</Body>
+            <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 14, lineHeight: 17.5 }}>Anyone can bank-transfer to this number.{'\n'}Funds land as your Paradigm balance — usually under 10s.</Body>
           </View>
         ) : (
           <View>

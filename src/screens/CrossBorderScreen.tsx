@@ -87,7 +87,7 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
       </View>
       <View style={{ marginTop: 24 }}>
         <GhostButton label='Share receipt' height={48} />
-        <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 12 }}>Pricing comes from the provider quote — Primal never adds a client-side fee.</Body>
+        <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 12 }}>Pricing comes from the provider quote — Paradigm never adds a client-side fee.</Body>
       </View>
     </Screen>
   );

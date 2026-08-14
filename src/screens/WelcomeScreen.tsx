@@ -15,7 +15,7 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: (method: string) 
             contentFit='cover'
           />
         </View>
-        <Display size={36}>Primal</Display>
+        <Display size={36}>Paradigm</Display>
         <Body size={14} color={C.sub} style={{ textAlign: 'center', lineHeight: 21 }}>One account. One balance.{'\n'}Every rail.</Body>
       </View>
       <View style={{ gap: 10 }}>

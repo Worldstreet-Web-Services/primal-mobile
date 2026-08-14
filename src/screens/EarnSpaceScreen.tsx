@@ -44,7 +44,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
         <View style={{ marginTop: 7 }}><ProgressBar pct={kash.gatePct} /></View>
         <Body size={10.5} color={C.dim} style={{ marginTop: 7 }}>Gate is USD-denominated · redemptions capped at 25%/day</Body>
       </Card>
-      <Body size={11.5} color={C.dim} style={{ marginTop: 12, lineHeight: 19 }}>Points earn live as you trade, play, and remit across Primal. Every Saturday 00:00 UTC they mint to KSH at the settlement price — points and KSH never mix.</Body>
+      <Body size={11.5} color={C.dim} style={{ marginTop: 12, lineHeight: 19 }}>Points earn live as you trade, play, and remit across Paradigm. Every Saturday 00:00 UTC they mint to KSH at the settlement price — points and KSH never mix.</Body>
       <View style={{ marginTop: 18 }}>
         <Label>Ways to earn</Label>
         {bounties.map((b, i) => (

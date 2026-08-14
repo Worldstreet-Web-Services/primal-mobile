@@ -24,7 +24,7 @@ export default function UnlockScreen({ onUnlock }: { onUnlock?: () => void }) {
             contentFit='cover'
           />
         </View>
-        <Display size={36} style={{ letterSpacing: 0.5 }}>Primal</Display>
+        <Display size={36} style={{ letterSpacing: 0.5 }}>Paradigm</Display>
         <Body size={14} color={C.sub} style={{ textAlign: 'center', lineHeight: 21 }}>One account. One balance.{'\n'}Every rail.</Body>
       </View>
       <MetallicButton label='Unlock with Face ID' onPress={onUnlock} />

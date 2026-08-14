@@ -32,19 +32,12 @@ export function SpaceTile({
         accessibilityRole="button"
         accessibilityLabel={space.label}
       >
+        {/* Free-floating illustration, no card chrome — client call 2026-08:
+            the rail is icons on the canvas, not boxed CTAs. */}
         <View
-          style={{
-            height: 68,
-            borderRadius: 16,
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            backgroundColor: space.artwork ? C.canvas : C.raised,
-            borderWidth: 1,
-            borderColor: C.hairline,
-          }}
+          style={{ height: 68, alignItems: "center", justifyContent: "center" }}
         >
-          {space.artwork ? <ArtSlot source={space.artwork} size={52} /> : null}
+          <ArtSlot source={space.artwork} size={62} />
         </View>
         <Text
           numberOfLines={1}

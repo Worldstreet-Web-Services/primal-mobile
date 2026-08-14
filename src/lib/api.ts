@@ -45,7 +45,7 @@ export class ApiError extends Error {
 const MOCK_ME: Me = {
   id: "mock",
   email: "you@primal.app",
-  firstName: "Primal",
+  firstName: "Paradigm",
   lastName: "User",
   country: "NG",
   tier: 1,

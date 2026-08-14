@@ -52,11 +52,11 @@ const holdings: Holding[] = [
 export default function PortfolioScreen({
   onBuy,
   onWithdraw,
-  bottom = 130,
+  bottom = 40,
 }: {
   onBuy?: () => void;
   onWithdraw?: () => void;
-  /** Tail space — raise it on tab screens so the floating bar can't cover content. */
+  /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
 }) {
   return (

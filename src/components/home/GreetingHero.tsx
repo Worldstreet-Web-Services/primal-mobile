@@ -6,7 +6,6 @@ import { Text, View } from "react-native";
 import { C, F } from "../../theme/tokens";
 import { RingDecor } from "../icons";
 import { AmountText, Display, PressableScale, Shine } from "../ui";
-import { ArtSlot } from "./ArtSlot";
 
 /** What replaces the figure when it's hidden. */
 const MASK = "••••••";
@@ -139,11 +138,11 @@ export function GreetingHero({
 
         {/* Art sits low-right so it never crowds the name; overhang is capped
             at the screen gutter — the ScrollView clips at its own edges. */}
-        <ArtSlot
+        {/* <ArtSlot
           source={artwork}
           size={148}
           style={{ position: "absolute", right: -10, bottom: -4 }}
-        />
+        /> */}
       </View>
     </PressableScale>
   );

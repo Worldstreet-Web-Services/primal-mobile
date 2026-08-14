@@ -25,7 +25,7 @@ export function Screen({
   pad?: number;
   /** Head space — set to the nav header's height when it overlays the scroll view. */
   top?: number;
-  /** Tail space — raise it on tab screens so the floating bar can't cover content. */
+  /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
   /** Center short content in the viewport — placeholders and empty states. */
   center?: boolean;

@@ -26,25 +26,55 @@ export interface Feature {
 export function FeatureCard({
   feature,
   onPress,
-  artSize = 128,
+  artSize = 35,
+  wide = false,
+  wideHeight = 112,
 }: {
   feature: Feature;
   onPress?: (key: string) => void;
   /** Illustration square, in points. */
   artSize?: number;
+  /** Span the whole row instead of sharing it — see `FeatureShelf`. */
+  wide?: boolean;
+  wideHeight?: number;
 }) {
   const brandTone = feature.tone === "brand";
 
   return (
     <PressableScale
       onPress={() => onPress?.(feature.key)}
-      style={{ flex: 1, minWidth: 132 }}
+      // width:100% claims its own line in the wrapping row.
+      style={wide ? { width: "100%" } : { flex: 1, minWidth: 132 }}
       scale={0.97}
     >
       <View
         accessibilityRole="button"
         accessibilityLabel={feature.title}
-        style={{ alignItems: "center", paddingVertical: 6 }}
+        style={{
+          // Square tiles take their side from the column's flex width. The
+          // wide variant can't do that — a full-width square would be enormous
+          // — so it takes a fixed height and lays its content out in a row.
+          ...(wide
+            ? {
+                height: wideHeight,
+                flexDirection: "row" as const,
+                justifyContent: "flex-start" as const,
+                gap: 16,
+                paddingHorizontal: 24,
+              }
+            : {
+                aspectRatio: 1,
+                justifyContent: "center" as const,
+                paddingHorizontal: 12,
+              }),
+          alignItems: "center",
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: C.hairline,
+          // Ground stays transparent so the cutout illustrations keep reading
+          // as art on the canvas — the border frames them, it doesn't box them.
+          backgroundColor: "transparent",
+        }}
       >
         <ArtSlot
           source={feature.artwork}
@@ -62,7 +92,7 @@ export function FeatureCard({
             fontSize: 18,
             letterSpacing: 0.3,
             color: C.text,
-            marginTop: 8,
+            marginTop: wide ? 0 : 8,
           }}
         >
           {feature.title.toUpperCase()}
@@ -72,7 +102,10 @@ export function FeatureCard({
   );
 }
 
-/** Two-up shelf of feature cards. */
+/**
+ * Two-up shelf. An odd count would leave a hole in the last row, so the
+ * trailing card spans the full width instead — the grid always closes flush.
+ */
 export function FeatureShelf({
   features,
   onOpen,
@@ -80,16 +113,19 @@ export function FeatureShelf({
   features: Feature[];
   onOpen?: (key: string) => void;
 }) {
+  const lastIndex = features.length - 1;
+  const oddCount = features.length % 2 === 1;
+
   return (
     <View style={{ flexDirection: "row", gap: 11, flexWrap: "wrap" }}>
-      {features.map((feature) => (
-        <FeatureCard key={feature.key} feature={feature} onPress={onOpen} />
+      {features.map((feature, i) => (
+        <FeatureCard
+          key={feature.key}
+          feature={feature}
+          onPress={onOpen}
+          wide={oddCount && i === lastIndex}
+        />
       ))}
-      {/* Odd count: a spacer keeps the last icon at half width instead of
-          letting flex stretch it across the whole row. */}
-      {features.length % 2 === 1 ? (
-        <View style={{ flex: 1, minWidth: 132 }} />
-      ) : null}
     </View>
   );
 }

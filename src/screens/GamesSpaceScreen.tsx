@@ -9,7 +9,7 @@ import {
   Mono,
   Body,
   Display,
-  BackChevron,
+  Label,
   PulseDot,
 } from "../components/ui";
 
@@ -21,14 +21,17 @@ const flagshipStats = [
 ];
 
 export default function GamesSpaceScreen({
-  onBack,
   onOpenGame,
+  top = 0,
 }: {
-  onBack?: () => void;
   onOpenGame?: (slug: string) => void;
+  /** Head space for the floating nav header. */
+  top?: number;
 }) {
   return (
-    <Screen>
+    <Screen top={top}>
+      {/* Title and back live in the route's NavHeader now; the balance keeps
+          its own line here. */}
       <View
         style={{
           flexDirection: "row",
@@ -37,9 +40,6 @@ export default function GamesSpaceScreen({
           paddingTop: 10,
         }}
       >
-        <Pressable onPress={onBack} hitSlop={10}>
-          <BackChevron />
-        </Pressable>
         <View
           style={{
             width: 30,
@@ -52,7 +52,7 @@ export default function GamesSpaceScreen({
         >
           <Text style={{ fontSize: 13, color: C.amber }}>★</Text>
         </View>
-        <Display size={20}>Games</Display>
+        <Label>Games balance</Label>
         <View style={{ flex: 1 }} />
         <Mono size={12}>$85.00</Mono>
       </View>

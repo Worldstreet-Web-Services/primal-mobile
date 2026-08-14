@@ -31,7 +31,7 @@ export interface AutoEarnScreenProps {
   artwork?: ImageSource | number;
   /** Head space for the floating nav header. */
   top?: number;
-  /** Tail space for the sticky action above the tab bar. */
+  /** Tail space so the sticky action can't cover the last row. */
   bottom?: number;
   onFund?: () => void;
   onOpenAsset?: (key: string) => void;

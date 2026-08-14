@@ -1,54 +1,35 @@
-import React, { useState } from "react";
-import { View, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { C, F } from "../theme/tokens";
+import { useState } from "react";
+import { Pressable, View } from "react-native";
 import {
-  Screen,
-  BackHeader,
-  MetallicButton,
+  Body,
+  Card,
+  Display,
   GhostButton,
   Label,
+  MetallicButton,
   Mono,
-  Body,
-  Display,
-  Card,
+  Screen,
 } from "../components/ui";
 import { holdings } from "../data/mock";
+import { C, F } from "../theme/tokens";
 
 // Design 2d: crypto space — per-chain balances + auto-convert toggle.
 export default function CryptoSpaceScreen({
-  onBack,
   onDeposit,
   onWithdraw,
   onBuy,
+  top = 0,
 }: {
-  onBack?: () => void;
   onDeposit?: () => void;
   onWithdraw?: () => void;
   onBuy?: () => void;
+  /** Head space for the floating nav header. */
+  top?: number;
 }) {
   const [autoConvert, setAutoConvert] = useState(true);
   return (
-    <Screen>
-      <BackHeader
-        title="Crypto"
-        onBack={onBack}
-        right={
-          <Body
-            size={10}
-            color={C.dim}
-            style={{
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.2)",
-              borderRadius: 99,
-              paddingHorizontal: 9,
-              paddingVertical: 3,
-            }}
-          >
-            Self-custody
-          </Body>
-        }
-      />
+    <Screen top={top}>
       <View style={{ marginTop: 26 }}>
         <Body size={11.5} color={C.dim}>
           Wallet value

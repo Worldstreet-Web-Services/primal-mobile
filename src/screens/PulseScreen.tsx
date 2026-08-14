@@ -136,7 +136,7 @@ export interface PulseScreenProps {
  */
 export default function PulseScreen({ top = 0 }: PulseScreenProps) {
   return (
-    <Screen top={top} bottom={130}>
+    <Screen top={top}>
       <View style={{ marginTop: 18 }}>
         <Display size={30}>Pulse</Display>
         <Body size={12} color={C.dim} style={{ marginTop: 5 }}>

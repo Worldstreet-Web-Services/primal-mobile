@@ -1,17 +1,30 @@
 import { router } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from "react";
+import { View } from "react-native";
 
+import { NavHeader } from "@/components/home";
 import GamesSpaceScreen from "@/screens/GamesSpaceScreen";
+import { C } from "@/theme/tokens";
 
 export default function Games() {
+  const [headerHeight, setHeaderHeight] = useState(0);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <GamesSpaceScreen
-        onBack={() => router.back()}
+        top={headerHeight}
         onOpenGame={(slug) => {
           if (slug === "last-man") router.push("/lastman");
         }}
       />
-    </SafeAreaView>
+      <NavHeader
+        wordmark="GAMES$"
+        tagline="POWERED BY ARK"
+        direction="column"
+        unread
+        onBack={() => router.back()}
+        onHeightChange={setHeaderHeight}
+      />
+    </View>
   );
 }

@@ -3,7 +3,6 @@ import { View } from "react-native";
 import { C, F } from "../theme/tokens";
 import {
   Screen,
-  BackHeader,
   MetallicButton,
   GhostButton,
   Label,
@@ -17,19 +16,20 @@ import { fiatActivity, user } from "../data/mock";
 
 // Design 2c: fiat space — its own balance, actions, fiat-only activity.
 export default function FiatSpaceScreen({
-  onBack,
   onAdd,
   onSend,
   onRemit,
+  top = 0,
 }: {
-  onBack?: () => void;
   onAdd?: () => void;
   onSend?: () => void;
   onRemit?: () => void;
+  /** Head space for the floating nav header. */
+  top?: number;
 }) {
   return (
-    <Screen>
-      <BackHeader title="Fiat account" onBack={onBack} />
+    <Screen top={top}>
+      {/* Title and back live in the route's NavHeader now. */}
       <View style={{ marginTop: 26 }}>
         <Body size={11.5} color={C.dim}>
           Available balance

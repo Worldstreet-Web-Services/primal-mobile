@@ -30,7 +30,7 @@ export default function ProfileScreen({
 }: {
   /** Omit on a tab root — without it the header drops its back chevron. */
   onBack?: () => void;
-  /** Tail space — raise it on tab screens so the floating bar can't cover content. */
+  /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
 }) {
   const [frozen, setFrozen] = useState(false);

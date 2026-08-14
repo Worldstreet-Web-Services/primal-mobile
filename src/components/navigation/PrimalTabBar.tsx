@@ -11,7 +11,13 @@ import {
 } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { ChartIcon, HomeIcon, LayersIcon, PersonIcon, type IconProps } from "../icons";
+import {
+  ChartIcon,
+  HomeIcon,
+  LayersIcon,
+  PersonIcon,
+  type IconProps,
+} from "../icons";
 import { GlassSurface } from "../ui";
 
 type IconComponent = (props: IconProps) => React.ReactElement;
@@ -81,7 +87,7 @@ export function PrimalTabBar({
             ? options.tabBarLabel
             : (options.title ?? route.name);
         const Icon = ICONS[route.name] ?? LayersIcon;
-        const color = focused ? C.leaf : C.sub;
+        const color = focused ? C.brandSoft : C.sub;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -104,7 +110,12 @@ export function PrimalTabBar({
             accessibilityRole="button"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-            style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 8 }}
+            style={{
+              flex: 1,
+              alignItems: "center",
+              gap: 5,
+              paddingVertical: 8,
+            }}
           >
             <Icon size={21} color={color} filled={focused} />
             <Text

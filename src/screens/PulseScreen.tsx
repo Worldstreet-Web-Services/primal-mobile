@@ -168,7 +168,11 @@ export default function PulseScreen({ top = 0 }: PulseScreenProps) {
         ))}
       </View>
 
-      <Body size={11} color={C.dim} style={{ textAlign: "center", marginTop: 18 }}>
+      <Body
+        size={11}
+        color={C.dim}
+        style={{ textAlign: "center", marginTop: 18 }}
+      >
         One feed across fiat, crypto, points and games — as it happens
       </Body>
     </Screen>

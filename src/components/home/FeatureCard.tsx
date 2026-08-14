@@ -2,10 +2,10 @@ import { type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { GlassSurface, PressableScale } from "../ui";
+import { PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 
-export type FeatureTone = "dark" | "lime";
+export type FeatureTone = "dark" | "brand";
 
 export interface Feature {
   key: string;
@@ -33,7 +33,7 @@ export function FeatureCard({
   /** Illustration square, in points. */
   artSize?: number;
 }) {
-  const lime = feature.tone === "lime";
+  const brandTone = feature.tone === "brand";
 
   return (
     <PressableScale
@@ -49,7 +49,7 @@ export function FeatureCard({
         <ArtSlot
           source={feature.artwork}
           size={artSize}
-          tint={lime ? C.lime : C.leaf}
+          tint={brandTone ? C.brand : C.brandSoft}
         />
 
         {/* Title only — the CTA reads as an icon (client call 2026-08).

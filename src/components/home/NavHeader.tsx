@@ -106,17 +106,19 @@ export function NavHeader({
           onPress={onNotifications}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={unread ? "Notifications, unread" : "Notifications"}
+          accessibilityLabel={
+            unread ? "Notifications, unread" : "Notifications"
+          }
           style={{
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: C.leaf,
+            backgroundColor: C.brandSoft,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <BellIcon size={19} color={C.leafInk} />
+          <BellIcon size={19} color={C.brandSoftInk} />
           {unread ? (
             <View
               style={{
@@ -128,7 +130,7 @@ export function NavHeader({
                 borderRadius: 5,
                 backgroundColor: C.amber,
                 borderWidth: 1.5,
-                borderColor: C.leaf,
+                borderColor: C.brandSoft,
               }}
             />
           ) : null}

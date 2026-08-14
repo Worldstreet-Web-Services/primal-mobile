@@ -32,7 +32,7 @@ export function ArrowRight({
 
 export function BellIcon({
   size = 18,
-  color = C.limeInk,
+  color = C.brandInk,
   strokeWidth = 1.7,
 }: IconProps) {
   return (
@@ -162,7 +162,7 @@ export function PersonIcon({
 
 export function PlusIcon({
   size = 14,
-  color = C.leafInk,
+  color = C.brandSoftInk,
   strokeWidth = 2.2,
 }: IconProps) {
   return (
@@ -210,7 +210,13 @@ export function ClockIcon({
 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={8.6} stroke={color} strokeWidth={strokeWidth} />
+      <Circle
+        cx={12}
+        cy={12}
+        r={8.6}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
       <Path
         d="M12 7.4V12l3.2 2"
         stroke={color}
@@ -223,7 +229,7 @@ export function ClockIcon({
 }
 
 /** Four-point sparkle — marks the "hold" CTA as the considered action. */
-export function SparkleIcon({ size = 16, color = C.leafInk }: IconProps) {
+export function SparkleIcon({ size = 16, color = C.brandSoftInk }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -241,7 +247,7 @@ export function SparkleIcon({ size = 16, color = C.leafInk }: IconProps) {
 /** Concentric arcs — the ambient ring motif behind the greeting. */
 export function RingDecor({
   size = 260,
-  color = C.leaf,
+  color = C.brandSoft,
   opacity = 0.28,
 }: {
   size?: number;

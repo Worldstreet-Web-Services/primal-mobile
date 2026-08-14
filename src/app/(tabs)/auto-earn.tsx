@@ -23,7 +23,12 @@ export default function AutoEarn() {
 
       <View
         pointerEvents="box-none"
-        style={{ position: "absolute", left: 16, right: 16, bottom: CTA_BOTTOM }}
+        style={{
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: CTA_BOTTOM,
+        }}
       >
         <PrimaryButton
           label="Buy & hold"

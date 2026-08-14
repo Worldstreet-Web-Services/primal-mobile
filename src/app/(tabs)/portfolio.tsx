@@ -10,7 +10,10 @@ const TAB_BAR_CLEARANCE = 130;
 // plain title instead of a back header.
 export default function Portfolio() {
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: "#0A0B0D" }}
+    >
       <PortfolioScreen
         bottom={TAB_BAR_CLEARANCE}
         onBuy={() => router.push("/buy")}

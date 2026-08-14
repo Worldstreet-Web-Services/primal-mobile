@@ -74,6 +74,7 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
         ))}
       </View>
       <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 16 }}>Mirrors execute against your allocation with your risk caps.</Body>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 6, marginBottom: 8 }}>Mirror top traders — powered by Worldstreet</Body>
     </Screen>
   );
 }

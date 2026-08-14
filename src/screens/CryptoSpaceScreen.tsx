@@ -6,7 +6,7 @@ import { Screen, BackHeader, MetallicButton, GhostButton, Label, Mono, Body, Dis
 import { holdings } from '../data/mock';
 
 // Design 2d: crypto space — per-chain balances + auto-convert toggle.
-export default function CryptoSpaceScreen({ onBack }: { onBack?: () => void }) {
+export default function CryptoSpaceScreen({ onBack, onDeposit, onWithdraw, onBuy }: { onBack?: () => void; onDeposit?: () => void; onWithdraw?: () => void; onBuy?: () => void }) {
   const [autoConvert, setAutoConvert] = useState(true);
   return (
     <Screen>
@@ -17,8 +17,9 @@ export default function CryptoSpaceScreen({ onBack }: { onBack?: () => void }) {
         <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>≈ ₦480,100 · ETH + SOL wallets, TEE-signed</Mono>
       </View>
       <View style={{ marginTop: 18, flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}><MetallicButton label='Deposit' height={46} radius={14} size={13} /></View>
-        <View style={{ flex: 1 }}><GhostButton label='Withdraw' /></View>
+        <View style={{ flex: 1 }}><MetallicButton label='Buy' height={46} radius={14} size={13} onPress={onBuy} /></View>
+        <View style={{ flex: 1 }}><GhostButton label='Deposit' onPress={onDeposit} /></View>
+        <View style={{ flex: 1 }}><GhostButton label='Withdraw' onPress={onWithdraw} /></View>
       </View>
       <View style={{ marginTop: 20 }}>
         <Label>Holdings</Label>
@@ -53,6 +54,7 @@ export default function CryptoSpaceScreen({ onBack }: { onBack?: () => void }) {
         </Pressable>
       </Card>
       <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 18, lineHeight: 17 }}>Keys split three ways — device · Decane · recovery.{'\n'}High-value sends re-confirm with Face ID per signature.</Body>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 12 }}>Every chain, one address — powered by LinkPay</Body>
     </Screen>
   );
 }

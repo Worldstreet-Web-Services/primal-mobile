@@ -56,6 +56,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
         <MetallicButton label='Become the last man · $50' height={56} radius={18} size={16} />
         <Mono size={10} color={C.dim} style={{ marginTop: 10, textAlign: 'center' }}>ON-CHAIN FROM YOUR WALLET · SIGNED WITH FACE ID</Mono>
       </View>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 14, marginBottom: 8 }}>One pot, one clock — powered by Ark</Body>
     </Screen>
   );
 }

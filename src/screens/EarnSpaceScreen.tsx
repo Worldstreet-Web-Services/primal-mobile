@@ -60,6 +60,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
           </View>
         ))}
       </View>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 24, marginBottom: 8 }}>Points settle weekly — powered by Kash</Body>
     </Screen>
   );
 }

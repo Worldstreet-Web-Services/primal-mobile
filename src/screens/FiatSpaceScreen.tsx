@@ -5,7 +5,7 @@ import { Screen, BackHeader, MetallicButton, GhostButton, Label, Mono, Body, Dis
 import { fiatActivity, user } from '../data/mock';
 
 // Design 2c: fiat space — its own balance, actions, fiat-only activity.
-export default function FiatSpaceScreen({ onBack }: { onBack?: () => void }) {
+export default function FiatSpaceScreen({ onBack, onAdd, onSend, onRemit }: { onBack?: () => void; onAdd?: () => void; onSend?: () => void; onRemit?: () => void }) {
   return (
     <Screen>
       <BackHeader title='Fiat account' onBack={onBack} />
@@ -19,9 +19,9 @@ export default function FiatSpaceScreen({ onBack }: { onBack?: () => void }) {
         </Card>
       </View>
       <View style={{ marginTop: 18, flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}><MetallicButton label='Add' height={46} radius={14} size={13} /></View>
-        <View style={{ flex: 1 }}><GhostButton label='Send' /></View>
-        <View style={{ flex: 1 }}><GhostButton label='Remit' /></View>
+        <View style={{ flex: 1 }}><MetallicButton label='Add' height={46} radius={14} size={13} onPress={onAdd} /></View>
+        <View style={{ flex: 1 }}><GhostButton label='Send' onPress={onSend} /></View>
+        <View style={{ flex: 1 }}><GhostButton label='Remit' onPress={onRemit} /></View>
       </View>
       <View style={{ marginTop: 20 }}>
         <Label>Fiat activity</Label>
@@ -30,6 +30,7 @@ export default function FiatSpaceScreen({ onBack }: { onBack?: () => void }) {
         ))}
       </View>
       <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 16 }}>Balances shown in kobo-true minor units · statements match to the kobo</Body>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 8 }}>Deposits, transfers and your account number — powered by LinkPay</Body>
     </Screen>
   );
 }

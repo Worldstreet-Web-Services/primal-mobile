@@ -45,7 +45,8 @@ export default function Home() {
         onOpenFeature={(key) => open(FEATURE_ROUTES, key)}
         onOpenMedia={(key) => open(MEDIA_ROUTES, key)}
       />
-      <NavHeader unread onHeightChange={setHeaderHeight} />
+      {/* Wordmark only — "simple asf" pass, 2026-08-14. */}
+      <NavHeader unread tagline="" onHeightChange={setHeaderHeight} />
     </View>
   );
 }

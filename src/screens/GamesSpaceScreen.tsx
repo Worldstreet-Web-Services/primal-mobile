@@ -85,6 +85,7 @@ export default function GamesSpaceScreen({ onBack, onOpenGame }: { onBack?: () =
         <Body size={11.5} color={C.dim} style={{ textAlign: 'center' }}>More games land on this shelf soon</Body>
       </View>
       <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 22 }}>Plays are on-chain from your crypto balance · signed with Face ID</Body>
+      <Body size={11} color={C.dim} style={{ textAlign: 'center', marginTop: 6, marginBottom: 8 }}>Outlast the clock — powered by Ark</Body>
     </Screen>
   );
 }

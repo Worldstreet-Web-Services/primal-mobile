@@ -7,7 +7,12 @@ import FiatSpaceScreen from "@/screens/FiatSpaceScreen";
 export default function Fiat() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
-      <FiatSpaceScreen onBack={() => router.back()} />
+      <FiatSpaceScreen
+        onBack={() => router.back()}
+        onAdd={() => router.push("/receive")}
+        onSend={() => router.push("/send")}
+        onRemit={() => router.push("/remit")}
+      />
     </SafeAreaView>
   );
 }

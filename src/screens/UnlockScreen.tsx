@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { C, F } from '../theme/tokens';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
+import { C } from '../theme/tokens';
 import { MetallicButton, Label, Body, Display, PinDots, Keypad } from '../components/ui';
 
 // Design 3e: app unlock — metallic brand block, Face ID / passkey, PIN fallback.
@@ -17,11 +17,12 @@ export default function UnlockScreen({ onUnlock }: { onUnlock?: () => void }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22, paddingTop: 20, paddingBottom: 30 }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <View style={{ shadowColor: '#fff', shadowOpacity: 0.4, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 }}>
-          <LinearGradient colors={C.metal} style={{ width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            <View pointerEvents='none' style={{ position: 'absolute', top: 1, left: 8, right: 8, height: 1, backgroundColor: 'rgba(255,255,255,0.5)' }} />
-            <Text style={{ fontFamily: F.displayBold, fontSize: 32, color: C.ink }}>P</Text>
-          </LinearGradient>
+        <View style={{ shadowColor: '#B4FF39', shadowOpacity: 0.25, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={{ width: 96, height: 96, borderRadius: 26 }}
+            contentFit='cover'
+          />
         </View>
         <Display size={36} style={{ letterSpacing: 0.5 }}>Primal</Display>
         <Body size={14} color={C.sub} style={{ textAlign: 'center', lineHeight: 21 }}>One account. One balance.{'\n'}Every rail.</Body>

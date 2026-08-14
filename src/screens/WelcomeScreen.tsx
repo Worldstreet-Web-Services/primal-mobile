@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { C, F } from '../theme/tokens';
 import { MetallicButton, GhostButton, Body, Display } from '../components/ui';
 
@@ -8,9 +8,13 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: (method: string) 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22, paddingBottom: 30 }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <LinearGradient colors={C.metal} style={{ width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: F.displayBold, fontSize: 32, color: C.ink }}>P</Text>
-        </LinearGradient>
+        <View style={{ shadowColor: '#B4FF39', shadowOpacity: 0.25, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={{ width: 108, height: 108, borderRadius: 28 }}
+            contentFit='cover'
+          />
+        </View>
         <Display size={36}>Primal</Display>
         <Body size={14} color={C.sub} style={{ textAlign: 'center', lineHeight: 21 }}>One account. One balance.{'\n'}Every rail.</Body>
       </View>

@@ -78,9 +78,9 @@ export default function HomeScreen({
         <FeatureShelf features={features} onOpen={onOpenFeature} />
       </View>
 
-      {/* MediaStack (Podcast / The News) hidden with the "simple asf" pass —
-          home is greeting + the five doorways, nothing else. Component and
-          data stay for an editorial surface later. */}
+      <View style={{ marginTop: 26 }}>
+        <MediaStack items={media} onOpen={onOpenMedia} />
+      </View>
     </Screen>
   );
 }

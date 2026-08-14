@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, F } from '../theme/tokens';
-import { Screen, BackHeader, Card, Label, Mono, Body } from '../components/ui';
+import { Screen, BackHeader, Card, Label, Mono, Body, Display } from '../components/ui';
 import { user } from '../data/mock';
 
 const evmShort = user.evm.slice(0, 6) + '…' + user.evm.slice(-4);
@@ -16,11 +16,23 @@ const securityRows = [
 ];
 
 // Design 3f: profile — identity card, account details, security rows, freeze switch.
-export default function ProfileScreen({ onBack }: { onBack?: () => void }) {
+export default function ProfileScreen({
+  onBack,
+  bottom = 40,
+}: {
+  /** Omit on a tab root — without it the header drops its back chevron. */
+  onBack?: () => void;
+  /** Tail space — raise it on tab screens so the floating bar can't cover content. */
+  bottom?: number;
+}) {
   const [frozen, setFrozen] = useState(false);
   return (
-    <Screen>
-      <BackHeader title='Profile' onBack={onBack} />
+    <Screen bottom={bottom}>
+      {onBack ? (
+        <BackHeader title='Profile' onBack={onBack} />
+      ) : (
+        <Display size={20} style={{ paddingTop: 10 }}>Profile</Display>
+      )}
       <Card style={{ marginTop: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
           <LinearGradient colors={C.metal} style={{ width: 48, height: 48, borderRadius: 25, alignItems: 'center', justifyContent: 'center' }}>

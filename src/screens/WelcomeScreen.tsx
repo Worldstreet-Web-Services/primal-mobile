@@ -1,8 +1,7 @@
-import React from "react";
-import { View } from "react-native";
 import { Image } from "expo-image";
-import { C, F } from "../theme/tokens";
-import { MetallicButton, GhostButton, Body, Display } from "../components/ui";
+import { View } from "react-native";
+import { Body, Display, GhostButton, MetallicButton } from "../components/ui";
+import { C } from "../theme/tokens";
 
 export default function WelcomeScreen({
   onLogin,
@@ -37,8 +36,8 @@ export default function WelcomeScreen({
         >
           <Image
             source={require("@/assets/images/logo.png")}
-            style={{ width: 108, height: 108, borderRadius: 28 }}
-            contentFit="cover"
+            style={{ width: 180, height: 180, borderRadius: 28 }}
+            contentFit="contain"
           />
         </View>
         <Display size={36}>Paradigm</Display>

@@ -26,7 +26,7 @@ export interface Feature {
 export function FeatureCard({
   feature,
   onPress,
-  artSize = 35,
+  artSize = 50,
   wide = false,
   wideHeight = 112,
 }: {
@@ -53,21 +53,20 @@ export function FeatureCard({
         style={{
           // Square tiles take their side from the column's flex width. The
           // wide variant can't do that — a full-width square would be enormous
-          // — so it takes a fixed height and lays its content out in a row.
+          // — so it takes a fixed height instead. Both stack art over title;
+          // the wide one just hangs that stack off the left edge.
           ...(wide
             ? {
                 height: wideHeight,
-                flexDirection: "row" as const,
-                justifyContent: "flex-start" as const,
-                gap: 16,
+                alignItems: "flex-start" as const,
                 paddingHorizontal: 24,
               }
             : {
                 aspectRatio: 1,
-                justifyContent: "center" as const,
+                alignItems: "flex-start" as const,
                 paddingHorizontal: 12,
               }),
-          alignItems: "center",
+          justifyContent: "center",
           borderRadius: 18,
           borderWidth: 1,
           borderColor: C.hairline,
@@ -76,11 +75,25 @@ export function FeatureCard({
           backgroundColor: "transparent",
         }}
       >
-        <ArtSlot
-          source={feature.artwork}
-          size={artSize}
-          tint={brandTone ? C.brand : C.brandSoft}
-        />
+        <View
+          style={{
+            width: artSize * 1.15,
+            height: artSize * 1.15,
+            borderRadius: 50,
+            backgroundColor: C.hairline,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderColor: C.hairline,
+            borderWidth: 1,
+          }}
+        >
+          <ArtSlot
+            source={feature.artwork}
+            size={artSize}
+            tint={brandTone ? C.brand : C.brandSoft}
+          />
+        </View>
 
         {/* Title only — the CTA reads as an icon (client call 2026-08).
             kicker/poweredBy stay in the data for the destination pages to
@@ -92,7 +105,8 @@ export function FeatureCard({
             fontSize: 18,
             letterSpacing: 0.3,
             color: C.text,
-            marginTop: wide ? 0 : 8,
+            marginTop: 8,
+            textAlign: wide ? "left" : "center",
           }}
         >
           {feature.title.toUpperCase()}

@@ -77,7 +77,7 @@ export function BalanceSummary({
           marginBottom: amountFirst ? 0 : 12,
         }}
       >
-        {stats.live ? <PulseDot color={C.brandSoft} size={8} /> : null}
+        {stats.live ? <PulseDot color={C.live} size={8} /> : null}
         {stats.status ? (
           <Body size={11.5} color={C.silver}>
             {stats.status}

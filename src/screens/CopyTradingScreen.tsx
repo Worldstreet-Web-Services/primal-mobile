@@ -8,7 +8,7 @@ import {
   type BalanceStats,
   type Position,
 } from "@/components/trade";
-import { Chip, OutlineButton } from "@/components/ui";
+import { Chip, OutlineButton, PILL } from "@/components/ui";
 import { PlusIcon } from "@/components/icons";
 import {
   openPositions as defaultPositions,
@@ -67,7 +67,7 @@ export default function CopyTradingScreen({
               style={{
                 width: 22,
                 height: 22,
-                borderRadius: 7,
+                borderRadius: PILL,
                 backgroundColor: C.brandSoft,
                 alignItems: "center",
                 justifyContent: "center",

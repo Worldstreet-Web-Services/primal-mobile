@@ -21,17 +21,17 @@ export const C = {
   key: "#14161A",
   metal: ["#e8e8ea", "#b6b6bc"] as [string, string], // Last Man CTA gradient
 
-  // Brand gold (supersedes the lime/dollar-green brand, 2026-08-14). Named by
-  // role, not hue, so the next rebrand is a value change and nothing else.
+  // Brand leaf green, #83BE60 (2026-08-14, superseding gold). Named by role,
+  // not hue, so the next rebrand is a value change and nothing else.
   // `brand` is the action color; `brandSoft` is the muted surface cousin the
   // chrome sits on — never mix the two roles, and never use either for
   // money semantics (that's `up`/`down`, which stay green/red by convention).
-  brand: "#FFC93D",
-  brandInk: "#1A1200",
-  brandSoft: "#DDB35A",
-  brandGrad: ["#EBC26B", "#B8862A"] as [string, string],
-  brandSoftInk: "#150E00",
-  brandGlow: "rgba(255,201,61,0.14)",
+  brand: "#83BE60",
+  brandInk: "#0A1405",
+  brandSoft: "#74AC55",
+  brandGrad: ["#96CF72", "#5F9440"] as [string, string],
+  brandSoftInk: "#081103",
+  brandGlow: "rgba(131,190,96,0.14)",
 
   // Elevation steps above the canvas.
   raised: "#141519",

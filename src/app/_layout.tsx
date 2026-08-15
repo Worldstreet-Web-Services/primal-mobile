@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { PrivacyOverlay } from "@/components/PrivacyOverlay";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 
@@ -46,6 +47,8 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: "#0A0B0D" },
             }}
           />
+          {/* Last sibling, so it covers every route including modals. */}
+          <PrivacyOverlay />
         </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>

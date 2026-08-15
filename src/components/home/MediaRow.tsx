@@ -1,19 +1,10 @@
-import { type ImageSource } from "expo-image";
-import React from "react";
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
 import { ArrowRight } from "../icons";
 import { PressableScale, Shine } from "../ui";
 import { ArtSlot } from "./ArtSlot";
-
-export interface MediaItem {
-  key: string;
-  title: string;
-  /** Optional kicker above the title — episode count, "live", a date… */
-  kicker?: string;
-  artwork?: ImageSource | number;
-}
+import type { MediaItem } from "./MediaCard";
 
 /**
  * Full-width editorial row (podcast, news). Title sits on the baseline with
@@ -48,8 +39,8 @@ export function MediaRow({
         {item.artwork ? (
           <ArtSlot
             source={item.artwork}
-            size={height * 0.8}
-            style={{ position: "absolute", right: 12, top: height * 0.06 }}
+            size={height * 1.6}
+            style={{ position: "absolute", right: -45, top: height * 0.06 }}
           />
         ) : null}
 
@@ -72,7 +63,7 @@ export function MediaRow({
               numberOfLines={1}
               style={{
                 fontFamily: F.display,
-                fontSize: 19,
+                fontSize: 38,
                 letterSpacing: 0.3,
                 color: C.text,
               }}

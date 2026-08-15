@@ -1,31 +1,25 @@
 import { Redirect } from "expo-router";
-import { View } from "react-native";
+import { useState } from "react";
 
-import { Spinner } from "@/components/ui";
+import { Splash } from "@/components/Splash";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { C } from "@/theme/tokens";
 
 /**
- * Entry gate. Reads the restored session and sends the user to the one screen
- * that matches their state, so a returning user never sees the welcome screen
- * flash before being redirected past it.
+ * Entry: the animated splash plays once, then the restored session decides
+ * where the user lands. The native splash (expo-splash-screen) covers font
+ * loading before this mounts, so the mark appears to carry straight through
+ * from launch.
+ *
+ * The splash doubles as the session-restore cover — it holds while the SDK
+ * resolves, so a returning user never sees the welcome pitch flash past on the
+ * way to being redirected.
  */
 export default function Index() {
+  const [finished, setFinished] = useState(false);
   const { status, step } = useAuth();
 
-  if (status === "loading") {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: C.canvas,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spinner size="large" color={C.silver} />
-      </View>
-    );
+  if (!finished || status === "loading") {
+    return <Splash animated onDone={() => setFinished(true)} />;
   }
 
   if (status === "signedOut") return <Redirect href="/welcome" />;

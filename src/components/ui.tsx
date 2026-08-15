@@ -1,4 +1,8 @@
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import {
+  GlassView,
+  isLiquidGlassAvailable,
+  type GlassStyle,
+} from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
@@ -107,18 +111,35 @@ export function PressableScale({
 // see-through fill — no live blur, but still see-through.
 export const LIQUID_GLASS = isLiquidGlassAvailable();
 
+// The tint laid over the glass. Native sits on a live blur so it tints from the
+// canvas value; the fallback has no blur to sit on, so it tints from the raised
+// value — that step is what keeps a flat fill reading as a surface, not a hole.
+const GLASS_TINT_RGB = "10,11,13";
+const GLASS_FILL_RGB = "20,21,25";
+
 /**
- * Translucent backing layer for floating chrome (tab bar, nav header). Renders
- * as an absolutely-filled sibling *behind* its container's children, so the
- * container itself must stay transparent.
+ * Translucent backing layer for floating chrome (tab bar, nav header, drawers).
+ * Renders as an absolutely-filled sibling *behind* its container's children, so
+ * the container itself must stay transparent.
+ *
+ * `effect` sets how hard the native blur bites — `clear` is the thin, barely
+ * frosted one; `regular` is app chrome; `none` drops to a plain tint. `tintOpacity`
+ * is the separate dial: 0 is untinted glass, 1 is an opaque slab. They compose,
+ * so a clear blur under a heavy tint is a legitimate (if dark) surface.
  */
 export function GlassSurface({
   radius = 0,
   bordered = true,
+  effect = "regular",
+  tintOpacity,
   style,
 }: {
   radius?: number;
   bordered?: boolean;
+  /** Blur strength on devices with native glass. Ignored on the fallback path. */
+  effect?: GlassStyle;
+  /** 0–1 darkening over the blur. Defaults to the shared chrome value. */
+  tintOpacity?: number;
   style?: ViewStyle;
 }) {
   const shape: ViewStyle = {
@@ -136,9 +157,13 @@ export function GlassSurface({
     return (
       <GlassView
         pointerEvents="none"
-        glassEffectStyle="regular"
+        glassEffectStyle={effect}
         colorScheme="dark"
-        tintColor={C.glassTint}
+        tintColor={
+          tintOpacity === undefined
+            ? C.glassTint
+            : `rgba(${GLASS_TINT_RGB},${tintOpacity})`
+        }
         style={[shape, style]}
       />
     );
@@ -146,8 +171,80 @@ export function GlassSurface({
   return (
     <View
       pointerEvents="none"
-      style={[shape, { backgroundColor: C.glass }, style]}
+      style={[
+        shape,
+        {
+          backgroundColor:
+            tintOpacity === undefined
+              ? C.glass
+              : // No blur to hide behind here, so the same dial has to carry a
+                // little more weight to keep type off the content underneath.
+                `rgba(${GLASS_FILL_RGB},${Math.min(tintOpacity + 0.22, 1)})`,
+        },
+        style,
+      ]}
     />
+  );
+}
+
+/**
+ * Pill radius — the default shape for every button in the system. Large enough
+ * to fully round any button height we ship; override the `radius` prop on a
+ * button when a squarer corner is deliberate.
+ */
+export const PILL = 999;
+
+/**
+ * Circular icon button — the quiet chrome action at the edge of a header row.
+ * Takes the glyph as a child so it stays icon-agnostic.
+ */
+export function CircleAction({
+  onPress,
+  children,
+  size = 40,
+  badge = false,
+  accessibilityLabel,
+}: {
+  onPress?: () => void;
+  children: React.ReactNode;
+  size?: number;
+  /** Unread marker in the top-right notch. */
+  badge?: boolean;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: PILL,
+        borderWidth: 1,
+        borderColor: C.border,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+      {badge ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 7,
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: C.brand,
+            borderWidth: 1.5,
+            borderColor: C.canvas,
+          }}
+        />
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -213,7 +310,7 @@ export function MetallicButton({
   label,
   onPress,
   height = 52,
-  radius = 16,
+  radius = PILL,
   size = 15,
   loading = false,
   disabled = false,
@@ -235,7 +332,8 @@ export function MetallicButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: loading }}
       style={{
-        shadowColor: "#fff",
+        // Glow picks up the fill — a white halo around gold reads as haze.
+        shadowColor: C.brand,
         shadowOpacity: 0.35,
         shadowRadius: 14,
         shadowOffset: { width: 0, height: 8 },
@@ -243,11 +341,11 @@ export function MetallicButton({
         opacity: disabled && !loading ? 0.45 : 1,
       }}
     >
-      <LinearGradient
-        colors={C.metal}
+      <View
         style={{
           height,
           borderRadius: radius,
+          backgroundColor: C.brand,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
@@ -265,15 +363,19 @@ export function MetallicButton({
           }}
         />
         {loading ? (
-          <Spinner color={C.ink} />
+          <Spinner color={C.brandInk} />
         ) : (
           <Text
-            style={{ color: C.ink, fontFamily: F.bodySemibold, fontSize: size }}
+            style={{
+              color: C.brandInk,
+              fontFamily: F.bodySemibold,
+              fontSize: size,
+            }}
           >
             {label}
           </Text>
         )}
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
@@ -282,12 +384,14 @@ export function GhostButton({
   label,
   onPress,
   height = 46,
+  radius = PILL,
   loading = false,
   disabled = false,
 }: {
   label: string;
   onPress?: () => void;
   height?: number;
+  radius?: number;
   loading?: boolean;
   disabled?: boolean;
 }) {
@@ -300,7 +404,7 @@ export function GhostButton({
       accessibilityState={{ disabled: inert, busy: loading }}
       style={{
         height,
-        borderRadius: 14,
+        borderRadius: radius,
         backgroundColor: C.card,
         borderWidth: 1,
         borderColor: C.border,
@@ -858,14 +962,23 @@ export function PrimaryButton({
   label,
   onPress,
   icon,
+  trailing,
   height = 56,
-  radius = 16,
+  radius = PILL,
+  uppercase = true,
+  color = C.brandSoft,
 }: {
   label: string;
   onPress?: () => void;
   icon?: React.ReactNode;
+  /** Glyph after the label — the "and then onward" shape, e.g. an arrow. */
+  trailing?: React.ReactNode;
   height?: number;
   radius?: number;
+  /** Off for conversational CTAs, where tracked caps read as shouting. */
+  uppercase?: boolean;
+  /** Fill. `C.brand` is the brighter cousin, for a lone CTA on a dark page. */
+  color?: string;
 }) {
   return (
     <PressableScale onPress={onPress} scale={0.98}>
@@ -875,7 +988,7 @@ export function PrimaryButton({
         style={{
           height,
           borderRadius: radius,
-          backgroundColor: C.brandSoft,
+          backgroundColor: color,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
@@ -885,14 +998,15 @@ export function PrimaryButton({
         {icon}
         <Text
           style={{
-            fontFamily: F.bodySemibold,
-            fontSize: 14,
-            letterSpacing: 1.4,
+            fontFamily: uppercase ? F.bodySemibold : F.displayBold,
+            fontSize: uppercase ? 14 : 16,
+            letterSpacing: uppercase ? 1.4 : 0.2,
             color: C.brandSoftInk,
           }}
         >
-          {label.toUpperCase()}
+          {uppercase ? label.toUpperCase() : label}
         </Text>
+        {trailing}
       </View>
     </PressableScale>
   );
@@ -908,7 +1022,7 @@ export function OutlineButton({
   onPress,
   icon,
   height = 54,
-  radius = 14,
+  radius = PILL,
   color = C.brandSoft,
 }: {
   label: string;
@@ -947,5 +1061,79 @@ export function OutlineButton({
         {label.toUpperCase()}
       </Text>
     </Pressable>
+  );
+}
+
+/**
+ * A sign-in row: provider mark on the left, sentence-case label beside it,
+ * pill shape. Sentence case is the point — every other button in the system
+ * shouts in uppercase, and a provider's name is a proper noun, not a command.
+ *
+ * `tone` picks the one preferred method out of the stack: `brand` fills it,
+ * `neutral` is the quiet translucent shape the rest sit in.
+ */
+export function AuthButton({
+  label,
+  icon,
+  onPress,
+  tone = "neutral",
+  height = 48,
+  loading = false,
+  disabled = false,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  onPress?: () => void;
+  tone?: "brand" | "neutral";
+  height?: number;
+  /** Sign-in is a network round-trip — the pressed provider spins. */
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const brand = tone === "brand";
+  const inert = loading || disabled;
+  const ink = brand ? C.brandSoftInk : C.text;
+  return (
+    <PressableScale
+      onPress={inert ? undefined : onPress}
+      scale={0.98}
+      disabled={inert}
+    >
+      <View
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: inert, busy: loading }}
+        style={{
+          height,
+          borderRadius: PILL,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          backgroundColor: brand ? C.brand : "rgba(255,255,255,0.09)",
+          borderWidth: brand ? 0 : 1,
+          borderColor: C.hairline,
+          // Dim only the untouched providers; the spinning one stays lit.
+          opacity: disabled && !loading ? 0.4 : 1,
+        }}
+      >
+        {loading ? (
+          <Spinner color={ink} />
+        ) : (
+          <>
+            {icon}
+            <Text
+              style={{
+                fontFamily: F.bodyMedium,
+                fontSize: 15,
+                color: ink,
+              }}
+            >
+              {label}
+            </Text>
+          </>
+        )}
+      </View>
+    </PressableScale>
   );
 }

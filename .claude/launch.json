@@ -4,8 +4,9 @@
     {
       "name": "primal-web",
       "runtimeExecutable": "bunx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8081"],
-      "port": 8081
+      "runtimeArgs": ["expo", "start", "--web", "--port", "8090"],
+      "port": 8090,
+      "autoPort": false
     }
   ]
 }

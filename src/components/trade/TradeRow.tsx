@@ -1,7 +1,8 @@
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { Body, Mono, PressableScale } from "../ui";
+import { TrendDownIcon, TrendUpIcon } from "../icons";
+import { Body, Mono, PILL, PressableScale } from "../ui";
 
 export type TradeSide = "long" | "short";
 
@@ -15,6 +16,8 @@ export interface Position {
   changeUsd: string;
   trader: string;
   entry: string;
+  /** How long the position has been open, e.g. "3h 24m". */
+  duration?: string;
   /** Already mirroring this leader's position. */
   copying?: boolean;
 }
@@ -37,6 +40,9 @@ export function TradeRow({
   return (
     <View
       style={{
+        // Padding lives on the row, not the list, so the separator below it
+        // runs the card's full width instead of stopping short at the gutter.
+        paddingHorizontal: 16,
         paddingVertical: 16,
         gap: 16,
         borderBottomWidth: last ? 0 : 1,
@@ -48,16 +54,36 @@ export function TradeRow({
           <Body size={14} semibold>
             {position.pair}
           </Body>
-          <Text
+          {/* Side and age on one line: the arrow carries the direction, so the
+              word beside it can stay small. */}
+          <View
             style={{
-              fontFamily: F.body,
-              fontSize: 11.5,
-              marginTop: 3,
-              color: up ? C.up : C.down,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              marginTop: 4,
             }}
           >
-            {up ? "Long" : "Short"}
-          </Text>
+            {up ? (
+              <TrendUpIcon size={12} color={C.up} />
+            ) : (
+              <TrendDownIcon size={12} color={C.down} />
+            )}
+            <Text
+              style={{
+                fontFamily: F.body,
+                fontSize: 11.5,
+                color: up ? C.up : C.down,
+              }}
+            >
+              {up ? "Long" : "Short"}
+            </Text>
+            {position.duration ? (
+              <Body size={11.5} color={C.dim}>
+                {position.duration}
+              </Body>
+            ) : null}
+          </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Mono size={13.5} color={C.up}>
@@ -83,7 +109,7 @@ export function TradeRow({
             style={{
               paddingHorizontal: 18,
               paddingVertical: 12,
-              borderRadius: 12,
+              borderRadius: PILL,
               backgroundColor: position.copying ? C.card : C.brandSoft,
               borderWidth: position.copying ? 1 : 0,
               borderColor: C.brandSoft,
@@ -120,7 +146,7 @@ export function TradeList({
         borderRadius: 18,
         borderWidth: 1,
         borderColor: C.hairline,
-        paddingHorizontal: 16,
+        overflow: "hidden",
       }}
     >
       {positions.map((position, i) => (

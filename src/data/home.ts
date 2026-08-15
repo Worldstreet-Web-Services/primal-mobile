@@ -3,12 +3,21 @@ import type { Feature, MediaItem, Space } from "@/components/home";
 /**
  * Home shelf content. Static today; the shapes match what the home endpoint
  * will return so swapping in the API is a data-source change, not a UI change.
- * Artwork is intentionally absent — the cards render their glass placeholder
- * until the renders land in assets/images.
+ * Artwork ships with the app (assets/images); a card falls back to its glass
+ * placeholder whenever a render is missing.
  */
 
 /** Everything the user holds, across every space — one ledger underneath. */
-export const portfolioTotal = "$18,585.60";
+export const portfolioTotal = "$10,383.42";
+
+/** The move on `portfolioTotal`, over the window named in the caption. */
+export const portfolioDelta = {
+  value: "+$3,204.18",
+  caption: "+6.9% this month",
+};
+
+/** Sits under the name in the home header. */
+export const tagline = "Built for the top";
 
 // Glass mini-icons (Higgsfield, 2026-08-14) — free-floating illustrations,
 // not wordmarks: bull = Market, ringed globe = World Street, chain links =
@@ -36,10 +45,12 @@ export const spaces: Space[] = [
   },
 ];
 
+// Order is the layout: the first three share the top row, the last two split
+// the wider row beneath it. See `FeatureGrid`'s `rows`.
 export const features: Feature[] = [
   {
     key: "auto-earn",
-    title: "Auto Earn",
+    title: "Yield",
     kicker: "Points settle weekly",
     poweredBy: "Ark",
     artwork: require("../../assets/images/features/auto-earn.png"),
@@ -50,6 +61,13 @@ export const features: Feature[] = [
     kicker: "Mirror top traders",
     poweredBy: "Worldstreet",
     artwork: require("../../assets/images/features/copy-trading.png"),
+  },
+  {
+    key: "games",
+    title: "Games",
+    kicker: "Outlast the clock",
+    poweredBy: "Ark",
+    artwork: require("../../assets/images/features/games.png"),
   },
   {
     key: "crypto",
@@ -65,16 +83,23 @@ export const features: Feature[] = [
     poweredBy: "LinkPay",
     artwork: require("../../assets/images/features/fiat.png"),
   },
-  {
-    key: "games",
-    title: "Games$",
-    kicker: "Outlast the clock",
-    poweredBy: "Ark",
-    artwork: require("../../assets/images/features/games.png"),
-  },
 ];
 
 export const media: MediaItem[] = [
-  { key: "podcast", title: "Podcast" },
-  { key: "news", title: "The News" },
+  {
+    key: "podcast",
+    title: "How to hold the market",
+    kicker: "Podcast",
+    byline: "The Win Team",
+    duration: "1:12:40",
+    artwork: require("../../assets/images/media/podcast.png"),
+  },
+  {
+    key: "news",
+    title: "The week the desk stopped",
+    kicker: "Hot news",
+    byline: "Paradigm Desk",
+    duration: "4 min read",
+    artwork: require("../../assets/images/media/hot-news.png"),
+  },
 ];

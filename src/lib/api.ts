@@ -45,7 +45,7 @@ export class ApiError extends Error {
 const MOCK_ME: Me = {
   id: "mock",
   email: "you@primal.app",
-  firstName: "Primal",
+  firstName: "Paradigm",
   lastName: "User",
   country: "NG",
   tier: 1,
@@ -72,8 +72,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const body = (await res.json().catch(() => null)) as
-    | ({ message?: string; code?: string } & Record<string, unknown>)
-    | null;
+    ({ message?: string; code?: string } & Record<string, unknown>) | null;
 
   if (!res.ok) {
     throw new ApiError(

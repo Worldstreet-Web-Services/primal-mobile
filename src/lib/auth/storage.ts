@@ -11,16 +11,16 @@ import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 
 const KEYS = {
-  accessToken: "primal.auth.access_token",
-  expiresAt: "primal.auth.expires_at",
-  pinHash: "primal.auth.pin_hash",
-  pinSalt: "primal.auth.pin_salt",
-  biometrics: "primal.auth.biometrics_enabled",
+  accessToken: "paradigm.auth.access_token",
+  expiresAt: "paradigm.auth.expires_at",
+  pinHash: "paradigm.auth.pin_hash",
+  pinSalt: "paradigm.auth.pin_salt",
+  biometrics: "paradigm.auth.biometrics_enabled",
 } as const;
 
 /** Groups our entries under one service so a sign-out can't miss any. */
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "primal.auth",
+  keychainService: "paradigm.auth",
   // The device must be unlocked to read a session, and the entry never rides a
   // backup to a new device — a stolen iCloud backup shouldn't carry a session.
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,

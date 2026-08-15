@@ -9,7 +9,9 @@ import { C } from "@/theme/tokens";
 // Destinations that exist today. Everything else on the shelves is designed
 // but not yet routed — those taps intentionally no-op until the screen lands.
 const SPACE_ROUTES: Record<string, Href> = {
-  linkpay: "/fiat",
+  // LinkPay's surface is the account number (the fiat space folded into
+  // crypto when the hub went four-space; /fiat no longer exists).
+  linkpay: "/receive",
   market: "/crypto",
   worldstreet: "/copy-trading",
   kash: "/auto-earn",
@@ -18,8 +20,14 @@ const SPACE_ROUTES: Record<string, Href> = {
 const FEATURE_ROUTES: Record<string, Href> = {
   "copy-trading": "/copy-trading",
   "auto-earn": "/auto-earn",
+  fiat: "/fiat",
+  crypto: "/crypto",
+  games: "/games",
 };
-const MEDIA_ROUTES: Record<string, Href> = {};
+const MEDIA_ROUTES: Record<string, Href> = {
+  podcast: "/podcast",
+  news: "/news",
+};
 
 function open(table: Record<string, Href>, key: string) {
   const href = table[key];
@@ -40,7 +48,8 @@ export default function Home() {
         onOpenFeature={(key) => open(FEATURE_ROUTES, key)}
         onOpenMedia={(key) => open(MEDIA_ROUTES, key)}
       />
-      <NavHeader unread onHeightChange={setHeaderHeight} />
+      {/* Wordmark only — "simple asf" pass, 2026-08-14. */}
+      <NavHeader unread tagline="" onHeightChange={setHeaderHeight} />
     </View>
   );
 }

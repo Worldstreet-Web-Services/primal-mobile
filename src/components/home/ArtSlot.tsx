@@ -1,8 +1,4 @@
-import {
-  Image,
-  type ImageContentPosition,
-  type ImageSource,
-} from "expo-image";
+import { Image, type ImageContentPosition, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { View, type ViewStyle } from "react-native";
 
@@ -17,7 +13,7 @@ export function ArtSlot({
   source,
   size = 120,
   style,
-  tint = C.leaf,
+  tint = C.brandSoft,
   fill = false,
   contentFit = "contain",
   contentPosition = "center",
@@ -36,7 +32,9 @@ export function ArtSlot({
     <View
       pointerEvents="none"
       style={[
-        fill ? { width: "100%", height: "100%" } : { width: size, height: size },
+        fill
+          ? { width: "100%", height: "100%" }
+          : { width: size, height: size },
         style,
       ]}
       accessible={false}

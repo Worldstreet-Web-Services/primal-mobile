@@ -59,7 +59,7 @@ export default function HomeScreen({
   onOpenHero,
 }: HomeScreenProps) {
   return (
-    <Screen pad={16} top={top} bottom={130}>
+    <Screen pad={16} top={top}>
       <View style={{ marginTop: 14 }}>
         <GreetingHero
           greeting={greeting}
@@ -70,11 +70,11 @@ export default function HomeScreen({
         />
       </View>
 
-      <View style={{ marginTop: 18 }}>
-        <SpaceNav spaces={spaces} onSelect={onSelectSpace} />
-      </View>
+      {/* Ecosystem rail hidden (client call 2026-08-14) — the four feature
+          icons below are the doorways. SpaceNav + its data stay intact for
+          when a partner-apps surface returns. */}
 
-      <View style={{ marginTop: 20 }}>
+      <View style={{ marginTop: 24 }}>
         <FeatureShelf features={features} onOpen={onOpenFeature} />
       </View>
 

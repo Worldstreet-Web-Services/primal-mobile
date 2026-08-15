@@ -6,7 +6,6 @@ import { Text, View } from "react-native";
 import { C, F } from "../../theme/tokens";
 import { RingDecor } from "../icons";
 import { AmountText, Display, PressableScale, Shine } from "../ui";
-import { ArtSlot } from "./ArtSlot";
 
 /** What replaces the figure when it's hidden. */
 const MASK = "••••••";
@@ -74,17 +73,16 @@ export function GreetingHero({
           meant to break the frame cannot live inside it. */}
       <View>
         <LinearGradient
-          colors={["#141A0E", "#0D0F0C"]}
+          colors={["#1A1508", "#0F0E0C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            height,
             borderRadius: 24,
             borderWidth: 1,
             borderColor: C.border,
             overflow: "hidden",
-            justifyContent: "center",
-            paddingHorizontal: 12,
+            paddingHorizontal: 18,
+            paddingVertical: 20,
           }}
         >
           <Shine />
@@ -92,21 +90,35 @@ export function GreetingHero({
             pointerEvents="none"
             style={{ position: "absolute", left: 0, top: 40 }}
           >
-            <RingDecor size={height * 1.6} color={C.leaf} opacity={0.2} />
+            <RingDecor size={290} color={C.brandSoft} opacity={0.2} />
           </View>
 
-          <View style={{ maxWidth: "70%" }}>
-            <Display size={32}>{greeting},</Display>
-            <Display size={18} color={C.silver} style={{ marginTop: 8 }}>
+          {/* Greeting is the eyebrow; the NAME and the BALANCE carry the
+              card. The old inverse hierarchy (32px greeting, 18px name)
+              wrapped "Good Morning," onto two lines and doubled the card's
+              height. */}
+          <View style={{ maxWidth: "64%" }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: F.mono,
+                fontSize: 11,
+                letterSpacing: 1.8,
+                color: C.sub,
+              }}
+            >
+              {`${greeting},`.toUpperCase()}
+            </Text>
+            <Display size={27} style={{ marginTop: 6 }}>
               {name}
             </Display>
 
             {balance ? (
-              <View style={{ marginTop: 22 }}>
+              <View style={{ marginTop: 18 }}>
                 {hidden ? (
-                  <Display size={36}>{MASK}</Display>
+                  <Display size={38}>{MASK}</Display>
                 ) : (
-                  <AmountText value={balance} size={36} />
+                  <AmountText value={balance} size={38} />
                 )}
                 <Text
                   style={{
@@ -114,7 +126,7 @@ export function GreetingHero({
                     fontSize: 11,
                     letterSpacing: 1.8,
                     color: C.dim,
-                    marginTop: 4,
+                    marginTop: 5,
                   }}
                 >
                   {balanceLabel.toUpperCase()}
@@ -124,13 +136,13 @@ export function GreetingHero({
           </View>
         </LinearGradient>
 
-        {/* Overhang is capped at the screen gutter — the ScrollView still
-            clips at its own edges, so pushing further just cuts the art. */}
-        <ArtSlot
+        {/* Art sits low-right so it never crowds the name; overhang is capped
+            at the screen gutter — the ScrollView clips at its own edges. */}
+        {/* <ArtSlot
           source={artwork}
-          size={180}
-          style={{ position: "absolute", right: -16, top: -6 }}
-        />
+          size={148}
+          style={{ position: "absolute", right: -10, bottom: -4 }}
+        /> */}
       </View>
     </PressableScale>
   );

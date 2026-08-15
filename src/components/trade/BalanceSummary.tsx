@@ -77,7 +77,7 @@ export function BalanceSummary({
           marginBottom: amountFirst ? 0 : 12,
         }}
       >
-        {stats.live ? <PulseDot color={C.leaf} size={8} /> : null}
+        {stats.live ? <PulseDot color={C.live} size={8} /> : null}
         {stats.status ? (
           <Body size={11.5} color={C.silver}>
             {stats.status}
@@ -103,7 +103,7 @@ export function BalanceSummary({
           fontFamily: F.monoSemibold,
           fontSize: 11,
           letterSpacing: 1.8,
-          color: C.leaf,
+          color: C.brandSoft,
         }}
       >
         {`IN ${stats.currency}`.toUpperCase()}

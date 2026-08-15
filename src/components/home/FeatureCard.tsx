@@ -2,10 +2,10 @@ import { type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { GlassSurface, PressableScale } from "../ui";
+import { PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 
-export type FeatureTone = "dark" | "lime";
+export type FeatureTone = "dark" | "brand";
 
 export interface Feature {
   key: string;
@@ -19,125 +19,113 @@ export interface Feature {
 }
 
 /**
- * A promoted capability (auto-earn, copy trading…). The product render fills
- * the card and a translucent panel sits over its lower half carrying the copy
- * — so the art reads as the card, not as decoration beside it.
+ * A promoted capability (auto-earn, copy trading…). Client call 2026-08: no
+ * boxed CTA — the cutout illustration floats on the canvas and the copy sits
+ * beneath it. The tap target is the whole column.
  */
 export function FeatureCard({
   feature,
   onPress,
-  height = 182,
+  artSize = 50,
+  wide = false,
+  wideHeight = 112,
 }: {
   feature: Feature;
   onPress?: (key: string) => void;
-  height?: number;
+  /** Illustration square, in points. */
+  artSize?: number;
+  /** Span the whole row instead of sharing it — see `FeatureShelf`. */
+  wide?: boolean;
+  wideHeight?: number;
 }) {
-  const lime = feature.tone === "lime";
+  const brandTone = feature.tone === "brand";
 
   return (
     <PressableScale
       onPress={() => onPress?.(feature.key)}
-      style={{ flex: 1, minWidth: 132 }}
+      // width:100% claims its own line in the wrapping row.
+      style={wide ? { width: "100%" } : { flex: 1, minWidth: 132 }}
       scale={0.97}
     >
       <View
         accessibilityRole="button"
         accessibilityLabel={feature.title}
         style={{
-          height,
-          borderRadius: 20,
-          overflow: "hidden",
-          backgroundColor: C.canvas,
+          // Square tiles take their side from the column's flex width. The
+          // wide variant can't do that — a full-width square would be enormous
+          // — so it takes a fixed height instead. Both stack art over title;
+          // the wide one just hangs that stack off the left edge.
+          ...(wide
+            ? {
+                height: wideHeight,
+                alignItems: "flex-start" as const,
+                paddingHorizontal: 24,
+              }
+            : {
+                aspectRatio: 1,
+                alignItems: "flex-start" as const,
+                paddingHorizontal: 12,
+              }),
+          justifyContent: "center",
+          borderRadius: 18,
           borderWidth: 1,
           borderColor: C.hairline,
+          // Ground stays transparent so the cutout illustrations keep reading
+          // as art on the canvas — the border frames them, it doesn't box them.
+          backgroundColor: "transparent",
         }}
       >
-        {/* Art runs the full card; the panel below crops it optically. */}
-        <ArtSlot
-          fill
-          contentFit="cover"
-          contentPosition="left"
-          source={feature.artwork}
-          size={height * 0.66}
-          tint={lime ? C.lime : C.leaf}
-        />
-
         <View
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingHorizontal: 13,
-            paddingTop: 12,
-            paddingBottom: 14,
-            borderTopLeftRadius: 25,
+            width: artSize * 1.15,
+            height: artSize * 1.15,
+            borderRadius: 50,
+            backgroundColor: C.hairline,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderColor: C.hairline,
+            borderWidth: 1,
           }}
         >
-          <GlassSurface bordered={false} />
-          {/* Bright edge where the panel meets the art. */}
-          {/* <Shine /> */}
-          {lime ? (
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(155,201,90,0.10)",
-              }}
-            />
-          ) : null}
-
-          {feature.kicker ? (
-            <Text
-              numberOfLines={1}
-              style={{
-                fontFamily: F.body,
-                fontSize: 11.5,
-                color: C.silver,
-              }}
-            >
-              {feature.kicker}
-            </Text>
-          ) : null}
-
-          <Text
-            numberOfLines={1}
-            style={{
-              fontFamily: F.display,
-              fontSize: 19,
-              letterSpacing: 0.2,
-              color: C.text,
-              marginTop: feature.kicker ? 5 : 0,
-            }}
-          >
-            {feature.title.toUpperCase()}
-          </Text>
-
-          {feature.poweredBy ? (
-            <Text
-              numberOfLines={1}
-              style={{
-                fontFamily: F.mono,
-                fontSize: 8.5,
-                letterSpacing: 1.2,
-                marginTop: 7,
-                color: C.sub,
-              }}
-            >
-              {`POWERED BY ${feature.poweredBy}`.toUpperCase()}
-            </Text>
-          ) : null}
+          <ArtSlot
+            source={feature.artwork}
+            size={artSize}
+            tint={brandTone ? C.brand : C.brandSoft}
+          />
         </View>
+
+        {/* Title only — the CTA reads as an icon (client call 2026-08).
+            kicker/poweredBy stay in the data for the destination pages to
+            show at their own footers. */}
+        <Text
+          numberOfLines={1}
+          // Mona Sans runs wider than the old display face — long titles
+          // (COPY TRADING) shrink instead of ellipsizing. The length step is
+          // the cross-platform floor; adjustsFontSizeToFit refines on native
+          // but is a no-op on react-native-web.
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={{
+            fontFamily: F.display,
+            fontSize: feature.title.length > 10 ? 14.5 : 18,
+            letterSpacing: 0.3,
+            color: C.text,
+            marginTop: 8,
+            textAlign: wide ? "left" : "center",
+          }}
+        >
+          {feature.title.toUpperCase()}
+        </Text>
       </View>
     </PressableScale>
   );
 }
 
-/** Two-up shelf of feature cards. */
+/**
+ * Two-up shelf. An odd count would leave a hole in the last row, so the
+ * trailing card spans the full width instead — the grid always closes flush.
+ */
 export function FeatureShelf({
   features,
   onOpen,
@@ -145,10 +133,18 @@ export function FeatureShelf({
   features: Feature[];
   onOpen?: (key: string) => void;
 }) {
+  const lastIndex = features.length - 1;
+  const oddCount = features.length % 2 === 1;
+
   return (
     <View style={{ flexDirection: "row", gap: 11, flexWrap: "wrap" }}>
-      {features.map((feature) => (
-        <FeatureCard key={feature.key} feature={feature} onPress={onOpen} />
+      {features.map((feature, i) => (
+        <FeatureCard
+          key={feature.key}
+          feature={feature}
+          onPress={onOpen}
+          wide={oddCount && i === lastIndex}
+        />
       ))}
     </View>
   );

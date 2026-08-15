@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { C, F } from "../../theme/tokens";
 import { BellIcon } from "../icons";
-import { GlassSurface } from "../ui";
+import { BackChevron, GlassSurface } from "../ui";
 
 export type NavHeaderDirection = "row" | "column";
 
@@ -25,10 +25,11 @@ const FADE_HEIGHT = 34;
  * stacks them into a masthead; the bell holds the right edge either way.
  */
 export function NavHeader({
-  wordmark = "PRIMAL",
+  wordmark = "PARADIGM",
   tagline = "ECOSYSTEM",
   unread = false,
   direction = "row",
+  onBack,
   onNotifications,
   onHeightChange,
 }: {
@@ -36,6 +37,8 @@ export function NavHeader({
   tagline?: string;
   unread?: boolean;
   direction?: NavHeaderDirection;
+  /** Set on pushed screens — tab roots have nothing to go back to. */
+  onBack?: () => void;
   onNotifications?: () => void;
   /** Measured height of the glass block, excluding the decorative fade. */
   onHeightChange?: (height: number) => void;
@@ -67,6 +70,18 @@ export function NavHeader({
         }}
       >
         <GlassSurface bordered={false} />
+
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={{ marginRight: 2 }}
+          >
+            <BackChevron />
+          </Pressable>
+        ) : null}
 
         {/* Row: the two type sizes share a baseline. Column: they stack. */}
         <View
@@ -106,17 +121,19 @@ export function NavHeader({
           onPress={onNotifications}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={unread ? "Notifications, unread" : "Notifications"}
+          accessibilityLabel={
+            unread ? "Notifications, unread" : "Notifications"
+          }
           style={{
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: C.leaf,
+            backgroundColor: C.brandSoft,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <BellIcon size={19} color={C.leafInk} />
+          <BellIcon size={19} color={C.brandSoftInk} />
           {unread ? (
             <View
               style={{
@@ -128,7 +145,7 @@ export function NavHeader({
                 borderRadius: 5,
                 backgroundColor: C.amber,
                 borderWidth: 1.5,
-                borderColor: C.leaf,
+                borderColor: C.brandSoft,
               }}
             />
           ) : null}

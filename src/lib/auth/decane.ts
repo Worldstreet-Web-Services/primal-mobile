@@ -10,7 +10,7 @@
  * The supported path is therefore the hosted auth surface: a small web page of
  * ours runs Decane Kit in `mode: 'social'` with `authMethods: ['google','email']`,
  * and the app opens it in the system auth browser. The page hands the Decane
- * access token back over the `primal://` deep link, and the token is what our
+ * access token back over the `paradigm://` deep link, and the token is what our
  * backend verifies with `decane-node`.
  *
  * Google and email both resolve inside that page — including email's two-step

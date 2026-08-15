@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Primal",
-    "slug": "Primal",
+    "name": "Paradigm",
+    "slug": "paradigm",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "primal",
+    "scheme": "paradigm",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -38,7 +38,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Primal to unlock your account and approve transactions with Face ID."
+          "faceIDPermission": "Allow Paradigm to unlock your account and approve transactions with Face ID."
         }
       ]
     ],

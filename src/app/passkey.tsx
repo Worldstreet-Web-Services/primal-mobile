@@ -26,7 +26,7 @@ export default function Passkey() {
     try {
       const outcome = await enableBiometrics();
       if (outcome.ok) {
-        toast.success(`${capability.label} enabled`, "Use it to unlock Primal.");
+        toast.success(`${capability.label} enabled`, "Use it to unlock Paradigm.");
         finish();
         return;
       }

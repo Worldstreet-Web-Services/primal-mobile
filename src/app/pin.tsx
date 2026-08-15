@@ -15,7 +15,7 @@ export default function Pin() {
     setSaving(true);
     try {
       await createPin(pin);
-      toast.success("PIN set", "You'll enter it every time money leaves Primal.");
+      toast.success("PIN set", "You'll enter it every time money leaves Paradigm.");
       router.replace("/passkey");
     } catch {
       toast.error("Couldn't save your PIN", "Try once more.");

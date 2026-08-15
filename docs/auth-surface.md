@@ -1,6 +1,6 @@
 # Primal hosted auth surface — implementation spec
 
-**Status:** proposed · **Consumer:** `primal-mobile` (`src/lib/auth/decane.ts`)
+**Status:** proposed · **Consumer:** `paradigm-mobile` (`src/lib/auth/decane.ts`)
 **Decane:** `decane-connect-kit` 2.5.0 · project `64503a4c-5b87-4a05-a547-18b2594bf8d6`
 
 ## Why this exists
@@ -30,7 +30,7 @@ Primal app                    auth surface (this)              Decane / Google
     │                                │  signInWithGoogle() ──────────►│
     │                                │◄──── OAuth callback ───────────│
     │                                │      (dashboard Callback URL)  │
-    │◄─ 302 primal://auth/callback ──│                                │
+    │◄─ 302 paradigm://auth/callback ──│                                │
     │   #access_token&state          │                                │
 ```
 
@@ -38,7 +38,7 @@ Two distinct redirects, easily confused:
 
 - **Dashboard → API key → Callback URL** is the *web* hop: where Decane returns after
   OAuth. Must be `https://` on this surface's own domain.
-- **`primal://auth/callback`** is app-side only. It is issued by this surface at the
+- **`paradigm://auth/callback`** is app-side only. It is issued by this surface at the
   end. Decane never sees it and it must never be entered in the dashboard.
 
 ## ⚠ Pick the domain before shipping — it is effectively permanent
@@ -69,7 +69,7 @@ Opened as a top-level navigation to the surface root:
 | Param | Required | Notes |
 |---|---|---|
 | `method` | yes | `google` \| `email` — which button to auto-trigger |
-| `redirect_uri` | yes | Always the `primal://` deep link |
+| `redirect_uri` | yes | Always the `paradigm://` deep link |
 | `state` | yes | Opaque, single-use, generated per attempt |
 | `app_id` | when set | Decane project id, so one surface serves test + live |
 
@@ -103,7 +103,7 @@ against any change here.
 ## Security requirements
 
 1. **Validate `redirect_uri` against an allowlist** before redirecting to it. Accept only
-   the `primal://` scheme. An open redirector here would forward a live token to any app
+   the `paradigm://` scheme. An open redirector here would forward a live token to any app
    that asked.
 2. **Echo `state` exactly.** The app rejects mismatched, missing, and empty state; that
    check is the only thing stopping another app on the device from feeding us a token.

@@ -7,11 +7,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import ProfileScreen from "@/screens/ProfileScreen";
 import { C } from "@/theme/tokens";
 
-/** Clears the floating tab bar, matching the other tab roots. */
-const TAB_BAR_CLEARANCE = 110;
-
-// Tab root, so there is nothing to go back to — the screen renders its own
-// plain title instead of a back header.
+// Pushed route now that the tab bar is gone, so the screen keeps its own plain
+// title and the default tail space — nothing floats over the content.
 export default function Profile() {
   const { signOut } = useAuth();
   const toast = useToast();
@@ -31,11 +28,7 @@ export default function Profile() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <ProfileScreen
-        bottom={TAB_BAR_CLEARANCE}
-        onSignOut={onSignOut}
-        signingOut={signingOut}
-      />
+      <ProfileScreen onSignOut={onSignOut} signingOut={signingOut} />
     </View>
   );
 }

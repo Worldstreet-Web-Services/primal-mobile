@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlockWithBiometrics = useCallback(async () => {
-    const outcome = await biometrics.authenticate("Unlock Primal");
+    const outcome = await biometrics.authenticate("Unlock Paradigm");
     if (outcome.ok) setState((s) => ({ ...s, status: "ready", step: "complete" }));
     return outcome;
   }, []);

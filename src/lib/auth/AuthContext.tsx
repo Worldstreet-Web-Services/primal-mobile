@@ -3,9 +3,10 @@
  * onboarding are they" — the app's read of LinkPay's `onboardingStep` machine
  * (PRD §F1).
  *
- * Route files never call the Decane client or SecureStore directly; they read
- * this and navigate. That keeps the web-surface workaround in one place, so
- * swapping it for a native Decane SDK later touches this file alone.
+ * Route files never touch the Decane SDK or SecureStore directly; they read
+ * this and navigate. The SDK owns the wallet session and key custody; this owns
+ * the app-level gate (transaction PIN, biometric app-lock) that Decane has no
+ * opinion about.
  */
 
 import React, {
@@ -19,32 +20,41 @@ import React, {
 
 import { setAccessToken } from "@/lib/api";
 import * as biometrics from "@/lib/auth/biometrics";
-import { AuthError, signIn as decaneSignIn, signOutRemote } from "@/lib/auth/decane";
+import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
 import * as storage from "@/lib/auth/storage";
 
 /**
- * `loading`  — reading storage on launch; nothing decided yet.
- * `signedOut`— no Decane session.
- * `onboarding` — signed in, but PIN/passkey steps outstanding.
- * `locked`   — signed in and onboarded, app needs unlocking this launch.
- * `ready`    — unlocked; the tab shell is safe to show.
+ * `loading`    — restoring the SDK session on launch; nothing decided yet.
+ * `signedOut`  — no Decane session.
+ * `onboarding` — signed in, PIN/passkey steps outstanding.
+ * `locked`     — signed in and onboarded, app needs unlocking this launch.
+ * `ready`      — unlocked; the app shell is safe to show.
  */
-export type AuthStatus = "loading" | "signedOut" | "onboarding" | "locked" | "ready";
+export type AuthStatus =
+  | "loading"
+  | "signedOut"
+  | "onboarding"
+  | "locked"
+  | "ready";
 
-/** Mirrors the backend's `onboardingStep`; `complete` is the terminal state. */
+/** Mirrors the backend's `onboardingStep`; `complete` is terminal. */
 export type OnboardingStep = "pin" | "passkey" | "complete";
 
 interface AuthState {
   status: AuthStatus;
   step: OnboardingStep;
   session: DecaneSession | null;
-  /** True while a sign-in round-trip is in flight, per method. */
+  /** Which sign-in method is mid-flight. */
   pending: AuthMethod | null;
+  /** True during first-time key generation — seconds long, needs progress UI. */
+  creatingWallet: boolean;
 }
 
 interface AuthApi extends AuthState {
-  signIn: (method: AuthMethod) => Promise<void>;
+  signIn: (method: Exclude<AuthMethod, "email">) => Promise<void>;
+  startEmailSignIn: (email: string) => Promise<void>;
+  verifyEmailCode: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   createPin: (pin: string) => Promise<void>;
   unlockWithPin: (pin: string) => Promise<boolean>;
@@ -68,17 +78,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     step: "pin",
     session: null,
     pending: null,
+    creatingWallet: false,
   });
-  const [capability, setCapability] = useState<biometrics.BiometricCapability | null>(null);
+  const [capability, setCapability] =
+    useState<biometrics.BiometricCapability | null>(null);
 
-  // Launch: restore whatever the Keychain still holds and decide where the
-  // user belongs, before the first frame of UI commits to a route.
+  // Launch: let the SDK restore its own session, then decide where the user
+  // belongs before the first frame commits to a route.
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const [stored, pinSet, cap] = await Promise.all([
-        storage.loadSession(),
+      const [session, pinSet, cap] = await Promise.all([
+        decane.restoreSession(),
         storage.hasPin(),
         biometrics.getCapability(),
       ]);
@@ -86,24 +98,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setCapability(cap);
 
-      const expired = stored?.expiresAt != null && stored.expiresAt <= Date.now();
-      if (!stored || expired) {
-        // An expired token is worthless to the backend; drop it rather than
-        // carry it into a request that will 401.
-        if (expired) await storage.clearSession();
-        setState({ status: "signedOut", step: "pin", session: null, pending: null });
+      if (!session) {
+        setState((s) => ({
+          ...s,
+          status: "signedOut",
+          step: "pin",
+          session: null,
+        }));
         return;
       }
 
-      setAccessToken(stored.accessToken);
-      const session: DecaneSession = { ...stored, isNewUser: false };
-
-      setState({
+      setAccessToken(session.accessToken);
+      setState((s) => ({
+        ...s,
         status: pinSet ? "locked" : "onboarding",
         step: pinSet ? "complete" : "pin",
         session,
-        pending: null,
-      });
+      }));
     })();
 
     return () => {
@@ -111,34 +122,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (method: AuthMethod) => {
-    setState((s) => ({ ...s, pending: method }));
-    try {
-      const session = await decaneSignIn(method);
-      await storage.saveSession(session);
-      setAccessToken(session.accessToken);
+  // First-time key generation covers the Shamir split, the unlock-tier probe
+  // and the first enclave session — the SDK asks us to show progress for it.
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    let cancelled = false;
 
-      // A returning user who still has a PIN skips straight past onboarding.
-      const pinSet = await storage.hasPin();
-      setState({
-        status: pinSet ? "ready" : "onboarding",
-        step: pinSet ? "complete" : "pin",
-        session,
-        pending: null,
+    (async () => {
+      const off = await decane.onSdkEvent("wallet-creating", () => {
+        setState((s) => ({ ...s, creatingWallet: true }));
       });
+      if (cancelled) off();
+      else dispose = off;
+    })();
+
+    return () => {
+      cancelled = true;
+      dispose?.();
+    };
+  }, []);
+
+  const adopt = useCallback(async (session: DecaneSession) => {
+    setAccessToken(session.accessToken);
+    // A returning user who still has a PIN skips straight past onboarding.
+    const pinSet = await storage.hasPin();
+    setState((s) => ({
+      ...s,
+      status: pinSet ? "ready" : "onboarding",
+      step: pinSet ? "complete" : "pin",
+      session,
+      pending: null,
+      creatingWallet: false,
+    }));
+  }, []);
+
+  const signIn = useCallback(
+    async (method: Exclude<AuthMethod, "email">) => {
+      setState((s) => ({ ...s, pending: method }));
+      try {
+        await adopt(await decane.signIn(method));
+      } catch (error) {
+        setState((s) => ({ ...s, pending: null, creatingWallet: false }));
+        throw error;
+      }
+    },
+    [adopt],
+  );
+
+  const startEmailSignIn = useCallback(async (email: string) => {
+    setState((s) => ({ ...s, pending: "email" }));
+    try {
+      await decane.startEmailSignIn(email);
     } catch (error) {
       setState((s) => ({ ...s, pending: null }));
-      throw error instanceof AuthError
-        ? error
-        : new AuthError("unknown", "Sign-in failed.");
+      throw error;
     }
   }, []);
 
+  const verifyEmailCode = useCallback(
+    async (email: string, code: string) => {
+      try {
+        await adopt(await decane.verifyEmailCode(email, code));
+      } catch (error) {
+        setState((s) => ({ ...s, creatingWallet: false }));
+        throw error;
+      }
+    },
+    [adopt],
+  );
+
   const signOut = useCallback(async () => {
     setAccessToken(null);
+    await decane.signOut();
     await storage.clearAll();
-    await signOutRemote();
-    setState({ status: "signedOut", step: "pin", session: null, pending: null });
+    setState({
+      status: "signedOut",
+      step: "pin",
+      session: null,
+      pending: null,
+      creatingWallet: false,
+    });
   }, []);
 
   const createPin = useCallback(async (pin: string) => {
@@ -148,13 +211,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const unlockWithPin = useCallback(async (pin: string) => {
     const ok = await storage.verifyPin(pin);
-    if (ok) setState((s) => ({ ...s, status: "ready", step: "complete" }));
-    return ok;
+    if (!ok) return false;
+
+    // The app-lock PIN is ours; the wallet has its own unlock, which on the
+    // passkey/enclave tiers prompts biometrics rather than reusing this PIN.
+    try {
+      await decane.unlock();
+    } catch {
+      // Wallet unlock can be retried at signing time — don't strand the user
+      // on the lock screen when their PIN was correct.
+    }
+    setState((s) => ({ ...s, status: "ready", step: "complete" }));
+    return true;
   }, []);
 
   const unlockWithBiometrics = useCallback(async () => {
     const outcome = await biometrics.authenticate("Unlock Paradigm");
-    if (outcome.ok) setState((s) => ({ ...s, status: "ready", step: "complete" }));
+    if (outcome.ok) {
+      try {
+        await decane.unlock();
+      } catch {
+        // As above — app unlock succeeded; wallet unlock can retry.
+      }
+      setState((s) => ({ ...s, status: "ready", step: "complete" }));
+    }
     return outcome;
   }, []);
 
@@ -177,6 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...state,
       capability,
       signIn,
+      startEmailSignIn,
+      verifyEmailCode,
       signOut,
       createPin,
       unlockWithPin,
@@ -188,6 +270,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       state,
       capability,
       signIn,
+      startEmailSignIn,
+      verifyEmailCode,
       signOut,
       createPin,
       unlockWithPin,

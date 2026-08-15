@@ -1,184 +1,326 @@
 /**
- * Decane sign-in for a React Native app.
+ * Decane sign-in, native.
  *
- * `decane-connect-kit` 2.5.0 is a **web SDK** — React 18 peer dep, sessions in
- * localStorage, device key-share in IndexedDB, WebAuthn passkeys, wallet
- * detection off `window`. There is no React Native or Expo package, so it
- * cannot be imported here at all (PRD §F1, confirmed against kit.decane.app
- * 2026-08-14).
+ * Supersedes the hosted-web-surface workaround: `decane-connect-kit-expo`
+ * (0.1.2, 2026-08-15) is a real headless React Native SDK, so the browser
+ * round-trip, the deep-link callback contract and `docs/auth-surface.md` are
+ * all gone. Sign-in, key custody and signing happen in-process.
  *
- * The supported path is therefore the hosted auth surface: a small web page of
- * ours runs Decane Kit in `mode: 'social'` with `authMethods: ['google','email']`,
- * and the app opens it in the system auth browser. The page hands the Decane
- * access token back over the `paradigm://` deep link, and the token is what our
- * backend verifies with `decane-node`.
+ * KingsChat is a first-class `authMethod` here — the PRD's bridge issuer
+ * (KingsChat OAuth → ES256 JWT + JWKS) is no longer needed at all.
  *
- * Google and email both resolve inside that page — including email's two-step
- * code entry — so the app needs no email/OTP screens of its own.
+ * ⚠ Requires a development build. `expo-secure-store` and
+ * `react-native-passkeys` are native modules; Expo Go rejects the project
+ * before any JS runs, which presents as the app opening and closing instantly
+ * with nothing in the Metro logs.
  */
 
-import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
+import {
+  createDecaneConnect,
+  DecaneConnectError,
+  UserCancelledError,
+  type Chain,
+  type DecaneConnectNative,
+} from "decane-connect-kit-expo";
 
-import { parseCallback } from "@/lib/auth/callback";
-import { C } from "@/theme/tokens";
-
-/** Base URL of our hosted Decane surface. Unset in design/preview builds. */
-const AUTH_URL = (process.env.EXPO_PUBLIC_AUTH_URL ?? "").replace(/\/$/, "");
-
-/**
- * Decane project id (dashboard → API Keys → App ID). Public by design — it is
- * an audience identifier, not a secret, and ships in frontend code.
- *
- * Passed to the surface the way OAuth passes `client_id`, so one deployed
- * surface can serve the test and live projects instead of hardcoding one. The
- * surface forwards it to `<DecaneKit config={{ appId }}>`; the backend checks
- * the same value against the token's `project_id` via `decane-node`.
- *
- * Note: `appId` appears only in the docs' custom-auth examples and is absent
- * from every published `DecaneConfig` / `DecaneConnectConfig` interface, though
- * the dashboard states every integration needs it. Treated as required here.
- */
 const APP_ID = process.env.EXPO_PUBLIC_DECANE_APP_ID ?? "";
 
 /**
- * Mirrors `usingMockApi` in src/lib/api.ts: with no surface deployed yet, the
- * flow resolves locally so onboarding stays walkable. It never mints anything
- * a backend would accept — the token is visibly fake.
+ * Public by necessity, not by choice: the native SDK takes the key client-side,
+ * so it ships in the bundle and is extractable from the binary. The dashboard's
+ * `callback_url` allowlist is what actually constrains it — the backend
+ * redirects only to that registered value, never to one supplied at call time.
  */
-export const usingMockAuth = AUTH_URL === "";
+const API_KEY = process.env.EXPO_PUBLIC_DECANE_API_KEY ?? "";
 
-export type AuthMethod = "google" | "email";
+/**
+ * WebAuthn relying-party ID. There is no default on native (the web SDK falls
+ * back to `window.location.hostname`, which means nothing here). Without it the
+ * SDK *silently* drops to the secure-enclave tier — no error, no passkey
+ * sign-in — so its absence is warned about loudly below.
+ */
+const RP_ID = process.env.EXPO_PUBLIC_DECANE_RP_ID ?? "";
+
+/**
+ * Must match `scheme` in app.json AND the API key's `callback_url` in the
+ * dashboard, exactly. Hardcoded rather than derived from `Linking.createURL`
+ * because the dashboard stores one literal string and the backend refuses
+ * anything else.
+ */
+export const REDIRECT_URI = "paradigm://auth";
+
+/** Chains the wallet is provisioned for. Base carries the Worldstreet remit leg (PRD §F3). */
+const CHAINS: Chain[] = ["evm:8453", "evm:1", "solana:mainnet", "tron:mainnet"];
+
+/**
+ * Mirrors `usingMockApi` in src/lib/api.ts. Without credentials the SDK cannot
+ * initialise at all, so onboarding stays walkable on a fake session rather than
+ * the app being unusable for anyone without them.
+ */
+export const usingMockAuth = API_KEY === "" || APP_ID === "";
+
+export type AuthMethod = "google" | "email" | "kingschat";
 
 export interface DecaneSession {
-  accessToken: string;
-  /** Epoch ms, or null when the surface didn't say. */
-  expiresAt: number | null;
+  addresses: { evm?: string; solana?: string; tron?: string };
   isNewUser: boolean;
+  accessToken: string | null;
+  expiresAt: number | null;
 }
 
-export type AuthFailureReason =
-  | "cancelled"
-  | "state_mismatch"
-  | "no_token"
-  | "provider_error"
-  | "unknown";
+/**
+ * The PIN tier is only reached when neither passkeys nor the secure enclave are
+ * available, but when it is reached the SDK needs the user's actual PIN — which
+ * we deliberately never store (only a salted hash). So the app registers a
+ * prompt here and the SDK calls it.
+ */
+type PinPrompt = () => Promise<string>;
+let pinPrompt: PinPrompt | null = null;
 
-export class AuthError extends Error {
-  constructor(
-    public reason: AuthFailureReason,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AuthError";
+export function setPinPrompt(prompt: PinPrompt | null): void {
+  pinPrompt = prompt;
+}
+
+let client: DecaneConnectNative | null = null;
+let initialising: Promise<DecaneConnectNative> | null = null;
+
+/**
+ * Built once and reused — construction restores a persisted session, so a
+ * second instance would race the first over the same keystore entries.
+ */
+export async function getClient(): Promise<DecaneConnectNative> {
+  if (client) return client;
+  if (initialising) return initialising;
+
+  if (usingMockAuth) {
+    throw new Error(
+      "Decane is not configured — set EXPO_PUBLIC_DECANE_APP_ID and EXPO_PUBLIC_DECANE_API_KEY.",
+    );
+  }
+
+  if (!RP_ID && __DEV__) {
+    console.warn(
+      "[decane] EXPO_PUBLIC_DECANE_RP_ID is unset — the passkey tier is unavailable " +
+        "and the SDK will silently use the secure-enclave tier instead.",
+    );
+  }
+
+  initialising = createDecaneConnect({
+    appId: APP_ID,
+    apiKey: API_KEY,
+    chains: CHAINS,
+    authMethods: ["kingschat", "google", "email"],
+    redirectUri: REDIRECT_URI,
+
+    // Passkey tier first — the SDK's own default order, stated explicitly so a
+    // later edit can't reorder it by accident. Each tier is probed with a real
+    // ceremony, so a device that claims passkey support but returns no PRF
+    // output falls through rather than ending up with an unopenable wallet.
+    ...(RP_ID ? { rpId: RP_ID, rpName: "Paradigm" } : {}),
+    unlockPreference: ["passkey", "secure-enclave", "pin"],
+
+    promptPin: async () => {
+      if (!pinPrompt) {
+        throw new Error("PIN tier reached with no prompt registered.");
+      }
+      return pinPrompt();
+    },
+
+    // Sessions survive an app restart — backgrounding a phone is not sign-out.
+    // Real expiry is still recorded and re-checked on load.
+    persistSession: true,
+  })
+    .then((c) => {
+      client = c;
+      return c;
+    })
+    .finally(() => {
+      initialising = null;
+    });
+
+  return initialising;
+}
+
+async function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
+  await new Promise((r) => setTimeout(r, 1200));
+  return {
+    addresses: { evm: "0xMOCK", solana: "MOCKsol", tron: "TMOCK" },
+    isNewUser: true,
+    accessToken: `mock.decane.${method}.${Date.now()}`,
+    expiresAt: Date.now() + 120 * 60_000,
+  };
+}
+
+/**
+ * Google and KingsChat open an in-app auth sheet (ASWebAuthenticationSession on
+ * iOS, Chrome Custom Tab on Android) and return to REDIRECT_URI. The app is
+ * never backgrounded. Email is two-step — see `startEmailSignIn`.
+ */
+export async function signIn(
+  method: Exclude<AuthMethod, "email">,
+): Promise<DecaneSession> {
+  if (usingMockAuth) return mockSignIn(method);
+
+  const decane = await getClient();
+  const result =
+    method === "kingschat"
+      ? await decane.connectWithKingsChat()
+      : await decane.connectWithGoogle();
+
+  return toSession(decane, result.addresses, result.isNewUser);
+}
+
+export async function startEmailSignIn(email: string): Promise<void> {
+  if (usingMockAuth) {
+    await new Promise((r) => setTimeout(r, 600));
+    return;
+  }
+  const decane = await getClient();
+  await decane.connectWithEmail(email);
+}
+
+export async function verifyEmailCode(
+  email: string,
+  code: string,
+): Promise<DecaneSession> {
+  if (usingMockAuth) return mockSignIn("email");
+  const decane = await getClient();
+  const result = await decane.verifyEmailCode(email, code);
+  return toSession(decane, result.addresses, result.isNewUser);
+}
+
+/** Returning user whose passkey-wrapped share is still on this device. */
+export async function canSignInWithPasskey(): Promise<boolean> {
+  if (usingMockAuth) return false;
+  try {
+    const decane = await getClient();
+    return await decane.canSignInWithPasskey();
+  } catch {
+    return false;
   }
 }
 
-/** User-facing copy. Never surface a raw provider string to a person. */
-export function describeAuthError(error: unknown): { title: string; description: string } {
-  if (error instanceof AuthError) {
-    switch (error.reason) {
-      case "cancelled":
-        return { title: "Sign-in cancelled", description: "No changes were made." };
-      case "state_mismatch":
+export async function signInWithPasskey(): Promise<DecaneSession> {
+  const decane = await getClient();
+  const result = await decane.signInWithPasskey();
+  return toSession(decane, result.addresses, result.isNewUser);
+}
+
+/** Restores whatever the SDK persisted, or null if sign-in is needed again. */
+export async function restoreSession(): Promise<DecaneSession | null> {
+  if (usingMockAuth) return null;
+  try {
+    const decane = await getClient();
+    const addresses = decane.getAddresses();
+    if (!addresses || decane.needsReconnect()) return null;
+    return toSession(decane, addresses, false);
+  } catch {
+    // A corrupt or superseded share must not wedge the app on launch.
+    return null;
+  }
+}
+
+export async function unlock(): Promise<void> {
+  const decane = await getClient();
+  await decane.unlock();
+}
+
+export async function signOut(): Promise<void> {
+  if (usingMockAuth) return;
+  try {
+    const decane = await getClient();
+    await decane.disconnect();
+  } finally {
+    client = null;
+  }
+}
+
+/** Subscribe to SDK lifecycle events; returns an unsubscribe function. */
+export async function onSdkEvent(
+  event: "wallet-creating" | "wallet-unlocking" | "session-expired" | "disconnected",
+  handler: () => void,
+): Promise<() => void> {
+  if (usingMockAuth) return () => {};
+  const decane = await getClient();
+  decane.on(event, handler);
+  return () => decane.off(event, handler);
+}
+
+function toSession(
+  decane: DecaneConnectNative,
+  addresses: DecaneSession["addresses"],
+  isNewUser: boolean,
+): DecaneSession {
+  return {
+    addresses,
+    isNewUser,
+    accessToken: decane.getAccessToken(),
+    expiresAt: decane.sessionExpiresAt(),
+  };
+}
+
+/** User-facing copy. Never surface a raw SDK code to a person. */
+export function describeAuthError(error: unknown): {
+  title: string;
+  description: string;
+} {
+  if (error instanceof UserCancelledError) {
+    return { title: "Sign-in cancelled", description: "No changes were made." };
+  }
+
+  if (error instanceof DecaneConnectError) {
+    switch (error.code) {
+      case "NATIVE_MODULE_MISSING":
         return {
-          title: "Sign-in could not be verified",
-          description: "The response didn't match this device. Try again.",
+          title: "This build is missing a module",
+          description: "Rebuild the app — Expo Go can't run Decane.",
         };
-      case "no_token":
+      case "INVALID_API_KEY":
         return {
-          title: "Sign-in incomplete",
-          description: "Decane didn't return a session. Try again.",
+          title: "Sign-in unavailable",
+          description: "Decane credentials are missing or revoked.",
         };
-      case "provider_error":
-        return { title: "Sign-in failed", description: error.message };
+      case "NEW_DEVICE":
+        return {
+          title: "New device",
+          description: "Sign in again to restore your wallet on this phone.",
+        };
+      case "STALE_DEVICE_SHARE":
+        return {
+          title: "Session out of date",
+          description: "Sign in again to refresh this device.",
+        };
+      case "INVALID_PIN":
+        return { title: "Wrong PIN", description: "Try again." };
+      case "BIOMETRIC_UNAVAILABLE":
+        return {
+          title: "Biometrics unavailable",
+          description: "Use your PIN instead.",
+        };
+      case "ATTESTATION_FAILED":
+        return {
+          title: "Secure enclave check failed",
+          description: "Signing is blocked. Try again later.",
+        };
+      case "NETWORK":
+        return {
+          title: "Connection problem",
+          description: "Check your connection and try again.",
+        };
       default:
         break;
     }
   }
+
   return {
     title: "Something went wrong",
     description: "Check your connection and try again.",
   };
 }
 
-/** The deep link the surface redirects to. `scheme: "primal"` is set in app.json. */
-function redirectUri(): string {
-  return Linking.createURL("auth/callback");
-}
-
-/** Opaque value echoed back by the surface, so another app can't feed us a token. */
-function newState(): string {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
-
-async function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
-  // Long enough that the button's loading state is actually visible.
-  await new Promise((r) => setTimeout(r, 1200));
-  return {
-    accessToken: `mock.decane.${method}.${Date.now()}`,
-    expiresAt: Date.now() + 30 * 60_000, // Decane's default session is 30 minutes.
-    isNewUser: true,
-  };
-}
-
-/**
- * Opens the hosted surface and resolves once it redirects back.
- *
- * `openAuthSessionAsync` is the right primitive rather than `openBrowserAsync`:
- * on iOS it's `ASWebAuthenticationSession`, which shares Safari's cookie jar so
- * a returning user isn't asked to log into Google again, and it closes itself
- * on redirect. Android uses a Custom Tab.
- */
-export async function signIn(method: AuthMethod): Promise<DecaneSession> {
-  if (usingMockAuth) return mockSignIn(method);
-
-  const redirect = redirectUri();
-  const state = newState();
-  const url =
-    `${AUTH_URL}?method=${encodeURIComponent(method)}` +
-    `&redirect_uri=${encodeURIComponent(redirect)}` +
-    `&state=${encodeURIComponent(state)}` +
-    (APP_ID ? `&app_id=${encodeURIComponent(APP_ID)}` : "");
-
-  const result = await WebBrowser.openAuthSessionAsync(url, redirect, {
-    // Matches the app canvas so the sheet doesn't flash white on open.
-    controlsColor: C.silver,
-    toolbarColor: C.canvas,
-    // Deliberately NOT ephemeral: Decane's device key-share lives in this
-    // surface's storage, and a private session would discard it every sign-in,
-    // forcing recovery on each launch.
-    preferEphemeralSession: false,
-  });
-
-  if (result.type !== "success") {
-    // 'cancel' is the user dismissing; 'dismiss' is a programmatic close.
-    throw new AuthError("cancelled", "Sign-in was cancelled.");
-  }
-
-  const parsed = parseCallback(result.url, state);
-  if (!parsed.ok) throw new AuthError(parsed.reason, parsed.message);
-
-  return {
-    accessToken: parsed.accessToken,
-    expiresAt: parsed.expiresAt,
-    isNewUser: parsed.isNewUser,
-  };
-}
-
-/**
- * Ends the Decane session in the hosted surface. Clearing our own storage is
- * not enough — the surface keeps its own session, so the next sign-in would
- * silently reuse it and look like the sign-out never happened.
- */
-export async function signOutRemote(): Promise<void> {
-  if (usingMockAuth) return;
-  try {
-    await WebBrowser.openAuthSessionAsync(
-      `${AUTH_URL}/logout?redirect_uri=${encodeURIComponent(redirectUri())}`,
-      redirectUri(),
-    );
-  } catch {
-    // A failed remote sign-out must never strand the user signed in locally.
-  }
+export function isCancellation(error: unknown): boolean {
+  return (
+    error instanceof UserCancelledError ||
+    (error instanceof DecaneConnectError && error.code === "USER_CANCELLED")
+  );
 }

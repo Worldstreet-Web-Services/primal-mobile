@@ -6,10 +6,13 @@ import { C } from "../theme/tokens";
 export default function WelcomeScreen({
   onLogin,
   pending = null,
+  creatingWallet = false,
 }: {
   onLogin?: (method: string) => void;
   /** Which method is mid-flight — that button spins, the others lock out. */
-  pending?: "google" | "email" | null;
+  pending?: "google" | "email" | "kingschat" | null;
+  /** First-time key generation: Shamir split + enclave session, several seconds. */
+  creatingWallet?: boolean;
 }) {
   const busy = pending !== null;
   return (
@@ -57,6 +60,7 @@ export default function WelcomeScreen({
         <MetallicButton
           label="Continue with KingsChat"
           onPress={() => onLogin && onLogin("kingschat")}
+          loading={pending === "kingschat"}
           disabled={busy}
         />
         <GhostButton
@@ -78,8 +82,9 @@ export default function WelcomeScreen({
           color={C.dim}
           style={{ textAlign: "center", lineHeight: 17, marginTop: 8 }}
         >
-          Non-custodial ETH + SOL wallets · keys split three ways{"\n"}Signed in
-          a secure enclave, unlocked by your passkey
+          {creatingWallet
+            ? "Creating your wallet — this takes a few seconds."
+            : "Non-custodial ETH + SOL wallets · keys split three ways\nSigned in a secure enclave, unlocked by your passkey"}
         </Body>
       </View>
     </View>

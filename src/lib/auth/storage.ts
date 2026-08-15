@@ -1,18 +1,20 @@
 /**
- * Every persisted auth secret goes through here — nothing auth-related touches
- * AsyncStorage or module state that survives a reload.
+ * App-owned auth state. Deliberately NOT the Decane session — the SDK persists
+ * its own session and device key-share in the keystore (`persistSession`), and
+ * duplicating the access token here would leave two copies to expire out of
+ * step. `decane.getAccessToken()` is the single source for the token.
+ *
+ * What lives here is what Decane has no opinion about: the **transaction PIN**
+ * that gates money-out (PRD §2) and the app-lock biometric preference.
  *
  * SecureStore is the Keychain on iOS and Keystore-encrypted SharedPreferences
- * on Android. Values are capped well under the ~2KB practical iOS limit; a
- * Decane access token is a JWT, so it fits comfortably.
+ * on Android.
  */
 
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 
 const KEYS = {
-  accessToken: "paradigm.auth.access_token",
-  expiresAt: "paradigm.auth.expires_at",
   pinHash: "paradigm.auth.pin_hash",
   pinSalt: "paradigm.auth.pin_salt",
   biometrics: "paradigm.auth.biometrics_enabled",
@@ -36,30 +38,6 @@ async function get(key: string): Promise<string | null> {
 
 async function drop(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key, OPTIONS);
-}
-
-export interface StoredSession {
-  accessToken: string;
-  /** Epoch ms. Null when the auth surface didn't tell us. */
-  expiresAt: number | null;
-}
-
-export async function saveSession(session: StoredSession): Promise<void> {
-  await put(KEYS.accessToken, session.accessToken);
-  if (session.expiresAt) await put(KEYS.expiresAt, String(session.expiresAt));
-  else await drop(KEYS.expiresAt);
-}
-
-export async function loadSession(): Promise<StoredSession | null> {
-  const accessToken = await get(KEYS.accessToken);
-  if (!accessToken) return null;
-  const raw = await get(KEYS.expiresAt);
-  const expiresAt = raw ? Number(raw) : null;
-  return { accessToken, expiresAt: Number.isFinite(expiresAt) ? expiresAt : null };
-}
-
-export async function clearSession(): Promise<void> {
-  await Promise.all([drop(KEYS.accessToken), drop(KEYS.expiresAt)]);
 }
 
 /**
@@ -102,5 +80,5 @@ export async function isBiometricsEnabled(): Promise<boolean> {
 
 /** Full local wipe — sign-out, and the recovery path when storage is corrupt. */
 export async function clearAll(): Promise<void> {
-  await Promise.all([clearSession(), clearPin(), setBiometricsEnabled(false)]);
+  await Promise.all([clearPin(), setBiometricsEnabled(false)]);
 }

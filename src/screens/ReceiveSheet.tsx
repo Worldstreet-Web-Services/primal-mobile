@@ -15,6 +15,7 @@ import {
 import { CopyMark, useCopy } from "../components/CopyAction";
 import { QrPlate } from "../components/QrPlate";
 import { user } from "../data/mock";
+import { usingMockAuth } from "../lib/auth/decane";
 import { depositAddresses } from "../lib/crypto/addresses";
 
 // Static per-network-type deposit addresses (PRD §F4) — the auto-convert
@@ -43,11 +44,18 @@ export default function ReceiveSheet({
 
   // Keyed by the catalog's `kind`; bitcoin has no Decane wallet, so it stays
   // undefined and falls through to the empty state below.
-  const live: Record<string, string | undefined> = {
-    evm: addresses?.evm,
-    solana: addresses?.solana,
-    tron: addresses?.tron,
-  };
+  //
+  // Mock-auth sessions carry placeholder addresses (0xMOCK / MOCKsol / TMOCK).
+  // Those are exactly what the rule below forbids — a QR of one is money sent
+  // to an account nobody holds the key to — so an unconfigured build shows the
+  // empty state rather than its own placeholders.
+  const live: Record<string, string | undefined> = usingMockAuth
+    ? {}
+    : {
+        evm: addresses?.evm,
+        solana: addresses?.solana,
+        tron: addresses?.tron,
+      };
 
   // Show the real address or nothing. A mock deposit address is money sent to
   // an account nobody holds the key to, so it must never reach this screen —

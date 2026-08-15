@@ -5,14 +5,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Brand is gold as of 2026-08-14, superseding the lime/dollar-green of
-        // PRD §5: brand = action, soft = muted chrome, canvas = metallic black
-        // ground, silver = secondary. Mirrors `C` in src/theme/tokens.ts.
+        // Brand is leaf green #83BE60 as of 2026-08-14: brand = action,
+        // soft = muted chrome, canvas = metallic black ground, silver =
+        // secondary. Mirrors `C` in src/theme/tokens.ts — keep the two in step.
         brand: {
-          DEFAULT: "#FFC93D",
-          ink: "#1A1200",
-          soft: "#DDB35A",
-          "soft-ink": "#150E00",
+          DEFAULT: "#83BE60",
+          ink: "#0A1405",
+          soft: "#74AC55",
+          "soft-ink": "#081103",
+          glow: "#83BE6024",
         },
         // Money semantics stay green/red — never paint a gain in the brand color.
         up: { DEFAULT: "#7CE7B0", tint: "#7CE7B01F" },
@@ -22,8 +23,8 @@ module.exports = {
       },
       // Mirrors `F` in src/theme/tokens.ts — keep the two in step.
       fontFamily: {
-        display: ["SpaceGrotesk-SemiBold"],
-        "display-bold": ["SpaceGrotesk-Bold"],
+        display: ["ClashDisplay-Semibold"],
+        "display-bold": ["ClashDisplay-Bold"],
         body: ["Geist-Regular"],
         "body-medium": ["Geist-Medium"],
         "body-semibold": ["Geist-SemiBold"],

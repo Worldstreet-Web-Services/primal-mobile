@@ -73,7 +73,7 @@ export function GreetingHero({
           meant to break the frame cannot live inside it. */}
       <View>
         <LinearGradient
-          colors={["#1A1508", "#0F0E0C"]}
+          colors={["#141A0E", "#0D0F0C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{

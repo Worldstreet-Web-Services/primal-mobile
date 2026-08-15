@@ -10,7 +10,7 @@ import {
 } from "@/components/earn";
 import { ClockIcon, PlusIcon } from "@/components/icons";
 import { BalanceSummary, type BalanceStats } from "@/components/trade";
-import { Display, Label, OutlineButton, Screen } from "@/components/ui";
+import { Display, Label, OutlineButton, PILL, Screen } from "@/components/ui";
 import {
   defaultRange,
   earnPortfolio as defaultBalance,
@@ -86,7 +86,7 @@ export default function AutoEarnScreen({
               style={{
                 width: 22,
                 height: 22,
-                borderRadius: 7,
+                borderRadius: PILL,
                 backgroundColor: C.brandSoft,
                 alignItems: "center",
                 justifyContent: "center",

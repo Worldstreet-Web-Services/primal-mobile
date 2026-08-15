@@ -3,8 +3,8 @@ import type { Feature, MediaItem, Space } from "@/components/home";
 /**
  * Home shelf content. Static today; the shapes match what the home endpoint
  * will return so swapping in the API is a data-source change, not a UI change.
- * Artwork is intentionally absent — the cards render their glass placeholder
- * until the renders land in assets/images.
+ * Artwork ships with the app (assets/images); a card falls back to its glass
+ * placeholder whenever a render is missing.
  */
 
 /** Everything the user holds, across every space — one ledger underneath. */
@@ -75,6 +75,14 @@ export const features: Feature[] = [
 ];
 
 export const media: MediaItem[] = [
-  { key: "podcast", title: "Podcast" },
-  { key: "news", title: "The News" },
+  {
+    key: "podcast",
+    title: "Podcast",
+    artwork: require("../../assets/images/media/podcast.png"),
+  },
+  {
+    key: "news",
+    title: "The News",
+    artwork: require("../../assets/images/media/hot-news.png"),
+  },
 ];

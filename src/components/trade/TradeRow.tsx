@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
-import { Body, Mono, PressableScale } from "../ui";
+import { Body, Mono, PILL, PressableScale } from "../ui";
 
 export type TradeSide = "long" | "short";
 
@@ -83,7 +83,7 @@ export function TradeRow({
             style={{
               paddingHorizontal: 18,
               paddingVertical: 12,
-              borderRadius: 12,
+              borderRadius: PILL,
               backgroundColor: position.copying ? C.card : C.brandSoft,
               borderWidth: position.copying ? 1 : 0,
               borderColor: C.brandSoft,

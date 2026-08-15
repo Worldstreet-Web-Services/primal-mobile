@@ -128,7 +128,7 @@ export default function TradeDetailScreen({
           height={56}
           size={16}
           onPress={onDismiss}
-          style={{ width: "34%" }}
+          style={{ width: "34%", backgroundColor: C.canvas }}
         />
         <PrimaryButton
           label="Copy This Trade"

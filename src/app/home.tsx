@@ -51,6 +51,7 @@ export default function Home() {
           paddingHorizontal: GUTTER,
           paddingBottom: 6,
         }}
+        avatar={require("@/assets/images/avatar.png")}
       />
 
       <HomeScreen

@@ -158,7 +158,7 @@ export function MediaCard({
           </View>
         </View>
 
-        <View style={{ flex: 1 - COPY_SHARE, backgroundColor: C.raised }}>
+        <View style={{ flex: 1 - COPY_SHARE, backgroundColor: "white" }}>
           <ArtSlot
             source={item.artwork}
             fill

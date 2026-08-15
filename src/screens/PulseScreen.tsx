@@ -1,10 +1,8 @@
-import React from "react";
 import { View } from "react-native";
 
 import {
   Body,
   Card,
-  Display,
   Label,
   Mono,
   PulseDot,
@@ -137,24 +135,6 @@ export interface PulseScreenProps {
 export default function PulseScreen({ top = 0 }: PulseScreenProps) {
   return (
     <Screen top={top}>
-      <View style={{ marginTop: 18 }}>
-        <Display size={30}>Pulse</Display>
-        <Body size={12} color={C.dim} style={{ marginTop: 5 }}>
-          Everything moving across your accounts — live.
-        </Body>
-      </View>
-
-      <View
-        style={{
-          marginTop: 22,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <PulseDot color={C.up} size={5} />
-        <Label>Now</Label>
-      </View>
       <View style={{ marginTop: 10, flexDirection: "row", gap: 8 }}>
         {nowStrip.map((c) => (
           <NowChip key={c.caption} {...c} />

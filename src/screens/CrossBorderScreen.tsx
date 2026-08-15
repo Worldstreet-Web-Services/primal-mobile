@@ -136,19 +136,19 @@ function QuoteRow({
         borderBottomColor: C.hairline,
       }}
     >
-      <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
-        {label}
-      </Mono>
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+      <View>
+        <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
+          {label}
+        </Mono>
         {note ? (
-          <Mono size={10.5} color={C.dim}>
+          <Mono size={10} color={C.dim} style={{ marginTop: 4 }}>
             {note}
           </Mono>
         ) : null}
-        <Mono size={12.5} color={C.silver}>
-          {value}
-        </Mono>
       </View>
+      <Mono size={12.5} color={C.silver}>
+        {value}
+      </Mono>
     </View>
   );
 }
@@ -307,7 +307,11 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
                       IN FLIGHT
                     </Mono>
                     <View style={{ flex: 1 }} />
-                    <Mono size={8.5} color={C.dim} style={{ letterSpacing: 1.4 }}>
+                    <Mono
+                      size={8.5}
+                      color={C.dim}
+                      style={{ letterSpacing: 1.4 }}
+                    >
                       USUALLY UNDER 2 MIN
                     </Mono>
                   </View>

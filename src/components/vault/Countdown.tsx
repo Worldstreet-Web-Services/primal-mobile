@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { formatClock } from "@/lib/vault/format";
 import { C, F } from "@/theme/tokens";
@@ -112,31 +113,40 @@ export function Countdown({ deadlineMs }: { deadlineMs: number | null }) {
     <View style={{ alignItems: "center" }}>
       <View style={{ alignItems: "center", justifyContent: "center" }}>
         {active ? (
+          // Dark until the round is nearly over: the light only arrives with
+          // the urgency, and then it swells and falls. A radial falloff, so
+          // it reads as light in the case rather than a lit pill.
           <Animated.View
             pointerEvents="none"
             style={{
               position: "absolute",
-              width: 240,
-              height: 88,
-              borderRadius: 44,
-              backgroundColor: heat.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["rgba(245,184,61,0.10)", "rgba(246,165,165,0.16)"],
-              }),
-              opacity: breath.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.55, 1],
-              }),
+              width: 280,
+              height: 130,
+              opacity: Animated.multiply(
+                heat,
+                breath.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+              ),
               transform: [
                 {
                   scale: breath.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [1, 1.07],
+                    outputRange: [0.94, 1.06],
                   }),
                 },
               ],
             }}
-          />
+          >
+            <Svg width="100%" height="100%">
+              <Defs>
+                <RadialGradient id="clockHeat" cx="50%" cy="50%" rx="50%" ry="50%">
+                  <Stop offset="0" stopColor={C.down} stopOpacity={0.3} />
+                  <Stop offset="0.55" stopColor={C.down} stopOpacity={0.12} />
+                  <Stop offset="1" stopColor={C.down} stopOpacity={0} />
+                </RadialGradient>
+              </Defs>
+              <Rect x="0" y="0" width="100%" height="100%" fill="url(#clockHeat)" />
+            </Svg>
+          </Animated.View>
         ) : null}
         {active ? (
           <Animated.Text

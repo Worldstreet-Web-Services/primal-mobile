@@ -123,7 +123,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   } = useVaultActions();
 
   const [myAddress, setMyAddress] = useState<string | null>(null);
-  const [pendingWei, setPendingWei] = useState("0");
+  const [pendingWei, setPendingWei] = useState("40000000000000000");
   // Bundler accepted the play; the on-chain receipt hasn't landed yet.
   const [confirming, setConfirming] = useState(false);
   // Drives the lobby rows' per-second time-left redraw.
@@ -181,26 +181,24 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   const offline = error && games.length === 0;
   const live = !offline && !loading;
 
-  const featured = featuredGame(games, featuredId);
-  const others = games.filter(
-    (g) => g.active && !g.settled && g.gameId !== featured?.gameId,
-  );
   // TEMP-PREVIEW
   const nowS = Math.floor(Date.now() / 1000);
   const mk = (id: number, usd: number, endsIn: number) => ({
     gameId: id,
     starter: "0xAb1234567890abcdef1234567890abcdef123456",
     king: "0xCd9876543210fedcba9876543210fedcba987654",
-    pot: moneyFromWei(String(BigInt(Math.round(usd * 1e6)) * 10n ** 12n / 3000n * 1000n), 3000),
-    minWager: moneyFromWei(String(BigInt(50 * 1e6) * 10n ** 12n / 3000n * 1000n), 3000),
+    pot: moneyFromWei(String((BigInt(Math.round(usd * 1e6)) * 10n ** 18n) / 3000n / 1000000n), 3000),
+    minWager: moneyFromWei(String((BigInt(50 * 1e6) * 10n ** 18n) / 3000n / 1000000n), 3000),
     endTime: nowS + endsIn,
     timeRemaining: endsIn,
     settled: false,
     active: true,
   });
-  const featuredT = mk(63, 1240, 272);
-  const othersT = [mk(61, 420, 44), mk(59, 96, 8)];
   // TEMP-PREVIEW END
+  const featured = featuredGame(games, featuredId) ?? mk(63, 1240, 9);
+  const others = games.filter(
+    (g) => g.active && !g.settled && g.gameId !== featured?.gameId,
+  ).concat([mk(61, 420, 44), mk(59, 96, 8)]);
 
   useEffect(() => {
     if (!others.length) return;
@@ -212,7 +210,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   const unit = firstUnitUsd([
     ...games.flatMap((g) => [g.pot, g.minWager]),
     ...winners.flatMap((w) => [w.toWinner, w.pot]),
-  ]);
+  ]) || 3000;
 
   /** Chain truth immediately after OUR confirmed action — the indexer
    * trails the chain, and waiting for it re-arms the wager button. */

@@ -11,15 +11,24 @@ import {
   Body,
   Display,
   Keypad,
-  Card,
 } from "../components/ui";
+import {
+  InstrumentRow,
+  MetaChip,
+  QuoteCard,
+  QuoteRow,
+  RowSkeletonList,
+  SectionHead,
+  Settle,
+} from "../components/crypto";
+import { NoticeBanner } from "../components/payments";
 import { useCryptoPortfolio } from "../hooks/useCryptoPortfolio";
 import {
   baseToDisplayFloor,
   displayToBase,
   formatAmount,
 } from "../lib/crypto/amounts";
-import { needsNetworkSuffix, type Holding } from "../lib/crypto/balances";
+import { type Holding } from "../lib/crypto/balances";
 import {
   EVM_CHAIN_ID,
   NETWORK_LABELS,
@@ -34,7 +43,7 @@ type Step = "asset" | "dest" | "confirm" | "sent";
 interface WithdrawAsset {
   sym: string;
   name: string;
-  qty: string;
+  /** "0.031 ETH" — the row's quantity, and the amount screen's ceiling. */
   avail: string;
   usd: string;
   network: string;
@@ -62,12 +71,10 @@ const DISPLAY_DP: Record<string, number> = {
 
 function fromHolding(h: Holding): WithdrawAsset {
   const dp = DISPLAY_DP[h.symbol] ?? 3;
-  const suffix = needsNetworkSuffix(h) ? ` · ${NETWORK_LABELS[h.network]}` : "";
   const qty = h.stable ? h.balance.toFixed(2) : formatAmount(h.balance);
   return {
     sym: h.symbol,
     name: h.name,
-    qty: `${qty}${suffix}`,
     avail: `${qty} ${h.symbol}`,
     usd: `$${h.valueUsd.toFixed(2)}`,
     network: NETWORK_LABELS[h.network],
@@ -90,7 +97,6 @@ const FALLBACK_ASSETS: WithdrawAsset[] = [
   {
     sym: "ETH",
     name: "Ethereum",
-    qty: "0.031",
     avail: "0.031 ETH",
     usd: "$98.10",
     network: "Ethereum",
@@ -105,7 +111,6 @@ const FALLBACK_ASSETS: WithdrawAsset[] = [
   {
     sym: "SOL",
     name: "Solana",
-    qty: "0.62",
     avail: "0.62 SOL",
     usd: "$84.30",
     network: "Solana",
@@ -120,7 +125,6 @@ const FALLBACK_ASSETS: WithdrawAsset[] = [
   {
     sym: "USDC",
     name: "USD Coin",
-    qty: "130.00 · Base",
     avail: "130.00 USDC",
     usd: "$130.00",
     network: "Base",
@@ -135,7 +139,7 @@ const FALLBACK_ASSETS: WithdrawAsset[] = [
 ];
 
 const TX_HASH = "0x3f9a…c21b";
-const FEE_NOTE = "Network fee ≈ $0.12 · sponsored where available";
+const FEE_NOTE = "Fee ≈ $0.12 · sponsored";
 
 const shorten = (addr: string) => addr.slice(0, 6) + "…" + addr.slice(-4);
 
@@ -158,7 +162,11 @@ export default function WithdrawScreen({
   const [sendError, setSendError] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
 
-  const { holdings } = useCryptoPortfolio();
+  const { holdings, loading } = useCryptoPortfolio();
+  const live = holdings.length > 0;
+  // Chains still answering, nothing to draw yet — skeletons rather than demo
+  // figures that would be corrected a beat later.
+  const pending = loading && !live;
   const assets = useMemo(
     () => (holdings.length > 0 ? holdings.map(fromHolding) : FALLBACK_ASSETS),
     [holdings],
@@ -239,39 +247,45 @@ export default function WithdrawScreen({
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <View
-            style={{
-              width: 74,
-              height: 74,
-              borderRadius: 37,
-              backgroundColor: C.brandGlow,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Svg width={32} height={32} viewBox="0 0 24 24">
-              <Path
-                d="m5 12.5 4.5 4.5L19 7.5"
-                stroke={C.brand}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </Svg>
-          </View>
-          <Display size={30} style={{ marginTop: 20 }}>
-            Sent
-          </Display>
-          <Mono size={13} color={C.text} style={{ marginTop: 12 }}>
-            {amount} {asset.sym} → {destination}
-          </Mono>
-          <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
-            {txRef ? shorten(txRef) : TX_HASH}
-          </Mono>
-          <Body size={12} color={C.dim} style={{ marginTop: 14 }}>
-            Signed in your secure enclave
-          </Body>
+          <Settle distance={14}>
+            <View style={{ alignItems: "center" }}>
+              <View
+                style={{
+                  width: 74,
+                  height: 74,
+                  borderRadius: 37,
+                  backgroundColor: C.brandGlow,
+                  borderWidth: 1,
+                  borderColor: "rgba(131,190,96,0.35)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Svg width={32} height={32} viewBox="0 0 24 24">
+                  <Path
+                    d="m5 12.5 4.5 4.5L19 7.5"
+                    stroke={C.brand}
+                    strokeWidth={2.2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </Svg>
+              </View>
+              <Display size={30} style={{ marginTop: 22 }}>
+                Sent
+              </Display>
+              <Mono size={13.5} color={C.text} style={{ marginTop: 14 }}>
+                {amount} {asset.sym} → {destination}
+              </Mono>
+              <Mono size={12} color={C.dim} style={{ marginTop: 8 }}>
+                {txRef ? shorten(txRef) : TX_HASH}
+              </Mono>
+              <View style={{ marginTop: 18 }}>
+                <MetaChip label={`Signed in the enclave · ${asset.network}`} />
+              </View>
+            </View>
+          </Settle>
         </View>
         <View style={{ paddingBottom: 36 }}>
           <MetallicButton label="Done" onPress={onDone} />
@@ -287,109 +301,107 @@ export default function WithdrawScreen({
       </View>
 
       {step === "asset" ? (
-        <View style={{ paddingHorizontal: 22, marginTop: 22 }}>
-          <Label>Choose asset</Label>
-          {assets.map((h, i) => (
-            <Pressable
-              key={`${h.networkId}:${h.sym}`}
-              onPress={() => {
-                setAssetIndex(i);
-                setRaw("");
-                setStep("dest");
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Withdraw ${h.name}`}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: 14,
-                borderBottomWidth: i === assets.length - 1 ? 0 : 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 20,
-                  backgroundColor: h.green ? C.upBg : "rgba(255,255,255,0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Mono
-                  size={9}
-                  color={h.green ? C.up : C.silver}
-                  style={{ fontFamily: F.monoSemibold }}
-                >
-                  {h.sym}
+        <View style={{ flex: 1, paddingHorizontal: 22, marginTop: 24 }}>
+          <SectionHead
+            label="Choose asset"
+            right={
+              pending ? null : live ? (
+                <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+                  {assets.length} {assets.length === 1 ? "ASSET" : "ASSETS"}
                 </Mono>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Body size={13.5} semibold>
-                  {h.name}
-                </Body>
-                <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-                  {h.qty}
-                </Body>
-              </View>
-              <Mono size={13} color={C.text}>
-                {h.usd}
-              </Mono>
-            </Pressable>
-          ))}
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ textAlign: "center", marginTop: 18 }}
-          >
-            On-chain sends leave your self-custody wallet directly
-          </Body>
+              ) : (
+                <MetaChip label="Offline preview" />
+              )
+            }
+          />
+          <View style={{ marginTop: 2 }}>
+            {pending ? (
+              <RowSkeletonList rows={3} />
+            ) : (
+              assets.map((h, i) => (
+                <InstrumentRow
+                  key={`${h.networkId}:${h.sym}`}
+                  symbol={h.sym}
+                  name={h.name}
+                  sub={h.avail}
+                  value={h.usd}
+                  meta={h.network}
+                  stable={h.green}
+                  last={i === assets.length - 1}
+                  accessibilityLabel={`Withdraw ${h.name}`}
+                  onPress={() => {
+                    setAssetIndex(i);
+                    setRaw("");
+                    setStep("dest");
+                  }}
+                />
+              ))
+            )}
+          </View>
+          <View style={{ flex: 1 }} />
+          <View style={{ alignItems: "center", gap: 11, paddingBottom: 34 }}>
+            <Body
+              size={11.5}
+              color={C.dim}
+              style={{ textAlign: "center", lineHeight: 18 }}
+            >
+              Sends leave your self-custody wallet directly.
+            </Body>
+            <Label style={{ letterSpacing: 1.6 }}>
+              Signed on device · enclave-backed
+            </Label>
+          </View>
         </View>
       ) : null}
 
       {step === "dest" ? (
         <>
-          <View style={{ paddingHorizontal: 22, marginTop: 18 }}>
-            <Label>Destination</Label>
-            <Card
+          <View style={{ paddingHorizontal: 22, marginTop: 20 }}>
+            <SectionHead
+              label="Destination"
+              right={<MetaChip label={asset.network} />}
+            />
+            <View
               style={{
                 marginTop: 10,
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
+                height: 56,
+                paddingLeft: 16,
+                paddingRight: 10,
                 borderRadius: 14,
+                backgroundColor: C.raised,
+                borderWidth: 1,
+                borderColor: C.hairline,
               }}
             >
-              <Mono size={13} color={C.text} style={{ flex: 1 }}>
+              <Mono size={13.5} color={C.text} style={{ flex: 1 }}>
                 {destination}
               </Mono>
-              <View style={{ width: 72 }}>
-                <GhostButton label="Paste" height={32} />
+              <View style={{ width: 76 }}>
+                <GhostButton label="Paste" height={36} radius={10} />
               </View>
-            </Card>
-            <Body size={11} color={C.dim} style={{ marginTop: 8 }}>
-              {asset.network} · always double-check the chain
+            </View>
+            <Body size={11} color={C.dim} style={{ marginTop: 9 }}>
+              Double-check the chain — sends can't be recalled.
             </Body>
           </View>
           <View
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
           >
-            <Display size={40}>
+            <Display size={40} color={raw === "" ? C.dim : C.text}>
               {amount}{" "}
               <Display size={22} color={C.dim}>
                 {asset.sym}
               </Display>
             </Display>
-            <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
+            <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
               ≈ ${usd} USD
             </Mono>
-            <Body size={11} color={C.dim} style={{ marginTop: 8 }}>
-              {FEE_NOTE}
-            </Body>
+            <View style={{ marginTop: 14 }}>
+              <MetaChip label={FEE_NOTE} />
+            </View>
           </View>
           <View style={{ paddingHorizontal: 22, paddingBottom: 36 }}>
             <View
@@ -397,12 +409,12 @@ export default function WithdrawScreen({
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 12,
+                marginBottom: 14,
               }}
             >
-              <Body size={11.5} color={C.dim}>
+              <Mono size={11.5} color={C.dim}>
                 Available · {asset.avail}
-              </Body>
+              </Mono>
               <Pressable
                 onPress={() => setRaw(asset.maxRaw)}
                 accessibilityRole="button"
@@ -410,23 +422,23 @@ export default function WithdrawScreen({
                 style={{
                   paddingHorizontal: 13,
                   paddingVertical: 6,
-                  borderRadius: 99,
+                  borderRadius: 8,
                   borderWidth: 1,
                   borderColor: C.border,
-                  backgroundColor: C.card,
+                  backgroundColor: C.inset,
                 }}
               >
                 <Mono
                   size={10.5}
                   color={C.silver}
-                  style={{ fontFamily: F.monoSemibold, letterSpacing: 1 }}
+                  style={{ fontFamily: F.monoSemibold, letterSpacing: 1.2 }}
                 >
                   MAX
                 </Mono>
               </Pressable>
             </View>
             <Keypad onKey={handleKey} />
-            <View style={{ marginTop: 14 }}>
+            <View style={{ marginTop: 16 }}>
               <MetallicButton
                 label="Review withdrawal"
                 onPress={() => {
@@ -440,132 +452,96 @@ export default function WithdrawScreen({
 
       {step === "confirm" ? (
         <>
-          <View
-            style={{
-              paddingHorizontal: 22,
-              marginTop: 26,
-              alignItems: "center",
-            }}
-          >
-            <Body size={11.5} color={C.dim}>
-              You're withdrawing
-            </Body>
-            <Display size={44} style={{ marginTop: 6 }}>
-              {amount}{" "}
-              <Display size={24} color={C.dim}>
-                {asset.sym}
+          <Settle>
+            <View
+              style={{
+                paddingHorizontal: 22,
+                marginTop: 28,
+                alignItems: "center",
+              }}
+            >
+              <Label>Withdrawing</Label>
+              <Display size={44} style={{ marginTop: 10 }}>
+                {amount}{" "}
+                <Display size={24} color={C.dim}>
+                  {asset.sym}
+                </Display>
               </Display>
-            </Display>
-            <Mono size={12} color={C.sub} style={{ marginTop: 4 }}>
-              ≈ ${usd} USD
-            </Mono>
-          </View>
-          <Card
-            style={{
-              marginTop: 22,
-              marginHorizontal: 20,
-              borderRadius: 16,
-              paddingVertical: 4,
-              paddingHorizontal: 16,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingVertical: 11,
-                borderBottomWidth: 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <Body size={12.5} color={C.sub}>
-                Asset
-              </Body>
-              <Mono size={12.5} color={C.text}>
-                {asset.name} · {asset.sym}
+              <Mono size={12.5} color={C.sub} style={{ marginTop: 8 }}>
+                ≈ ${usd} USD
               </Mono>
             </View>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingVertical: 11,
-                borderBottomWidth: 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <Body size={12.5} color={C.sub}>
-                Destination
-              </Body>
-              <Mono size={12.5} color={C.text}>
-                {destination}
-              </Mono>
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingVertical: 11,
-                borderBottomWidth: 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <Body size={12.5} color={C.sub}>
-                Amount
-              </Body>
-              <Mono
-                size={12.5}
-                color={C.text}
-                style={{ fontFamily: F.monoSemibold }}
-              >
-                {amount} {asset.sym}
-              </Mono>
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingVertical: 11,
-              }}
-            >
-              <Body size={12.5} color={C.sub}>
-                Network fee
-              </Body>
-              <Mono size={12.5} color={C.text}>
-                ≈ $0.12{" "}
-                <Mono size={12.5} color={C.dim}>
-                  · sponsored
-                </Mono>
-              </Mono>
-            </View>
-          </Card>
+            <QuoteCard style={{ marginTop: 26, marginHorizontal: 22 }}>
+              <QuoteRow
+                label="Asset"
+                value={`${asset.name} · ${asset.sym}`}
+              />
+              <QuoteRow label="Network" value={asset.network} />
+              <QuoteRow label="Destination" value={destination} />
+              <QuoteRow
+                label="Amount"
+                value={`${amount} ${asset.sym}`}
+                strong
+              />
+              <QuoteRow
+                label="Network fee"
+                value="≈ $0.12"
+                tail="· sponsored"
+                last
+              />
+            </QuoteCard>
+          </Settle>
           <View
             style={{
-              marginTop: "auto",
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 40,
+            }}
+          >
+            <Body
+              size={11.5}
+              color={C.dim}
+              style={{ textAlign: "center", lineHeight: 18 }}
+            >
+              Signed on device, in your secure enclave.{"\n"}Face ID confirms
+              every signature.
+            </Body>
+          </View>
+          <View
+            style={{
               paddingHorizontal: 22,
               paddingBottom: 36,
             }}
           >
-            <Body
-              size={11}
-              color={C.amber}
-              style={{ textAlign: "center", marginBottom: 14 }}
-            >
-              On-chain transfers can't be reversed.
-            </Body>
+            <NoticeBanner message="On-chain transfers can't be reversed. Check the address and the chain." />
             {sendError ? (
-              <Body
-                size={11.5}
-                color={C.down}
-                style={{ textAlign: "center", marginBottom: 14 }}
+              <View
+                style={{
+                  marginTop: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  backgroundColor: C.inset,
+                  borderWidth: 1,
+                  borderColor: "rgba(246,165,165,0.3)",
+                }}
               >
-                {sendError}
-              </Body>
+                <Label style={{ color: C.down }}>Not signed</Label>
+                <Body
+                  size={12}
+                  color={C.silver}
+                  style={{ marginTop: 6, lineHeight: 17 }}
+                >
+                  {sendError}
+                </Body>
+              </View>
             ) : null}
-            <MetallicButton
-              label={sending ? "Signing…" : "Sign & send"}
-              onPress={signAndSend}
-            />
+            <View style={{ marginTop: 16 }}>
+              <MetallicButton
+                label={sending ? "Signing…" : "Sign & send"}
+                onPress={signAndSend}
+              />
+            </View>
             <View style={{ marginTop: 10 }}>
               <GhostButton
                 label="Back to amount"

@@ -1,18 +1,29 @@
-import * as Clipboard from "expo-clipboard";
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import { C, F } from "../theme/tokens";
 import {
   Screen,
   BackHeader,
-  MetallicButton,
   GhostButton,
   Card,
   Label,
   Mono,
   Body,
+  Display,
+  PressableScale,
   PulseDot,
+  Shine,
 } from "../components/ui";
+import { CopyField, useCopy } from "../components/CopyAction";
+import { QrPlate } from "../components/QrPlate";
 
 // Fund wallet — the money-in hub, modeled on Ark's production flow.
 // Step 1 picks a method. Bank transfer hands off to its own screen
@@ -112,11 +123,19 @@ const SPOTLIGHT: { sym: string; net: string }[] = [
   { sym: "ETH", net: "ethereum" },
 ];
 
-const truncate = (addr: string) => addr.slice(0, 10) + "…" + addr.slice(-6);
+/** How often the screen re-states that it is still watching the chain. */
+const POLL_MS = 8_000;
 
 const netsFor = (t: Tok) => NETWORKS.filter((n) => t.nets.includes(n.key));
 
-function TokenBadge({ sym, size = 36 }: { sym: string; size?: number }) {
+/**
+ * Letterform token mark. Four-character symbols keep all four at a tighter
+ * size rather than truncating — clipping to three turned USDC and USDT into
+ * the same "USD" badge, which is the one distinction that surface exists to
+ * draw.
+ */
+function TokenBadge({ sym, size = 38 }: { sym: string; size?: number }) {
+  const long = sym.length > 3;
   return (
     <View
       style={{
@@ -128,12 +147,67 @@ function TokenBadge({ sym, size = 36 }: { sym: string; size?: number }) {
         borderColor: C.border,
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <Mono size={size * 0.28} color={C.silver}>
-        {sym.slice(0, 3)}
-      </Mono>
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: size * 0.25,
+          right: size * 0.25,
+          height: 1,
+          backgroundColor: "rgba(255,255,255,0.2)",
+        }}
+      />
+      <Text
+        style={{
+          fontFamily: F.monoSemibold,
+          fontSize: long ? size * 0.235 : size * 0.28,
+          letterSpacing: long ? -0.2 : 0.2,
+          color: C.silver,
+        }}
+      >
+        {sym}
+      </Text>
     </View>
+  );
+}
+
+function Chevron({ color = C.dim }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24">
+      <Path
+        d="M9.5 5 16 12l-6.5 7"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <Svg width={15} height={15} viewBox="0 0 24 24">
+      <Circle
+        cx={11}
+        cy={11}
+        r={6.5}
+        stroke={C.dim}
+        strokeWidth={1.8}
+        fill="none"
+      />
+      <Path
+        d="m16 16 4 4"
+        stroke={C.dim}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
@@ -150,17 +224,17 @@ function SelectedRow({
   return (
     <Card
       style={{
-        marginTop: 14,
+        marginTop: 12,
         paddingVertical: 12,
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
       }}
     >
-      <TokenBadge sym={sym} size={30} />
+      <TokenBadge sym={sym} size={32} />
       <View style={{ flex: 1 }}>{label}</View>
-      <Pressable onPress={onChange} hitSlop={8}>
-        <Mono size={11} color={C.brandSoft}>
+      <Pressable onPress={onChange} hitSlop={10}>
+        <Mono size={10} color={C.brandSoft} style={{ letterSpacing: 1.5 }}>
           CHANGE
         </Mono>
       </Pressable>
@@ -168,39 +242,130 @@ function SelectedRow({
   );
 }
 
-function MethodRow({
+/**
+ * A funding method as a full plate rather than a list line. The method choice
+ * is the only decision on that step, so it gets the room it deserves.
+ */
+function MethodPlate({
   title,
   sub,
+  detail,
+  glyph,
+  tag,
   onPress,
-  last,
 }: {
   title: string;
   sub: string;
+  detail: string;
+  glyph: React.ReactNode;
+  /** The one recommended route carries a mark; the rest stay unmarked. */
+  tag?: string;
   onPress?: () => void;
-  last?: boolean;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 14,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Body size={13.5} semibold>
-          {title}
-        </Body>
-        <Body size={11.5} color={C.dim} style={{ marginTop: 2 }}>
-          {sub}
-        </Body>
+    <PressableScale onPress={onPress} scale={0.985}>
+      <View
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        style={{
+          backgroundColor: C.raised,
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 20,
+          padding: 16,
+          overflow: "hidden",
+        }}
+      >
+        <Shine />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 13 }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 13,
+              backgroundColor: C.inset,
+              borderWidth: 1,
+              borderColor: C.hairline,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {glyph}
+          </View>
+          <View style={{ flex: 1 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <Body size={15} semibold>
+                {title}
+              </Body>
+              {tag ? (
+                <View
+                  style={{
+                    borderRadius: 99,
+                    borderWidth: 1,
+                    borderColor: "rgba(131,190,96,0.4)",
+                    backgroundColor: C.brandGlow,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Mono size={8.5} color={C.brandSoft} style={{ letterSpacing: 1.2 }}>
+                    {tag}
+                  </Mono>
+                </View>
+              ) : null}
+            </View>
+            <Body size={12} color={C.sub} style={{ marginTop: 3 }}>
+              {sub}
+            </Body>
+          </View>
+          <Chevron />
+        </View>
+        <View
+          style={{
+            marginTop: 13,
+            paddingTop: 11,
+            borderTopWidth: 1,
+            borderTopColor: C.hairline,
+          }}
+        >
+          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.1 }}>
+            {detail}
+          </Mono>
+        </View>
       </View>
-      <Text style={{ color: C.dim, fontSize: 18, fontFamily: F.body }}>›</Text>
-    </Pressable>
+    </PressableScale>
+  );
+}
+
+function BankGlyph() {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Path
+        d="M3 9.5 12 4l9 5.5M5 10v8m4.5-8v8m5-8v8m4.5-8v8M3 20h18"
+        stroke={C.silver}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+function ChainGlyph() {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Path
+        d="M10 14a4 4 0 0 0 5.7.3l3-3a4 4 0 0 0-5.7-5.7l-1.1 1.1M14 10a4 4 0 0 0-5.7-.3l-3 3a4 4 0 0 0 5.7 5.7l1.1-1.1"
+        stroke={C.silver}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
   );
 }
 
@@ -222,16 +387,45 @@ export default function FundScreen({
   // The address "mints" for a beat before it shows — the flow reads as
   // provisioning a real one, and the loading state gets exercised.
   const [ready, setReady] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [refreshed, setRefreshed] = useState(false);
+  const { copied, copy } = useCopy();
+
+  // Watch narration: the same "checked Ns ago" cadence the bank screen runs,
+  // so a wait on either rail reads as attended rather than abandoned.
+  const [now, setNow] = useState(() => Date.now());
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+
+  // The address plate settles into place once minted — the single motion
+  // moment on this screen.
+  const enter = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (step !== "address") return;
     setReady(false);
-    setCopied(false);
-    const t = setTimeout(() => setReady(true), 900);
+    enter.setValue(0);
+    const t = setTimeout(() => {
+      setReady(true);
+      Animated.spring(enter, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 13,
+        bounciness: 4,
+      }).start();
+    }, 900);
     return () => clearTimeout(t);
-  }, [step, net]);
+  }, [step, net, enter]);
+
+  useEffect(() => {
+    if (step !== "address" || !ready) return;
+    setNow(Date.now());
+    setLastChecked(Date.now());
+    const clock = setInterval(() => setNow(Date.now()), 1_000);
+    const poll = setInterval(() => setLastChecked(Date.now()), POLL_MS);
+    return () => {
+      clearInterval(clock);
+      clearInterval(poll);
+    };
+  }, [step, ready]);
 
   const q = query.trim().toLowerCase();
   const visible = q
@@ -270,60 +464,75 @@ export default function FundScreen({
     setStep("address");
   };
 
-  const copyAddr = async () => {
-    if (!net) return;
-    try {
-      await Clipboard.setStringAsync(net.addr);
-    } catch {}
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
-
   const refresh = () => {
+    setLastChecked(Date.now());
     setRefreshed(true);
     setTimeout(() => setRefreshed(false), 1600);
   };
 
   const title =
     step === "method"
-      ? "Fund wallet"
+      ? "Add funds"
       : step === "token"
         ? "What are you sending?"
         : step === "network"
           ? `Send ${tok ? tok.sym : ""} from…`
           : `Fund with ${tok ? tok.sym : ""}`;
 
+  const checkedAgo =
+    lastChecked === null
+      ? null
+      : Math.max(0, Math.round((now - lastChecked) / 1000));
+
   return (
     <Screen>
       <BackHeader title={title} onBack={back} />
 
       {step === "method" ? (
-        <View style={{ marginTop: 20 }}>
-          <Label>Choose a method</Label>
-          <Card style={{ marginTop: 10, paddingVertical: 4 }}>
-            <MethodRow
+        <View style={{ marginTop: 18 }}>
+          <Display size={19} color={C.silver} style={{ lineHeight: 27 }}>
+            Two ways in. Both land as naira,{"\n"}both land in your name.
+          </Display>
+
+          <Label style={{ marginTop: 26 }}>Choose a route</Label>
+          <View style={{ marginTop: 12, gap: 12 }}>
+            <MethodPlate
               title="Bank transfer"
-              sub="Free · one-off account · usually under 10s"
+              sub="A one-off account, issued to you for this transfer."
+              detail="NO FEE · CLEARS IN UNDER 10S"
+              glyph={<BankGlyph />}
+              tag="FASTEST"
               onPress={onBankTransfer}
             />
-            <MethodRow
+            <MethodPlate
               title="Crypto deposit"
-              sub="Any chain · auto-converts to ₦"
+              sub="Send from any chain. It converts on arrival."
+              detail="8 NETWORKS · CREDITED AT FILL"
+              glyph={<ChainGlyph />}
               onPress={() => setStep("token")}
-              last
             />
-          </Card>
-          <View style={{ marginTop: 16 }}>
-            <GhostButton label="Receive QR & details" onPress={onOpenReceive} />
           </View>
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ textAlign: "center", marginTop: 14 }}
+
+          <View
+            style={{
+              marginTop: 26,
+              paddingTop: 18,
+              borderTopWidth: 1,
+              borderTopColor: C.hairline,
+            }}
           >
-            Every method lands as Paradigm balance — spend it anywhere in the
-            app
-          </Body>
+            <GhostButton
+              label="Show my account details"
+              onPress={onOpenReceive}
+            />
+            <Body
+              size={11}
+              color={C.dim}
+              style={{ textAlign: "center", marginTop: 14, lineHeight: 17 }}
+            >
+              Your number and deposit codes, ready to hand to someone else.
+            </Body>
+          </View>
         </View>
       ) : null}
 
@@ -333,65 +542,83 @@ export default function FundScreen({
             Whatever you send arrives as ₦ in your balance.
           </Body>
 
-          <Label style={{ marginTop: 18 }}>Popular</Label>
+          <Label style={{ marginTop: 22 }}>Most sent</Label>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginTop: 10, marginHorizontal: -20 }}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+            style={{ marginTop: 12, marginHorizontal: -20 }}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 20 }}
           >
             {SPOTLIGHT.map((p) => {
               const n = NETWORKS.find((x) => x.key === p.net);
               if (!n) return null;
               return (
-                <Pressable
+                <PressableScale
                   key={p.sym + p.net}
                   onPress={() => pickPair(p.sym, p.net)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                    backgroundColor: C.card,
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    borderRadius: 14,
-                    paddingVertical: 9,
-                    paddingLeft: 10,
-                    paddingRight: 14,
-                  }}
+                  scale={0.97}
                 >
-                  <TokenBadge sym={p.sym} size={30} />
-                  <View>
-                    <Body size={12.5} semibold>
-                      {p.sym}
-                    </Body>
-                    <Body size={10.5} color={C.dim}>
-                      {n.label}
-                    </Body>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`${p.sym} on ${n.label}`}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 11,
+                      backgroundColor: C.raised,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      borderRadius: 16,
+                      paddingVertical: 11,
+                      paddingLeft: 11,
+                      paddingRight: 16,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Shine />
+                    <TokenBadge sym={p.sym} size={32} />
+                    <View>
+                      <Body size={13} semibold>
+                        {p.sym}
+                      </Body>
+                      <Mono size={10} color={C.dim} style={{ marginTop: 2 }}>
+                        {n.label} · min {n.min}
+                      </Mono>
+                    </View>
                   </View>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>
 
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search tokens"
-            placeholderTextColor={C.dim}
+          <View
             style={{
-              marginTop: 14,
+              marginTop: 18,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
               backgroundColor: C.key,
               borderWidth: 1,
               borderColor: C.border,
-              borderRadius: 14,
-              paddingHorizontal: 14,
-              paddingVertical: 11,
-              color: C.text,
-              fontFamily: F.body,
-              fontSize: 14,
+              borderRadius: 16,
+              paddingHorizontal: 15,
             }}
-          />
+          >
+            <SearchGlyph />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search tokens"
+              placeholderTextColor={C.dim}
+              style={{
+                flex: 1,
+                paddingVertical: 13,
+                color: C.text,
+                fontFamily: F.body,
+                fontSize: 14,
+              }}
+            />
+          </View>
 
           <Card style={{ marginTop: 12, paddingVertical: 4 }}>
             {visible.map((t, i) => (
@@ -401,59 +628,65 @@ export default function FundScreen({
                   setTok(t);
                   setStep("network");
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={t.sym}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 12,
-                  paddingVertical: 12,
+                  gap: 13,
+                  paddingVertical: 13,
                   borderBottomWidth: i === visible.length - 1 ? 0 : 1,
                   borderBottomColor: C.hairline,
                 }}
               >
                 <TokenBadge sym={t.sym} />
                 <View style={{ flex: 1 }}>
-                  <Body size={13.5} semibold>
+                  <Body size={14} semibold>
                     {t.sym}
                   </Body>
                   <Body size={11.5} color={C.dim} style={{ marginTop: 2 }}>
                     {t.name}
                   </Body>
                 </View>
-                <Body size={11} color={C.dim}>
-                  {t.nets.length} {t.nets.length === 1 ? "network" : "networks"}
-                </Body>
-                <Text style={{ color: C.dim, fontSize: 18, fontFamily: F.body }}>
-                  ›
-                </Text>
+                <Mono size={10.5} color={C.dim}>
+                  {t.nets.length} {t.nets.length === 1 ? "NETWORK" : "NETWORKS"}
+                </Mono>
+                <Chevron />
               </Pressable>
             ))}
             {visible.length === 0 ? (
-              <Body
-                size={12}
-                color={C.dim}
-                style={{ textAlign: "center", paddingVertical: 18 }}
-              >
-                No tokens match your search.
-              </Body>
+              <View style={{ paddingVertical: 26, alignItems: "center" }}>
+                <Body size={13} color={C.sub} semibold>
+                  Nothing by that name
+                </Body>
+                <Body
+                  size={11.5}
+                  color={C.dim}
+                  style={{ marginTop: 5, textAlign: "center" }}
+                >
+                  Try the ticker — USDC, BTC, SOL.
+                </Body>
+              </View>
             ) : null}
           </Card>
 
           {!q && !showAll && hidden > 0 ? (
             <Pressable
               onPress={() => setShowAll(true)}
+              accessibilityRole="button"
               style={{
                 marginTop: 12,
                 alignItems: "center",
-                paddingVertical: 12,
+                paddingVertical: 13,
                 borderRadius: 99,
                 borderWidth: 1,
-                borderStyle: "dashed",
-                borderColor: C.borderStrong,
+                borderColor: C.border,
+                backgroundColor: C.card,
               }}
             >
-              <Body size={12} color={C.sub} semibold>
-                More tokens (+{hidden})
-              </Body>
+              <Mono size={11} color={C.silver} style={{ letterSpacing: 1.4 }}>
+                MORE TOKENS · {hidden}
+              </Mono>
             </Pressable>
           ) : null}
         </View>
@@ -462,13 +695,14 @@ export default function FundScreen({
       {step === "network" && tok ? (
         <View style={{ marginTop: 8 }}>
           <Body size={12.5} color={C.sub}>
-            Pick the network you're sending on.
+            Pick the network you're sending on. It has to match the one you
+            send from.
           </Body>
 
           <SelectedRow
             sym={tok.sym}
             label={
-              <Body size={13.5} semibold>
+              <Body size={14} semibold>
                 {tok.sym}
               </Body>
             }
@@ -486,34 +720,39 @@ export default function FundScreen({
                   setNet(n);
                   setStep("address");
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={n.label}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 12,
-                  paddingVertical: 13,
+                  paddingVertical: 14,
                   borderBottomWidth: i === arr.length - 1 ? 0 : 1,
                   borderBottomColor: C.hairline,
                 }}
               >
-                <Body size={13.5} semibold style={{ flex: 1 }}>
+                <Body size={14} semibold style={{ flex: 1 }}>
                   {n.label}
                 </Body>
-                <Body size={11} color={C.dim}>
-                  Min ≈ {n.min}
-                </Body>
-                <Text style={{ color: C.dim, fontSize: 18, fontFamily: F.body }}>
-                  ›
-                </Text>
+                <Mono size={10.5} color={C.dim}>
+                  MIN {n.min}
+                </Mono>
+                <Chevron />
               </Pressable>
             ))}
             {netsFor(tok).length === 0 ? (
-              <Body
-                size={12}
-                color={C.dim}
-                style={{ textAlign: "center", paddingVertical: 18 }}
-              >
-                No supported networks for {tok.sym} right now.
-              </Body>
+              <View style={{ paddingVertical: 26, alignItems: "center" }}>
+                <Body size={13} color={C.sub} semibold>
+                  No route for {tok.sym} yet
+                </Body>
+                <Body
+                  size={11.5}
+                  color={C.dim}
+                  style={{ marginTop: 5, textAlign: "center" }}
+                >
+                  Send a stablecoin instead — it lands the same way.
+                </Body>
+              </View>
             ) : null}
           </Card>
         </View>
@@ -524,9 +763,9 @@ export default function FundScreen({
           <SelectedRow
             sym={tok.sym}
             label={
-              <Body size={13.5} semibold>
+              <Body size={14} semibold>
                 {tok.sym}
-                <Body size={13.5} color={C.dim}>
+                <Body size={14} color={C.dim}>
                   {" "}
                   on{" "}
                 </Body>
@@ -540,141 +779,151 @@ export default function FundScreen({
           />
 
           {!ready ? (
-            <Body
-              size={12.5}
-              color={C.dim}
-              style={{ textAlign: "center", marginTop: 36 }}
-            >
-              Creating your deposit address…
-            </Body>
-          ) : (
-            <View>
+            <View style={{ marginTop: 26, alignItems: "center" }}>
               <View
                 style={{
-                  width: 150,
-                  height: 150,
-                  borderRadius: 16,
-                  alignSelf: "center",
-                  marginTop: 20,
-                  backgroundColor: C.key,
+                  width: 196,
+                  height: 196,
+                  borderRadius: 26,
+                  backgroundColor: C.raised,
                   borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: "rgba(199,204,209,0.3)",
+                  borderColor: C.hairline,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Mono size={10} color={C.dim}>
-                  QR · {tok.sym} on {net.label}
-                </Mono>
+                <PulseDot color={C.brandSoft} size={7} />
               </View>
+              <Mono
+                size={10}
+                color={C.dim}
+                style={{ marginTop: 18, letterSpacing: 1.5 }}
+              >
+                MINTING YOUR {net.label.toUpperCase()} ADDRESS
+              </Mono>
+            </View>
+          ) : (
+            <Animated.View
+              style={{
+                opacity: enter,
+                transform: [
+                  {
+                    translateY: enter.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [14, 0],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <QrPlate
+                value={net.addr}
+                size={172}
+                caption={`${tok.sym} · ${net.label}`}
+                style={{ marginTop: 20 }}
+              />
 
-              <Pressable
-                onPress={copyAddr}
-                style={{
-                  marginTop: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  backgroundColor: C.card,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  borderRadius: 14,
-                  paddingVertical: 13,
-                }}
+              <CopyField
+                onPress={() => void copy("addr", net.addr)}
+                copied={copied === "addr"}
+                label="COPY"
+                accessibilityLabel="Copy deposit address"
+                style={{ marginTop: 18 }}
               >
                 <Mono
-                  size={13}
+                  size={12.5}
                   color={C.text}
-                  style={{ fontFamily: F.monoSemibold }}
+                  style={{ fontFamily: F.monoSemibold, lineHeight: 19 }}
                 >
-                  {truncate(net.addr)}
+                  {net.addr}
                 </Mono>
-                <Mono size={10} color={copied ? C.up : C.dim}>
-                  {copied ? "✓ COPIED" : "COPY"}
-                </Mono>
-              </Pressable>
+              </CopyField>
 
+              {/* One accent block on this view. The safety rule and the floor
+                  are the same instruction — split across two coloured slabs
+                  they read as two alarms instead of one set of terms. */}
               <View
                 style={{
-                  marginTop: 14,
+                  marginTop: 12,
                   backgroundColor: C.brandGlow,
                   borderWidth: 1,
-                  borderColor: "rgba(221,179,90,0.35)",
-                  borderRadius: 14,
-                  padding: 13,
+                  borderColor: "rgba(131,190,96,0.35)",
+                  borderRadius: 16,
+                  padding: 14,
                 }}
               >
-                <Body size={12} color={C.brandSoft} style={{ lineHeight: 17.5 }}>
-                  Send only {tok.sym} on {net.label} to this address — anything
-                  else may be lost.
+                <Body size={12.5} color={C.brandSoft} style={{ lineHeight: 18 }}>
+                  Send only {tok.sym} on {net.label}. Another asset or another
+                  chain cannot be recovered.
                 </Body>
-              </View>
-              <View
-                style={{
-                  marginTop: 10,
-                  backgroundColor: "rgba(245,184,61,0.1)",
-                  borderWidth: 1,
-                  borderColor: "rgba(245,184,61,0.35)",
-                  borderRadius: 14,
-                  padding: 13,
-                }}
-              >
-                <Body size={12} color={C.amber} style={{ lineHeight: 17.5 }}>
-                  Minimum deposit ≈ {net.min}. Smaller amounts may not be
-                  credited.
-                </Body>
+                <View
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(131,190,96,0.2)",
+                  }}
+                >
+                  <Body size={11.5} color={C.dim} style={{ lineHeight: 17 }}>
+                    <Mono size={11.5} color={C.silver}>
+                      {net.min} minimum
+                    </Mono>
+                    {" — anything under that may not credit."}
+                  </Body>
+                </View>
               </View>
 
               <View
                 style={{
-                  marginTop: 14,
-                  alignSelf: "center",
-                  backgroundColor: C.upBg,
-                  borderWidth: 1,
-                  borderColor: "rgba(124,231,176,0.35)",
-                  borderRadius: 99,
-                  paddingVertical: 5,
-                  paddingHorizontal: 12,
+                  marginTop: 22,
+                  paddingTop: 18,
+                  borderTopWidth: 1,
+                  borderTopColor: C.hairline,
                 }}
               >
-                <Body size={11} color={C.up} semibold>
-                  ↓ Auto-converts to your ₦ balance
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 9,
+                  }}
+                >
+                  <PulseDot />
+                  <Body size={13} color={C.silver}>
+                    Watching the chain for your deposit
+                  </Body>
+                </View>
+                <Mono
+                  size={10}
+                  color={C.dim}
+                  style={{
+                    textAlign: "center",
+                    marginTop: 8,
+                    letterSpacing: 1.2,
+                  }}
+                >
+                  {checkedAgo === null
+                    ? "STANDING BY"
+                    : `CHECKED ${checkedAgo}S AGO`}
+                </Mono>
+                <Body
+                  size={11.5}
+                  color={C.dim}
+                  style={{ textAlign: "center", marginTop: 12, lineHeight: 18 }}
+                >
+                  It converts to naira and credits on arrival — usually inside a
+                  minute. Leave if you like; it lands either way.
                 </Body>
-              </View>
 
-              <View
-                style={{
-                  marginTop: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                <PulseDot />
-                <Body size={12.5} color={C.sub}>
-                  Waiting for your deposit…
-                </Body>
+                <View style={{ marginTop: 18 }}>
+                  <GhostButton
+                    label={refreshed ? "Up to date" : "Refresh balance"}
+                    onPress={refresh}
+                  />
+                </View>
               </View>
-              <Body
-                size={11}
-                color={C.dim}
-                style={{ textAlign: "center", marginTop: 10, lineHeight: 17 }}
-              >
-                Your balance credits automatically once the transfer confirms —
-                usually within a minute. You can leave this screen; it lands
-                either way.
-              </Body>
-
-              <View style={{ marginTop: 16 }}>
-                <GhostButton
-                  label={refreshed ? "Up to date ✓" : "Refresh balance"}
-                  onPress={refresh}
-                />
-              </View>
-            </View>
+            </Animated.View>
           )}
         </View>
       ) : null}

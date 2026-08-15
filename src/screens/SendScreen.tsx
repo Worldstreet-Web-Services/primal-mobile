@@ -94,7 +94,13 @@ function Head({
   );
 }
 
-function Check({ size = 13, color = C.brandSoft }: { size?: number; color?: string }) {
+function Check({
+  size = 13,
+  color = C.brandSoft,
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -154,7 +160,13 @@ function Panel({
   );
 }
 
-function Avatar({ initials, internal }: { initials: string; internal?: boolean }) {
+function Avatar({
+  initials,
+  internal,
+}: {
+  initials: string;
+  internal?: boolean;
+}) {
   return (
     <View
       style={{
@@ -338,10 +350,21 @@ export default function SendScreen({
                 />
               ))}
             </Panel>
-            <SectionRule space={18} />
-            <Body size={11.5} color={C.dim} style={{ textAlign: "center" }}>
-              Tags settle instantly. Nothing leaves Paradigm, so nothing is charged.
-            </Body>
+            <SectionRule space={22} />
+            {/* The register closes on a statement rather than trailing off
+                into empty canvas — the quiet half of an empty state. */}
+            <View style={{ alignItems: "center" }}>
+              <Display size={15} color={C.sub} style={{ textAlign: "center" }}>
+                Instant between Paradigm accounts.
+              </Display>
+              <Mono
+                size={9}
+                color={C.dim}
+                style={{ marginTop: 10, letterSpacing: 1.6 }}
+              >
+                NO RAIL · NO WAIT · NO FEE
+              </Mono>
+            </View>
           </View>
         ) : (
           <View style={{ marginTop: 26 }}>
@@ -370,7 +393,11 @@ export default function SendScreen({
                     justifyContent: "center",
                   }}
                 >
-                  <Mono size={12} color={C.silver} style={{ letterSpacing: 0.8 }}>
+                  <Mono
+                    size={12}
+                    color={C.silver}
+                    style={{ letterSpacing: 0.8 }}
+                  >
                     GT
                   </Mono>
                 </View>
@@ -463,7 +490,11 @@ export default function SendScreen({
                   }}
                 >
                   <Check size={11} />
-                  <Mono size={9} color={C.brandSoft} style={{ letterSpacing: 1.4 }}>
+                  <Mono
+                    size={9}
+                    color={C.brandSoft}
+                    style={{ letterSpacing: 1.4 }}
+                  >
                     RETURNED BY GTBANK
                   </Mono>
                 </View>

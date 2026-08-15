@@ -32,7 +32,13 @@ const amount = {
   total: "₦45,026.88",
 };
 
-function Check({ size = 18, color = C.brandSoft }: { size?: number; color?: string }) {
+function Check({
+  size = 18,
+  color = C.brandSoft,
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path

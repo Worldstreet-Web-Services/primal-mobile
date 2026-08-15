@@ -3,7 +3,7 @@ import { Text, View, type ViewStyle } from "react-native";
 
 import { C, F } from "../theme/tokens";
 import { TrendUpIcon } from "./icons";
-import { AmountText, Display, PressableScale, Shine } from "./ui";
+import { AmountText, Display, PressableScale } from "./ui";
 
 /** What replaces the figure when it's hidden. */
 const MASK = "••••••";
@@ -71,22 +71,16 @@ export function BalanceCard({
     >
       <View
         style={{
-          borderRadius: 22,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
           overflow: "hidden",
           paddingHorizontal: 18,
           paddingTop: 20,
           paddingBottom: 34,
         }}
       >
-        <Shine />
+        {/* <Shine /> */}
 
         {delta && !isHidden ? (
-          <View
-            style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-          >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <View
               style={{
                 flexDirection: "row",
@@ -102,7 +96,11 @@ export function BalanceCard({
             >
               <TrendUpIcon size={13} color={tone} />
               <Text
-                style={{ fontFamily: F.bodySemibold, fontSize: 13, color: tone }}
+                style={{
+                  fontFamily: F.bodySemibold,
+                  fontSize: 13,
+                  color: tone,
+                }}
               >
                 {delta.value}
               </Text>
@@ -143,7 +141,7 @@ export function BalanceCard({
                 fontFamily: F.monoSemibold,
                 fontSize: 11,
                 letterSpacing: 1.8,
-                color: C.text,
+                color: C.brand,
               }}
             >
               {currency.toUpperCase()}

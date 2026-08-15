@@ -20,7 +20,7 @@ const RING_CENTER = 0.61;
  * top. Width again, not height — it has to clear the outer orbit ring, and the
  * rings scale with the artwork.
  */
-const COPY_TOP = 1.02;
+const COPY_TOP = 1.3;
 
 /** One full breath of the drift, in ms. Slow enough to read as ambient. */
 const DRIFT = 3800;
@@ -187,9 +187,9 @@ export default function ContinueScreen({
           {brand.toUpperCase()}
         </Display>
 
-        <Mono size={13} style={{ letterSpacing: 1.6, marginTop: 16 }}>
+        <Mono size={18} style={{ letterSpacing: 1.6, marginTop: 16 }}>
           {`${tagline.toUpperCase()} `}
-          <Mono size={13} color={C.brand} style={{ letterSpacing: 1.6 }}>
+          <Mono size={18} color={C.brand} style={{ letterSpacing: 1.6 }}>
             {taglineAccent.toUpperCase()}
           </Mono>
         </Mono>

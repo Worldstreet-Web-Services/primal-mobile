@@ -1,127 +1,153 @@
-import React from "react";
-import { View } from "react-native";
-import { C } from "../theme/tokens";
+import { useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+
 import {
-  Screen,
-  BackHeader,
-  Card,
-  Label,
-  Mono,
-  Body,
-  Display,
-} from "../components/ui";
+  CategoryTabs,
+  FeaturedStory,
+  NewsCard,
+  SectionHeader,
+  TopicRow,
+} from "../components/news";
+import { BackChevron, Display, Screen } from "../components/ui";
+import {
+  categories,
+  featured,
+  latest,
+  recommended,
+  type Article,
+} from "../data/news";
+import { C } from "../theme/tokens";
 
-// The News — curated daily briefs across the Paradigm ecosystem.
-const featured = {
-  tag: "MARKETS",
-  headline: "Naira steadies as remit corridors reopen",
-  sub: "Parallel-market spreads narrowed to a three-month low after two corridor partners resumed same-day settlement over the weekend.",
-  meta: "5 min read · 08:40",
-};
+/** Screen gutter. Rows that run to the edge give it back as negative margin. */
+const PAD = 16;
 
-const articles = [
-  {
-    tag: "KASH",
-    headline: "KSH settlement price prints $1.354 at the Saturday mint",
-    time: "07:55",
-  },
-  {
-    tag: "CRYPTO",
-    headline: "USDC flows on Base hit a weekly high as fees stay under a cent",
-    time: "07:20",
-  },
-  {
-    tag: "PARADIGM",
-    headline: "Last Man pot clears ₦4.2m — the biggest round on record",
-    time: "06:48",
-  },
-  {
-    tag: "MARKETS",
-    headline: "Copy-trading leaders rotate into gold pairs ahead of CPI",
-    time: "06:10",
-  },
-  {
-    tag: "CRYPTO",
-    headline: "BTC holds $112k as ETF inflows stretch to a ninth straight day",
-    time: "05:32",
-  },
-];
-
-function TagPill({ tag }: { tag: string }) {
+/**
+ * Centred title with a circular back button — the editorial header, distinct
+ * from the app's `BackHeader` (title beside the chevron), which would read as
+ * a settings page here.
+ */
+function NewsHeader({ onBack }: { onBack?: () => void }) {
   return (
     <View
       style={{
-        alignSelf: "flex-start",
-        backgroundColor: C.key,
-        borderRadius: 6,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+        height: 44,
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 6,
       }}
     >
-      <Mono
-        size={9}
-        color={C.silver}
-        style={{ letterSpacing: 1.5, textTransform: "uppercase" }}
+      <Display size={17}>News</Display>
+
+      <Pressable
+        onPress={onBack}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        style={{
+          position: "absolute",
+          left: 0,
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: C.raised,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        {tag}
-      </Mono>
+        <BackChevron color={C.text} />
+      </Pressable>
     </View>
   );
 }
 
-export default function NewsScreen({ onBack }: { onBack?: () => void }) {
+/**
+ * The News (PRD §5). A lead story over its gallery, a carousel of the latest,
+ * and a recommendation shelf — filtered by the category row up top.
+ *
+ * Filtering is local and client-side for now: the feed arrives whole, so the
+ * tabs partition what's already here. It becomes a query param on the day the
+ * editorial endpoint lands.
+ */
+export default function NewsScreen({
+  onBack,
+  onOpenArticle,
+  onViewAll,
+  bottom = 40,
+}: {
+  onBack?: () => void;
+  onOpenArticle?: (key: string) => void;
+  /** Which shelf's "View All" was tapped. */
+  onViewAll?: (section: "latest" | "recommended") => void;
+  bottom?: number;
+}) {
+  const [category, setCategory] = useState(0);
+
+  const open = (key: string) => onOpenArticle?.(key);
+  const cardKey = (article: Article) => article.key;
+
   return (
-    <Screen>
-      <BackHeader title="The News" onBack={onBack} />
-      <Card style={{ marginTop: 18, borderRadius: 22, padding: 18 }}>
-        <TagPill tag={featured.tag} />
-        <Display size={18} style={{ marginTop: 12, lineHeight: 24 }}>
-          {featured.headline}
-        </Display>
-        <Body size={12} color={C.dim} style={{ marginTop: 8, lineHeight: 18 }}>
-          {featured.sub}
-        </Body>
-        <Mono size={10} color={C.dim} style={{ marginTop: 12 }}>
-          {featured.meta}
-        </Mono>
-      </Card>
-      <View style={{ marginTop: 22 }}>
-        <Label>Today</Label>
-        {articles.map((a, i) => (
-          <View
-            key={a.headline}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 14,
-              borderBottomWidth: i === articles.length - 1 ? 0 : 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <TagPill tag={a.tag} />
-              <Body
-                size={13.5}
-                semibold
-                style={{ marginTop: 7, lineHeight: 19 }}
-              >
-                {a.headline}
-              </Body>
-            </View>
-            <Mono size={10} color={C.dim}>
-              {a.time}
-            </Mono>
-          </View>
-        ))}
+    <Screen pad={PAD} bottom={bottom}>
+      <View style={{ marginTop: 8 }}>
+        <CategoryTabs
+          categories={categories}
+          active={category}
+          onChange={setCategory}
+          bleed={PAD}
+        />
       </View>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 20, marginBottom: 8 }}
+
+      <View style={{ marginTop: 18 }}>
+        <FeaturedStory article={featured} onPress={open} />
+      </View>
+
+      <SectionHeader
+        title="Latest News"
+        onAction={() => onViewAll?.("latest")}
+        style={{ marginTop: 26 }}
+      />
+
+      {/* Runs off the right edge, so it reclaims the gutter and re-applies it
+          as content padding — the first card still lines up with the header. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: -PAD, marginTop: 14 }}
+        contentContainerStyle={{ paddingHorizontal: PAD, gap: 14 }}
       >
-        Curated daily — no doomscrolling.
-      </Body>
+        {latest.map((article) => (
+          <NewsCard key={cardKey(article)} article={article} onPress={open} />
+        ))}
+      </ScrollView>
+
+      {/* Raised panel, full-bleed: the shelf reads as the foot of the page. */}
+      <View
+        style={{
+          marginTop: 28,
+          marginHorizontal: -PAD,
+          paddingHorizontal: PAD,
+          paddingTop: 18,
+          paddingBottom: 6,
+          backgroundColor: C.raised,
+          borderTopLeftRadius: 22,
+          borderTopRightRadius: 22,
+        }}
+      >
+        <SectionHeader
+          title="Recommendation Topic"
+          onAction={() => onViewAll?.("recommended")}
+        />
+
+        <View style={{ marginTop: 4 }}>
+          {recommended.map((article, i) => (
+            <TopicRow
+              key={cardKey(article)}
+              article={article}
+              onPress={open}
+              divider={i < recommended.length - 1}
+            />
+          ))}
+        </View>
+      </View>
     </Screen>
   );
 }

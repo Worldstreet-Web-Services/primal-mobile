@@ -100,7 +100,11 @@ export function OptionRow({
           ) : null}
         </View>
 
-        <ArrowRight size={22} color={selected ? C.brandInk : C.brand} />
+        <ArrowRight
+          size={22}
+          color={selected ? C.brandInk : C.brand}
+          strokeWidth={4}
+        />
       </View>
     </PressableScale>
   );

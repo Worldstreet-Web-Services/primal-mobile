@@ -355,26 +355,36 @@ export function GhostButton({
   onPress,
   height = 46,
   radius = PILL,
+  size = 13,
+  style,
 }: {
   label: string;
   onPress?: () => void;
   height?: number;
   radius?: number;
+  /** Label size — raise it when the button is paired with a full-weight CTA. */
+  size?: number;
+  style?: ViewStyle;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        height,
-        borderRadius: radius,
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.border,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={[
+        {
+          height,
+          borderRadius: radius,
+          backgroundColor: C.card,
+          borderWidth: 1,
+          borderColor: C.border,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        style,
+      ]}
     >
-      <Text style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: 13 }}>
+      <Text style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: size }}>
         {label}
       </Text>
     </Pressable>
@@ -428,15 +438,19 @@ export function Display({
   children,
   size = 34,
   color = C.text,
+  numberOfLines,
   style,
 }: {
   children: React.ReactNode;
   size?: number;
   color?: string;
+  /** Clamp to this many lines, ellipsizing the overflow. */
+  numberOfLines?: number;
   style?: TextStyle;
 }) {
   return (
     <Text
+      numberOfLines={numberOfLines}
       style={[
         {
           fontFamily: F.display,
@@ -497,16 +511,20 @@ export function Body({
   size = 13,
   color = C.text,
   semibold,
+  numberOfLines,
   style,
 }: {
   children: React.ReactNode;
   size?: number;
   color?: string;
   semibold?: boolean;
+  /** Clamp to this many lines, ellipsizing the overflow. */
+  numberOfLines?: number;
   style?: TextStyle;
 }) {
   return (
     <Text
+      numberOfLines={numberOfLines}
       style={[
         {
           fontFamily: semibold ? F.bodySemibold : F.body,
@@ -871,43 +889,150 @@ export function Chip({
   active,
   onPress,
   tone = "silver",
+  compact = false,
+  style,
 }: {
   label: string;
   active?: boolean;
   onPress?: () => void;
-  /** Which accent marks the selected chip — chrome by default, brand on trade surfaces. */
-  tone?: "silver" | "brand";
+  /**
+   * Which accent marks the selected chip — chrome by default, brand on trade
+   * surfaces, `highlight` where the selection sits over green candles and the
+   * brand color would disappear into them.
+   */
+  tone?: "silver" | "brand" | "highlight";
+  /** Tighter padding, for a row that has to fit many (a range picker). */
+  compact?: boolean;
+  style?: ViewStyle;
 }) {
-  const brandTone = tone === "brand";
-  const accent = brandTone ? C.brandSoft : C.accent;
+  const accent =
+    tone === "brand"
+      ? C.brandSoft
+      : tone === "highlight"
+        ? C.highlight
+        : C.accent;
+  const activeFill =
+    tone === "brand"
+      ? C.brandGlow
+      : tone === "highlight"
+        ? "transparent"
+        : "rgba(255,255,255,0.1)";
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
-      style={{
-        paddingHorizontal: 15,
-        paddingVertical: 9,
-        borderRadius: 99,
-        borderWidth: 1,
-        borderColor: active ? accent : C.border,
-        backgroundColor: active
-          ? brandTone
-            ? C.brandGlow
-            : "rgba(255,255,255,0.1)"
-          : C.card,
-      }}
+      style={[
+        {
+          paddingHorizontal: compact ? 8 : 15,
+          paddingVertical: compact ? 8 : 9,
+          borderRadius: PILL,
+          borderWidth: 1,
+          borderColor: active ? accent : compact ? "transparent" : C.border,
+          backgroundColor: active ? activeFill : C.card,
+          alignItems: "center",
+        },
+        style,
+      ]}
     >
       <Text
         style={{
           fontFamily: F.bodySemibold,
-          fontSize: 12,
-          color: active ? (brandTone ? C.brandSoft : "#e8e8ea") : C.silver,
+          fontSize: compact ? 11.5 : 12,
+          color: active ? (tone === "silver" ? "#e8e8ea" : accent) : C.silver,
         }}
       >
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/**
+ * Label on the left, value on the right, hairline underneath — the receipt
+ * shape. Used wherever a screen has to state a handful of facts about one
+ * thing (a position, a transfer, a plan).
+ */
+export function KeyValueRow({
+  label,
+  value,
+  /** Accent for the value — a P&L figure, a warning. */
+  valueColor = C.text,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+  last?: boolean;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingVertical: 15,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: C.hairline,
+      }}
+    >
+      <Text
+        style={{ flex: 1, fontFamily: F.body, fontSize: 13.5, color: C.sub }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          fontFamily: F.bodySemibold,
+          fontSize: 14,
+          color: valueColor,
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+export interface KeyValue {
+  label: string;
+  /** Preformatted — the UI never does the math. */
+  value: string;
+  valueColor?: string;
+}
+
+/** The rows above, grouped into one card. */
+export function KeyValueList({
+  rows,
+  style,
+}: {
+  rows: KeyValue[];
+  style?: ViewStyle;
+}) {
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: C.raised,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: C.hairline,
+          paddingHorizontal: 16,
+        },
+        style,
+      ]}
+    >
+      {rows.map((row, i) => (
+        <KeyValueRow
+          key={row.label}
+          label={row.label}
+          value={row.value}
+          valueColor={row.valueColor}
+          last={i === rows.length - 1}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -924,6 +1049,7 @@ export function PrimaryButton({
   radius = PILL,
   uppercase = true,
   color = C.brandSoft,
+  style,
 }: {
   label: string;
   onPress?: () => void;
@@ -936,9 +1062,10 @@ export function PrimaryButton({
   uppercase?: boolean;
   /** Fill. `C.brand` is the brighter cousin, for a lone CTA on a dark page. */
   color?: string;
+  style?: ViewStyle;
 }) {
   return (
-    <PressableScale onPress={onPress} scale={0.98}>
+    <PressableScale onPress={onPress} scale={0.98} style={style}>
       <View
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -1022,6 +1149,74 @@ export function OutlineButton({
 }
 
 /**
+ * Pill action on a glass ground, sized to its label rather than the gutter.
+ *
+ * The shape for something that floats over scrolling content: it reads as
+ * chrome sitting above the page instead of a block ending it, and the narrow
+ * width leaves the rows either side of it visible.
+ */
+export function GlassButton({
+  label,
+  onPress,
+  icon,
+  height = 56,
+  effect = "regular",
+  tintOpacity,
+  style,
+}: {
+  label: string;
+  onPress?: () => void;
+  icon?: React.ReactNode;
+  height?: number;
+  /** Blur strength on devices with native glass. */
+  effect?: GlassStyle;
+  /** 0–1 darkening over the blur. Omit for the shared chrome value. */
+  tintOpacity?: number;
+  style?: ViewStyle;
+}) {
+  return (
+    <PressableScale onPress={onPress} scale={0.97} style={style}>
+      <View
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={{
+          height,
+          paddingHorizontal: 28,
+          borderRadius: PILL,
+          // Clips the glass to the pill; the layer draws its own backing and
+          // squares itself off otherwise.
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: C.border,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+        }}
+      >
+        <GlassSurface
+          radius={PILL}
+          bordered={false}
+          effect={effect}
+          tintOpacity={tintOpacity}
+        />
+        {icon}
+        <Text
+          style={{
+            fontFamily: F.bodySemibold,
+            fontSize: 14,
+            letterSpacing: 1.4,
+            color: C.text,
+          }}
+        >
+          {label.toUpperCase()}
+        </Text>
+      </View>
+    </PressableScale>
+  );
+}
+
+/**
  * A sign-in row: provider mark on the left, sentence-case label beside it,
  * pill shape. Sentence case is the point — every other button in the system
  * shouts in uppercase, and a provider's name is a proper noun, not a command.
@@ -1063,7 +1258,7 @@ export function AuthButton({
         {icon}
         <Text
           style={{
-            fontFamily: F.bodyMedium,
+            fontFamily: F.bodySemibold,
             fontSize: 15,
             color: brand ? C.brandSoftInk : C.text,
           }}

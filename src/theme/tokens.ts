@@ -16,6 +16,11 @@ export const C = {
   // reads as a signal light rather than a gain figure — never used for money.
   live: "#4ADE80",
   amber: "#F5B83D",
+  // Marks the current instant on a chart surface — the live price tag, the
+  // selected range. Deliberately not the brand green: it has to read *against*
+  // candles that are already green, so it can never be a money semantic.
+  highlight: "#D9F24B",
+  highlightInk: "#12180A",
   ink: "#0a0a0a",
   sheet: "#0f1012",
   key: "#14161A",

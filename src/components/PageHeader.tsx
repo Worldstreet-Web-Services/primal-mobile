@@ -33,7 +33,7 @@ export function PageHeader({
         {
           paddingTop: insets.top + 6,
           paddingHorizontal: 14,
-          paddingBottom: 10,
+          paddingBottom: 20,
           justifyContent: "center",
         },
         style,
@@ -56,14 +56,8 @@ export function PageHeader({
       </Text>
 
       {onBack ? (
-        <View
-          style={{ position: "absolute", left: 14, top: insets.top + 6 }}
-        >
-          <CircleAction
-            onPress={onBack}
-            size={36}
-            accessibilityLabel="Go back"
-          >
+        <View style={{ position: "absolute", left: 14, top: insets.top }}>
+          <CircleAction onPress={onBack} size={36} accessibilityLabel="Go back">
             <BackChevron color={C.text} />
           </CircleAction>
         </View>

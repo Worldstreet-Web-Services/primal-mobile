@@ -18,6 +18,10 @@ const FADE_HEIGHT = 34;
  * The glass is left unscrimmed by default — same translucency as `NavHeader`,
  * so whatever sits behind stays visible through it. `effect` and `tintOpacity`
  * are the two dials on that: blur strength and darkening, tuned independently.
+ *
+ * This is fixed chrome that animates in and stays. For a sheet the user can
+ * dismiss, use `Sheet` — it is built on a gesture library rather than
+ * re-implementing drag physics here.
  */
 export function GlassDrawer({
   children,
@@ -49,7 +53,6 @@ export function GlassDrawer({
 }) {
   const y = useRef(new Animated.Value(0)).current;
   const [measured, setMeasured] = useState(false);
-
   return (
     <Animated.View
       onLayout={(e) => {
@@ -112,6 +115,7 @@ export function GlassDrawer({
           }}
         />
         {prism > 0 ? <Prism width={width + 128} intensity={prism} /> : null}
+
         {children}
       </View>
     </Animated.View>

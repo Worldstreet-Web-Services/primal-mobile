@@ -7,14 +7,14 @@ import type { BalanceStats } from "@/components/trade";
  * rewards engine rejects JSON numbers and caps at 6 decimal places.
  */
 
+// No `live`/`status`: the earn balance settles weekly rather than ticking, so
+// there is no market state to report and the card leads straight with the move.
 export const earnPortfolio: BalanceStats = {
-  total: "$8,585.60",
+  total: "$10,383.42",
   currency: "USD",
-  gain: "+$1,204.18",
+  gain: "+$3,204.18",
   gainPct: "+6.9%",
   period: "this month",
-  live: true,
-  status: "Market Open",
 };
 
 export const kashQuote: Quote = {

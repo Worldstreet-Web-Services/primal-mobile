@@ -1,29 +1,23 @@
-import { type ImageSource } from "expo-image";
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 
-import {
-  BalanceSummary,
-  TradeList,
-  type BalanceStats,
-  type Position,
-} from "@/components/trade";
-import { Chip, OutlineButton, PILL } from "@/components/ui";
+import { BalanceCard } from "@/components/BalanceCard";
 import { PlusIcon } from "@/components/icons";
+import { TradeList, type Position } from "@/components/trade";
+import { Chip, PrimaryButton, Screen } from "@/components/ui";
 import {
   openPositions as defaultPositions,
   tradingBalance as defaultBalance,
   tradeFilters,
   type TradeFilter,
 } from "@/data/trades";
-import { C } from "@/theme/tokens";
-import { Screen } from "@/components/ui";
+import type { BalanceStats } from "@/components/trade";
+import { C, F } from "@/theme/tokens";
 
 export interface CopyTradingScreenProps {
   balance?: BalanceStats;
   positions?: Position[];
-  artwork?: ImageSource | number;
-  /** Head space for the floating nav header. */
+  /** Head space for a floating nav header, when one is mounted above. */
   top?: number;
   onFund?: () => void;
   onCopy?: (id: string) => void;
@@ -37,7 +31,6 @@ export interface CopyTradingScreenProps {
 export default function CopyTradingScreen({
   balance = defaultBalance,
   positions = defaultPositions,
-  artwork,
   top = 0,
   onFund,
   onCopy,
@@ -53,31 +46,23 @@ export default function CopyTradingScreen({
   );
 
   return (
-    <Screen pad={16} top={top} bottom={130}>
-      <View style={{ marginTop: 18 }}>
-        <BalanceSummary stats={balance} artwork={artwork} />
-      </View>
+    <Screen pad={14} top={top} bottom={130}>
+      <BalanceCard
+        amount={balance.total}
+        currency={`in ${balance.currency}`}
+        delta={{
+          value: balance.gain,
+          caption: `${balance.gainPct} ${balance.period}`,
+        }}
+      />
 
-      <View style={{ marginTop: 22 }}>
-        <OutlineButton
-          label="Fund wallet"
-          onPress={onFund}
-          icon={
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: PILL,
-                backgroundColor: C.brandSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <PlusIcon size={13} color={C.brandSoftInk} />
-            </View>
-          }
-        />
-      </View>
+      <PrimaryButton
+        label="Fund account"
+        color={C.brand}
+        onPress={onFund}
+        icon={<PlusIcon size={18} color={C.brandSoftInk} />}
+        style={{ marginTop: 20 }}
+      />
 
       <View style={{ flexDirection: "row", gap: 10, marginTop: 22 }}>
         {tradeFilters.map((f) => (
@@ -91,7 +76,22 @@ export default function CopyTradingScreen({
         ))}
       </View>
 
-      <View style={{ marginTop: 20 }}>
+      {/* Counts what's on screen, not what arrived — the filter is the whole
+          point of the row above it. */}
+      <Text
+        style={{
+          fontFamily: F.mono,
+          fontSize: 10,
+          letterSpacing: 1.5,
+          color: C.dim,
+          textAlign: "center",
+          marginTop: 16,
+        }}
+      >
+        {`${visible.length} TRADE${visible.length === 1 ? "" : "S"} · LIVE`}
+      </Text>
+
+      <View style={{ marginTop: 14 }}>
         <TradeList positions={visible} onCopy={onCopy} />
       </View>
     </Screen>

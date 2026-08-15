@@ -150,7 +150,7 @@ export default function WelcomeScreen({
         }}
       >
         <View style={{ alignItems: "center", justifyContent: "center" }}>
-          <Bloom size={bloom} />
+          {/* <Bloom size={bloom} /> */}
           <Logo width={logoW} />
         </View>
       </Animated.View>
@@ -162,11 +162,11 @@ export default function WelcomeScreen({
         // the blur; the tint is what buys the headline its contrast back —
         // raise it toward 0.8 for a heavier slab, drop it to 0 for bare glass.
         effect="clear"
-        tintOpacity={0.55}
+        tintOpacity={0.95}
         style={{
-          paddingTop: 34,
+          paddingTop: 45,
           paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 16) + 10,
+          paddingBottom: Math.max(insets.bottom, 56) + 10,
         }}
         prism={0.18}
       >
@@ -180,6 +180,7 @@ export default function WelcomeScreen({
                   lineHeight: 45,
                   letterSpacing: 0.2,
                   color: i === 2 ? C.brand : C.text,
+                  textAlign: "center",
                 }}
               >
                 {line}
@@ -187,20 +188,6 @@ export default function WelcomeScreen({
             </Animated.View>
           ),
         )}
-
-        <Animated.View style={[{ marginTop: 18 }, step(3)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 15.5,
-              lineHeight: 25,
-              color: C.sub,
-            }}
-          >
-            Unlock refined asset analytics, zero-slippage swapping, and
-            custom-styled statements.
-          </Text>
-        </Animated.View>
 
         <Animated.View style={[{ marginTop: 46 }, step(4)]}>
           <Text
@@ -215,7 +202,7 @@ export default function WelcomeScreen({
           </Text>
         </Animated.View>
 
-        <Animated.View style={[{ marginTop: 14 }, step(5)]}>
+        <Animated.View style={[{ marginTop: 10 }, step(5)]}>
           <PressableScale
             scale={0.985}
             onPress={() => onLogin && onLogin("access")}

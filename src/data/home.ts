@@ -53,49 +53,54 @@ export const features: Feature[] = [
     title: "Yield",
     kicker: "Points settle weekly",
     poweredBy: "Ark",
-    artwork: require("../../assets/images/features/auto-earn.png"),
+    artwork: require("@/assets/images/features/auto-earn.png"),
   },
-  {
-    key: "copy-trading",
-    title: "Copy Trading",
-    kicker: "Mirror top traders",
-    poweredBy: "Worldstreet",
-    artwork: require("../../assets/images/features/copy-trading.png"),
-  },
-  {
-    key: "games",
-    title: "Games",
-    kicker: "Outlast the clock",
-    poweredBy: "Ark",
-    artwork: require("../../assets/images/features/games.png"),
-  },
+
   {
     key: "crypto",
     title: "Crypto",
     kicker: "Every chain, one address",
     poweredBy: "LinkPay",
-    artwork: require("../../assets/images/features/crypto.png"),
+    artwork: require("@/assets/images/features/crypto.png"),
   },
   {
     key: "fiat",
     title: "Fiat",
     kicker: "Your account number",
     poweredBy: "LinkPay",
-    artwork: require("../../assets/images/features/fiat.png"),
+    artwork: require("@/assets/images/features/fiat.png"),
+  },
+  {
+    key: "games",
+    title: "Games",
+    kicker: "Outlast the clock",
+    poweredBy: "Ark",
+    artwork: require("@/assets/images/features/games.png"),
+  },
+  {
+    key: "copy-trading",
+    title: "Copy Trading",
+    kicker: "Mirror top traders",
+    poweredBy: "Worldstreet",
+    artwork: require("@/assets/images/features/copy-trading.png"),
   },
 ];
 
+// `kind` is what the rail's Podcast/News switch filters on — drop it from an
+// item and it shows under both.
 export const media: MediaItem[] = [
   {
     key: "podcast",
+    kind: "podcast",
     title: "How to hold the market",
-    kicker: "Podcast",
+    kicker: "Now playing",
     byline: "The Win Team",
     duration: "1:12:40",
     artwork: require("../../assets/images/media/podcast.png"),
   },
   {
     key: "news",
+    kind: "news",
     title: "The week the desk stopped",
     kicker: "Hot news",
     byline: "Paradigm Desk",

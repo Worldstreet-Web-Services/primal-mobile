@@ -2,8 +2,15 @@ import { router, type Href } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ProfileHeader } from "@/components/home";
+import { tagline } from "@/data/home";
+import { user } from "@/data/mock";
+import { firstNameOf } from "@/lib/greeting";
 import HomeScreen from "@/screens/HomeScreen";
 import { C } from "@/theme/tokens";
+
+/** Matches `HomeScreen`'s gutter, so the identity row lines up with the page. */
+const GUTTER = 14;
 
 // Destinations that exist today. Everything else on the shelves is designed
 // but not yet routed — those taps intentionally no-op until the screen lands.
@@ -26,17 +33,28 @@ function open(table: Record<string, Href>, key: string) {
 }
 
 export default function Home() {
-  // The identity row scrolls with the page now (2026-08-15 redesign), so
-  // there's no floating header to measure — the content just clears the notch.
   const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <HomeScreen
-        top={insets.top + 8}
+      {/* Pinned: the identity row is a sibling of the scroll view rather than
+          its first child, so it holds the top edge while the page moves under
+          it. `HomeScreen` owns the scroll and knows nothing about this. */}
+      <ProfileHeader
+        name={firstNameOf(user.name)}
+        tagline={tagline}
         unread
-        onOpenProfile={() => router.push("/profile")}
+        onPress={() => router.push("/profile")}
         onNotifications={() => router.push("/pulse")}
+        style={{
+          paddingTop: insets.top + 6,
+          paddingHorizontal: GUTTER,
+          paddingBottom: 6,
+        }}
+        avatar={require("@/assets/images/avatar.png")}
+      />
+
+      <HomeScreen
         onOpenFeature={(key) => open(FEATURE_ROUTES, key)}
         onOpenMedia={(key) => open(MEDIA_ROUTES, key)}
       />

@@ -1,8 +1,10 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { PrivacyOverlay } from "@/components/PrivacyOverlay";
 
@@ -32,16 +34,21 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "#0A0B0D" },
-        }}
-      />
-      {/* Last sibling, so it covers every route including modals. */}
-      <PrivacyOverlay />
-    </>
+    // Gesture root is required for any RNGH gesture; the modal provider is the
+    // portal every `Sheet` mounts into, which is what keeps a sheet clear of
+    // the clipping and stacking of whatever opened it.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "#0A0B0D" },
+          }}
+        />
+        {/* Last sibling, so it covers every route including modals. */}
+        <PrivacyOverlay />
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }

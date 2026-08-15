@@ -4,7 +4,6 @@ import { BalanceCard, type BalanceDelta } from "@/components/BalanceCard";
 import {
   FeatureGrid,
   MediaCarousel,
-  ProfileHeader,
   type Feature,
   type MediaItem,
 } from "@/components/home";
@@ -12,9 +11,9 @@ import { Screen } from "@/components/ui";
 import {
   features as defaultFeatures,
   media as defaultMedia,
+  tagline as defaultTagline,
   portfolioDelta,
   portfolioTotal,
-  tagline as defaultTagline,
 } from "@/data/home";
 import { user } from "@/data/mock";
 import { firstNameOf } from "@/lib/greeting";
@@ -62,15 +61,6 @@ export default function HomeScreen({
 }: HomeScreenProps) {
   return (
     <Screen pad={GUTTER} top={top} bottom={48}>
-      <ProfileHeader
-        name={name}
-        tagline={tagline}
-        unread={unread}
-        onPress={onOpenProfile}
-        onNotifications={onNotifications}
-        style={{ marginTop: 6 }}
-      />
-
       <BalanceCard
         amount={balance}
         delta={balanceDelta}
@@ -82,7 +72,9 @@ export default function HomeScreen({
         <FeatureGrid features={features} rows={[3, 2]} onOpen={onOpenFeature} />
       </View>
 
-      <View style={{ marginTop: 30 }}>
+      {/* No section heading: the rail carries its own Podcast/News switch, and
+          a title above it would be a second label for the same thing. */}
+      <View style={{ marginTop: 34 }}>
         <MediaCarousel items={media} bleed={GUTTER} onOpen={onOpenMedia} />
       </View>
     </Screen>

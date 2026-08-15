@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { NavHeader } from "@/components/home";
+import { PageHeader } from "@/components/PageHeader";
 import PulseScreen from "@/screens/PulseScreen";
 import { C } from "@/theme/tokens";
+import { router } from "expo-router";
 
 export default function Pulse() {
   // The header floats over the scroll view, so the content needs to start
@@ -12,9 +13,10 @@ export default function Pulse() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <PulseScreen top={headerHeight} />
+      <PageHeader title="Notifications" onBack={() => router.back()} />
       {/* Wordmark only, matching Home — the screen's own Display carries the tab name. */}
-      <NavHeader unread tagline="" onHeightChange={setHeaderHeight} />
+
+      <PulseScreen />
     </View>
   );
 }

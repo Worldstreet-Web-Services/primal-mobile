@@ -134,9 +134,9 @@ export default function SignInScreen({
         tintOpacity={0.55}
         style={{
           marginHorizontal: 8,
-          paddingTop: 28,
+          paddingTop: 38,
           paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 16) + 8,
+          paddingBottom: Math.max(insets.bottom, 50) + 8,
         }}
         prism={0}
       >
@@ -145,8 +145,8 @@ export default function SignInScreen({
             parked behind the type. */}
         {/* <Prism width={320} intensity={0.5} style={{ left: -84, top: -46 }} /> */}
 
-        <View style={{ marginBottom: 28 }}>
-          {["LET'S GIVE YOU", "ACCESS"].map((line, i) => (
+        <View style={{ marginBottom: 68 }}>
+          {["LET'S GET", "YOU IN"].map((line, i) => (
             <Animated.View key={line} style={step(i)}>
               <Text
                 style={{
@@ -154,7 +154,8 @@ export default function SignInScreen({
                   fontSize: 33,
                   lineHeight: 46,
                   letterSpacing: 0.2,
-                  color: i === 1 ? C.brand : C.text,
+                  color: i === 0 ? C.brand : C.text,
+                  textAlign: "center",
                 }}
               >
                 {line}
@@ -184,23 +185,6 @@ export default function SignInScreen({
             />
           </Animated.View>
         ))}
-
-        <Animated.View style={[{ marginTop: 26 }, step(5)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              lineHeight: 16,
-              textAlign: "center",
-              color: C.dim,
-            }}
-          >
-            By continuing you agree to Paradigm&apos;s{" "}
-            <Text style={{ color: C.sub }}>Terms</Text> and{" "}
-            <Text style={{ color: C.sub }}>Privacy Policy</Text>. A smart wallet
-            is created on your behalf — Paradigm can never move your funds.
-          </Text>
-        </Animated.View>
       </GlassDrawer>
     </View>
   );

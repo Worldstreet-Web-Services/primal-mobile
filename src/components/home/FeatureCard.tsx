@@ -103,7 +103,7 @@ export function FeatureGrid({
   gap = 12,
   rowGap = 14,
   height = 114,
-  artSize = 48,
+  artSize = 60,
 }: {
   features: Feature[];
   onOpen?: (key: string) => void;

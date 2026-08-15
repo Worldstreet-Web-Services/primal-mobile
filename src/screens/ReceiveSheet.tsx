@@ -10,7 +10,12 @@ import {
   SegTabs,
   Chip,
 } from "../components/ui";
-import { user, networks } from "../data/mock";
+import { user } from "../data/mock";
+import { depositAddresses } from "../lib/crypto/addresses";
+
+// Static per-network-type deposit addresses (PRD §F4) — the auto-convert
+// on-ramp, not the embedded wallets. Mock-backed until primal-be serves them.
+const NETWORKS = depositAddresses();
 
 // Designs 4c + 4d: receive sheet — bank VA with copy affordance / crypto network picker.
 function QrBox({ size, label }: { size: number; label: string }) {
@@ -39,7 +44,7 @@ function QrBox({ size, label }: { size: number; label: string }) {
 export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
   const [tab, setTab] = useState(0);
   const [net, setNet] = useState(0);
-  const nw = networks[net];
+  const nw = NETWORKS[net];
   return (
     <View
       style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
@@ -146,9 +151,9 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
         ) : (
           <View>
             <View style={{ marginTop: 16, flexDirection: "row", gap: 8 }}>
-              {networks.map((n, i) => (
+              {NETWORKS.map((n, i) => (
                 <Chip
-                  key={n.key}
+                  key={n.kind}
                   label={n.label}
                   active={i === net}
                   onPress={() => setNet(i)}
@@ -172,7 +177,7 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
                 lineHeight: 21,
               }}
             >
-              {nw.addr}
+              {nw.address}
             </Mono>
             <View
               style={{

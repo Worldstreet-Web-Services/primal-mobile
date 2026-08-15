@@ -1029,6 +1029,82 @@ export function OutlineButton({
  * `tone` picks the one preferred method out of the stack: `brand` fills it,
  * `neutral` is the quiet translucent shape the rest sit in.
  */
+/**
+ * Quiet placeholder for a figure that has not landed yet. It breathes on its
+ * own opacity instead of sliding a highlight across itself — a shimmer reads
+ * as a loading spinner in a good suit, and this system would rather look calm
+ * than busy. Size it to the type it stands in for so nothing jumps on arrival.
+ *
+ * The amber waiting *state* is a different thing: that is `PulseDot`.
+ */
+export function Pulse({
+  width = "100%",
+  height = 12,
+  radius = 6,
+  style,
+}: {
+  width?: ViewStyle["width"];
+  height?: number;
+  radius?: number;
+  style?: ViewStyle;
+}) {
+  const v = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, {
+          toValue: 0.62,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(v, {
+          toValue: 0.3,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
+
+  return (
+    <Animated.View
+      style={[
+        { width, height, borderRadius: radius, backgroundColor: C.inset },
+        { opacity: v },
+        style,
+      ]}
+    />
+  );
+}
+
+/**
+ * The hairline between two sections, carrying its own breathing room so the
+ * vertical cadence stays the same wherever it lands. `space` is the gap on
+ * each side: 18 is the section step, 12 the tighter one inside a card, 26 the
+ * one that separates two whole thoughts. `inset` pulls the rule off the edges
+ * when it sits inside a padded surface and should not touch the border.
+ */
+export function SectionRule({
+  space = 18,
+  inset = 0,
+}: {
+  space?: number;
+  inset?: number;
+}) {
+  return (
+    <View
+      style={{
+        height: 1,
+        backgroundColor: C.hairline,
+        marginVertical: space,
+        marginHorizontal: inset,
+      }}
+    />
+  );
+}
+
 export function AuthButton({
   label,
   icon,

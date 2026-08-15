@@ -22,8 +22,8 @@ module.exports = {
         silver: { DEFAULT: "#C7CCD1", muted: "#8A9096", faint: "#4A4F56" },
       },
       fontFamily: {
-        display: ["ClashDisplay-Semibold"],
-        "display-bold": ["ClashDisplay-Bold"],
+        display: ["SpaceGrotesk-SemiBold"],
+        "display-bold": ["SpaceGrotesk-Bold"],
         body: ["Geist-Regular"],
         "body-medium": ["Geist-Medium"],
         "body-semibold": ["Geist-SemiBold"],

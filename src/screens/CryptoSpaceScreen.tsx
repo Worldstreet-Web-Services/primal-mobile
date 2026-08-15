@@ -1,6 +1,14 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import {
+  InstrumentRow,
+  MetaChip,
+  PulseBlock,
+  RowSkeletonList,
+  SectionHead,
+  Settle,
+} from "../components/crypto";
 import {
   Body,
   Card,
@@ -9,10 +17,35 @@ import {
   Label,
   MetallicButton,
   Mono,
+  PressableScale,
   Screen,
 } from "../components/ui";
-import { holdings } from "../data/mock";
-import { C, F } from "../theme/tokens";
+import { holdings as mockHoldings } from "../data/mock";
+import { useCryptoPortfolio } from "../hooks/useCryptoPortfolio";
+import { holdingQtyLabel } from "../lib/crypto/balances";
+import { STATIC_PRICES_USD, USD_NGN } from "../lib/crypto/prices";
+import { C } from "../theme/tokens";
+
+/** The mock's demo total — shown whenever live balances aren't on screen. */
+const FALLBACK_TOTAL_USD = 312.4;
+
+interface Row {
+  key: string;
+  sym: string;
+  name: string;
+  qty: string;
+  usd: string;
+  /** Unit price, so the right column reads value over what one costs. */
+  price?: number;
+  stable?: boolean;
+}
+
+/** Sub-dollar assets need their working digits; everything else takes cents. */
+const unitPrice = (p: number) =>
+  `$${p.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: p < 1 ? 4 : 2,
+  })}`;
 
 // Design 2d: crypto space — per-chain balances + auto-convert toggle.
 export default function CryptoSpaceScreen({
@@ -28,111 +61,161 @@ export default function CryptoSpaceScreen({
   top?: number;
 }) {
   const [autoConvert, setAutoConvert] = useState(true);
+  const { holdings, totalUsd, loading } = useCryptoPortfolio();
+
+  // Live rows when the store has them; otherwise the mock figures stand in,
+  // tagged so canned numbers are never mistaken for money.
+  const live = holdings.length > 0;
+  // Nothing to show yet and the chains are still answering — the figures are
+  // skeletons rather than a stand-in total that would only be corrected later.
+  const pending = loading && !live;
+  const rows: Row[] = live
+    ? holdings.map((h) => ({
+        key: `${h.network}:${h.symbol}`,
+        sym: h.symbol,
+        name: h.name,
+        qty: holdingQtyLabel(h),
+        usd: `$${h.valueUsd.toFixed(2)}`,
+        price: h.priceUsd,
+        stable: h.stable,
+      }))
+    : mockHoldings.map((h) => ({
+        key: h.sym,
+        sym: h.sym,
+        name: h.name,
+        qty: h.qty,
+        usd: h.usd,
+        price: STATIC_PRICES_USD[h.sym],
+        stable: "green" in h ? h.green : false,
+      }));
+  const total = live ? totalUsd : FALLBACK_TOTAL_USD;
+  const [whole, cents] = total.toFixed(2).split(".");
+
   return (
     <Screen top={top}>
-      <View style={{ marginTop: 26 }}>
-        <Body size={11.5} color={C.dim}>
-          Wallet value
-        </Body>
-        <Display size={46} style={{ marginTop: 6 }}>
-          $312
-          <Display size={26} color={C.dim}>
-            .40
-          </Display>
-        </Display>
-        <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
-          ≈ ₦480,100 · ETH + SOL wallets, TEE-signed
-        </Mono>
-      </View>
-      <View style={{ marginTop: 18, flexDirection: "row", gap: 10 }}>
+      <Settle>
+        <View style={{ marginTop: 26 }}>
+          <View
+            style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+          >
+            <Label>Wallet value</Label>
+            {pending ? (
+              <MetaChip label="Reading chains" tone="live" pulse />
+            ) : live ? null : (
+              <MetaChip label="Offline preview" />
+            )}
+          </View>
+          {pending ? (
+            <View style={{ marginTop: 12, gap: 13 }}>
+              <PulseBlock width={214} height={40} radius={10} />
+              <PulseBlock width={128} height={12} />
+            </View>
+          ) : (
+            <>
+              <Display size={46} style={{ marginTop: 8 }}>
+                ${Number(whole).toLocaleString("en-US")}
+                <Display size={26} color={C.dim}>
+                  .{cents}
+                </Display>
+              </Display>
+              <Mono size={12.5} color={C.sub} style={{ marginTop: 9 }}>
+                ≈ ₦{Math.round(total * USD_NGN).toLocaleString("en-US")}
+              </Mono>
+            </>
+          )}
+        </View>
+      </Settle>
+
+      <View style={{ marginTop: 22, flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
           <MetallicButton
             label="Buy"
-            height={46}
+            height={48}
             radius={14}
-            size={13}
+            size={13.5}
             onPress={onBuy}
           />
         </View>
         <View style={{ flex: 1 }}>
-          <GhostButton label="Deposit" onPress={onDeposit} />
+          <GhostButton
+            label="Deposit"
+            height={48}
+            radius={14}
+            onPress={onDeposit}
+          />
         </View>
         <View style={{ flex: 1 }}>
-          <GhostButton label="Withdraw" onPress={onWithdraw} />
+          <GhostButton
+            label="Withdraw"
+            height={48}
+            radius={14}
+            onPress={onWithdraw}
+          />
         </View>
       </View>
-      <View style={{ marginTop: 20 }}>
-        <Label>Holdings</Label>
-        {holdings.map((h, i) => (
-          <View
-            key={h.sym}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 13,
-              borderBottomWidth: i === holdings.length - 1 ? 0 : 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 20,
-                backgroundColor: h.green ? C.upBg : "rgba(255,255,255,0.08)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Mono
-                size={9}
-                color={h.green ? C.up : C.silver}
-                style={{ fontFamily: F.monoSemibold }}
-              >
-                {h.sym}
+
+      <View style={{ marginTop: 26 }}>
+        <SectionHead
+          label="Holdings"
+          right={
+            pending ? null : (
+              <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+                {rows.length} {rows.length === 1 ? "ASSET" : "ASSETS"}
               </Mono>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Body size={13.5} semibold>
-                {h.name}
-              </Body>
-              <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-                {h.qty}
-              </Body>
-            </View>
-            <Mono size={13} color={C.text}>
-              {h.usd}
-            </Mono>
-          </View>
-        ))}
+            )
+          }
+        />
+        <View style={{ marginTop: 2 }}>
+          {pending ? (
+            <RowSkeletonList rows={3} />
+          ) : (
+            rows.map((h, i) => (
+              <InstrumentRow
+                key={h.key}
+                symbol={h.sym}
+                name={h.name}
+                sub={h.qty}
+                value={h.usd}
+                meta={h.price ? `@ ${unitPrice(h.price)}` : undefined}
+                stable={h.stable}
+                last={i === rows.length - 1}
+              />
+            ))
+          )}
+        </View>
       </View>
+
       <Card
         style={{
-          marginTop: 14,
+          marginTop: 18,
           flexDirection: "row",
           alignItems: "center",
-          gap: 11,
-          padding: 13,
+          gap: 14,
+          padding: 15,
+          borderRadius: 18,
         }}
       >
         <View style={{ flex: 1 }}>
           <Body size={12.5} semibold>
             Auto-convert deposits to ₦
           </Body>
-          <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
-            Incoming crypto fills your fiat balance instantly
+          <Body size={10.5} color={C.dim} style={{ marginTop: 3 }}>
+            Incoming crypto settles into your fiat balance.
           </Body>
         </View>
-        <Pressable onPress={() => setAutoConvert(!autoConvert)}>
+        <PressableScale
+          onPress={() => setAutoConvert(!autoConvert)}
+          scale={0.94}
+          accessibilityLabel="Auto-convert deposits to naira"
+        >
           {autoConvert ? (
             <LinearGradient
               colors={C.metal}
               style={{
-                width: 44,
-                height: 26,
+                width: 46,
+                height: 28,
                 borderRadius: 14,
-                padding: 2,
+                padding: 3,
                 alignItems: "flex-end",
               }}
             >
@@ -148,40 +231,50 @@ export default function CryptoSpaceScreen({
           ) : (
             <View
               style={{
-                width: 44,
-                height: 26,
+                width: 46,
+                height: 28,
                 borderRadius: 14,
-                padding: 2,
-                backgroundColor: "rgba(255,255,255,0.2)",
+                padding: 3,
+                backgroundColor: C.inset,
+                borderWidth: 1,
+                borderColor: C.hairline,
               }}
             >
               <View
                 style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: C.text,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: C.sub,
                 }}
               />
             </View>
           )}
-        </Pressable>
+        </PressableScale>
       </Card>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 18, lineHeight: 17 }}
+
+      <View
+        style={{
+          marginTop: 26,
+          paddingTop: 20,
+          borderTopWidth: 1,
+          borderTopColor: C.hairline,
+          alignItems: "center",
+          gap: 12,
+        }}
       >
-        Keys split three ways — device · Decane · recovery.{"\n"}High-value
-        sends re-confirm with Face ID per signature.
-      </Body>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 12 }}
-      >
-        Every chain, one address — powered by LinkPay
-      </Body>
+        <Body
+          size={11.5}
+          color={C.dim}
+          style={{ textAlign: "center", lineHeight: 18 }}
+        >
+          Keys split three ways — device · Decane · recovery.{"\n"}High-value
+          sends re-confirm with Face ID, per signature.
+        </Body>
+        <Label style={{ letterSpacing: 1.6 }}>
+          Every chain, one address · LinkPay
+        </Label>
+      </View>
     </Screen>
   );
 }

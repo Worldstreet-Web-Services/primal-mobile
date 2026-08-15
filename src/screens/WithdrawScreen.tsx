@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Pressable } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { C, F } from "../theme/tokens";
@@ -13,18 +13,90 @@ import {
   Keypad,
   Card,
 } from "../components/ui";
+import { useCryptoPortfolio } from "../hooks/useCryptoPortfolio";
+import {
+  baseToDisplayFloor,
+  displayToBase,
+  formatAmount,
+} from "../lib/crypto/amounts";
+import { needsNetworkSuffix, type Holding } from "../lib/crypto/balances";
+import {
+  EVM_CHAIN_ID,
+  NETWORK_LABELS,
+  TOKEN_CATALOG,
+  type NetworkId,
+} from "../lib/crypto/catalog";
+import { getCryptoWallet } from "../lib/crypto/wallet";
 
 // Crypto withdraw — pick asset, set destination + amount, sign in the enclave.
 type Step = "asset" | "dest" | "confirm" | "sent";
 
-const ASSETS = [
+interface WithdrawAsset {
+  sym: string;
+  name: string;
+  qty: string;
+  avail: string;
+  usd: string;
+  network: string;
+  networkId: NetworkId;
+  /** Contract/mint; null = native coin. */
+  tokenAddress: string | null;
+  tokenDecimals: number;
+  /** Keypad granularity — how many decimal places the amount entry offers. */
+  decimals: number;
+  rate: number;
+  /** Balance in display units, floored — the MAX cap. */
+  maxRaw: string;
+  green: boolean;
+}
+
+/** Keypad granularity per symbol (display only — sends stay in base units). */
+const DISPLAY_DP: Record<string, number> = {
+  ETH: 3,
+  SOL: 2,
+  POL: 2,
+  USDC: 2,
+  USDT: 2,
+  DAI: 2,
+};
+
+function fromHolding(h: Holding): WithdrawAsset {
+  const dp = DISPLAY_DP[h.symbol] ?? 3;
+  const suffix = needsNetworkSuffix(h) ? ` · ${NETWORK_LABELS[h.network]}` : "";
+  const qty = h.stable ? h.balance.toFixed(2) : formatAmount(h.balance);
+  return {
+    sym: h.symbol,
+    name: h.name,
+    qty: `${qty}${suffix}`,
+    avail: `${qty} ${h.symbol}`,
+    usd: `$${h.valueUsd.toFixed(2)}`,
+    network: NETWORK_LABELS[h.network],
+    networkId: h.network,
+    tokenAddress: h.address,
+    tokenDecimals: h.decimals,
+    decimals: dp,
+    rate: h.priceUsd,
+    maxRaw: baseToDisplayFloor(h.rawBalance, dp, h.decimals),
+    green: h.stable,
+  };
+}
+
+const BASE_USDC = TOKEN_CATALOG.find(
+  (t) => t.network === "base-mainnet" && t.symbol === "USDC",
+)!.address;
+
+/** Demo figures for when live balances can't load — mirrors src/data/mock.ts. */
+const FALLBACK_ASSETS: WithdrawAsset[] = [
   {
     sym: "ETH",
     name: "Ethereum",
     qty: "0.031",
     avail: "0.031 ETH",
     usd: "$98.10",
-    network: "Ethereum mainnet",
+    network: "Ethereum",
+    networkId: "eth-mainnet",
+    tokenAddress: null,
+    tokenDecimals: 18,
     decimals: 3,
     rate: 3164.52,
     maxRaw: "31",
@@ -37,6 +109,9 @@ const ASSETS = [
     avail: "0.62 SOL",
     usd: "$84.30",
     network: "Solana",
+    networkId: "solana-mainnet",
+    tokenAddress: null,
+    tokenDecimals: 9,
     decimals: 2,
     rate: 135.97,
     maxRaw: "62",
@@ -48,7 +123,10 @@ const ASSETS = [
     qty: "130.00 · Base",
     avail: "130.00 USDC",
     usd: "$130.00",
-    network: "Base network",
+    network: "Base",
+    networkId: "base-mainnet",
+    tokenAddress: BASE_USDC,
+    tokenDecimals: 6,
     decimals: 2,
     rate: 1,
     maxRaw: "13000",
@@ -56,9 +134,10 @@ const ASSETS = [
   },
 ];
 
-const DESTINATION = "0x7A3f…88A1";
 const TX_HASH = "0x3f9a…c21b";
 const FEE_NOTE = "Network fee ≈ $0.12 · sponsored where available";
+
+const shorten = (addr: string) => addr.slice(0, 6) + "…" + addr.slice(-4);
 
 function formatRaw(raw: string, decimals: number) {
   const padded = raw.padStart(decimals + 1, "0");
@@ -75,13 +154,65 @@ export default function WithdrawScreen({
   const [step, setStep] = useState<Step>("asset");
   const [assetIndex, setAssetIndex] = useState(0);
   const [raw, setRaw] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [txRef, setTxRef] = useState<string | null>(null);
 
-  const asset = ASSETS[assetIndex];
+  const { holdings } = useCryptoPortfolio();
+  const assets = useMemo(
+    () => (holdings.length > 0 ? holdings.map(fromHolding) : FALLBACK_ASSETS),
+    [holdings],
+  );
+
+  // A refresh landing mid-flow may shrink the list; never index past it.
+  const asset = assets[Math.min(assetIndex, assets.length - 1)];
   const amount = formatRaw(raw, asset.decimals);
   const usd = (
     (parseInt(raw || "0", 10) / 10 ** asset.decimals) *
     asset.rate
   ).toFixed(2);
+
+  // Demo destination: the user's own external-wallet address until the
+  // address-book/paste flow lands. Solana assets exit to the Solana address.
+  const seamAddresses = getCryptoWallet().getAddresses();
+  const destFull =
+    asset.networkId === "solana-mainnet"
+      ? seamAddresses?.solana
+      : seamAddresses?.evm;
+  const destination = destFull ? shorten(destFull) : "—";
+
+  const signAndSend = async () => {
+    if (sending) return;
+    setSendError(null);
+    setSending(true);
+    try {
+      const wallet = getCryptoWallet();
+      const amountRaw = displayToBase(raw, asset.decimals, asset.tokenDecimals);
+      if (!destFull) throw new Error("No destination wallet yet.");
+      if (asset.networkId === "solana-mainnet") {
+        const res = await wallet.sendSolana({
+          to: destFull,
+          mint: asset.tokenAddress,
+          amountRaw,
+        });
+        setTxRef(res.signature);
+      } else {
+        const res = await wallet.sendEvm({
+          chainId: EVM_CHAIN_ID[asset.networkId],
+          to: destFull,
+          tokenAddress: asset.tokenAddress,
+          amountRaw,
+        });
+        setTxRef(res.hash);
+      }
+      setStep("sent");
+    } catch (e) {
+      // The seam refuses until Decane lands — surface it inline, not a crash.
+      setSendError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleKey = (k: string) => {
     if (k === "del") {
@@ -94,8 +225,10 @@ export default function WithdrawScreen({
 
   const handleBack = () => {
     if (step === "dest") setStep("asset");
-    else if (step === "confirm") setStep("dest");
-    else if (onBack) onBack();
+    else if (step === "confirm") {
+      setSendError(null);
+      setStep("dest");
+    } else if (onBack) onBack();
   };
 
   if (step === "sent") {
@@ -131,10 +264,10 @@ export default function WithdrawScreen({
             Sent
           </Display>
           <Mono size={13} color={C.text} style={{ marginTop: 12 }}>
-            {amount} {asset.sym} → {DESTINATION}
+            {amount} {asset.sym} → {destination}
           </Mono>
           <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
-            {TX_HASH}
+            {txRef ? shorten(txRef) : TX_HASH}
           </Mono>
           <Body size={12} color={C.dim} style={{ marginTop: 14 }}>
             Signed in your secure enclave
@@ -156,9 +289,9 @@ export default function WithdrawScreen({
       {step === "asset" ? (
         <View style={{ paddingHorizontal: 22, marginTop: 22 }}>
           <Label>Choose asset</Label>
-          {ASSETS.map((h, i) => (
+          {assets.map((h, i) => (
             <Pressable
-              key={h.sym}
+              key={`${h.networkId}:${h.sym}`}
               onPress={() => {
                 setAssetIndex(i);
                 setRaw("");
@@ -171,7 +304,7 @@ export default function WithdrawScreen({
                 alignItems: "center",
                 gap: 12,
                 paddingVertical: 14,
-                borderBottomWidth: i === ASSETS.length - 1 ? 0 : 1,
+                borderBottomWidth: i === assets.length - 1 ? 0 : 1,
                 borderBottomColor: C.hairline,
               }}
             >
@@ -232,7 +365,7 @@ export default function WithdrawScreen({
               }}
             >
               <Mono size={13} color={C.text} style={{ flex: 1 }}>
-                {DESTINATION}
+                {destination}
               </Mono>
               <View style={{ width: 72 }}>
                 <GhostButton label="Paste" height={32} />
@@ -365,7 +498,7 @@ export default function WithdrawScreen({
                 Destination
               </Body>
               <Mono size={12.5} color={C.text}>
-                {DESTINATION}
+                {destination}
               </Mono>
             </View>
             <View
@@ -420,14 +553,26 @@ export default function WithdrawScreen({
             >
               On-chain transfers can't be reversed.
             </Body>
+            {sendError ? (
+              <Body
+                size={11.5}
+                color={C.down}
+                style={{ textAlign: "center", marginBottom: 14 }}
+              >
+                {sendError}
+              </Body>
+            ) : null}
             <MetallicButton
-              label="Sign & send"
-              onPress={() => setStep("sent")}
+              label={sending ? "Signing…" : "Sign & send"}
+              onPress={signAndSend}
             />
             <View style={{ marginTop: 10 }}>
               <GhostButton
                 label="Back to amount"
-                onPress={() => setStep("dest")}
+                onPress={() => {
+                  setSendError(null);
+                  setStep("dest");
+                }}
               />
             </View>
           </View>

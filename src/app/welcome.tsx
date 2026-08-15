@@ -1,14 +1,11 @@
 import { router } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import WelcomeScreen from "@/screens/WelcomeScreen";
 
+/* Full-bleed by design — the mark runs under the status bar and the drawer to
+   the bottom edge, so the screen applies the insets itself. */
 export default function Welcome() {
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
-      {/* Auth is the other workstream (Decane + KingsChat); every method
-          walks the same onboarding for now. */}
-      <WelcomeScreen onLogin={() => router.push("/pin")} />
-    </SafeAreaView>
-  );
+  // Get Access hands off to the provider picker, which is where auth (Decane +
+  // KingsChat) actually starts.
+  return <WelcomeScreen onLogin={() => router.push("/signin")} />;
 }

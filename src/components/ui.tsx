@@ -569,7 +569,11 @@ export function BackHeader({
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
-        paddingTop: 10,
+        // Breathing room below the safe area — the routes wrap this in a
+        // SafeAreaView, so 10 put the title hard against the Dynamic Island.
+        // Matches the +6..+10 the floating headers add over `insets.top`.
+        paddingTop: 18,
+        paddingBottom: 4,
       }}
     >
       <Pressable onPress={onBack} hitSlop={10}>

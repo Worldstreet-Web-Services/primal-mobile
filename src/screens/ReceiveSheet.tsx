@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C, F } from "../theme/tokens";
 import {
   Display,
@@ -30,6 +31,9 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
   const [net, setNet] = useState(0);
   const nw = NETWORKS[net];
   const { copied, copy } = useCopy();
+  // Bottom-anchored, so the sheet owns its own home-indicator clearance —
+  // the route mounts it bare rather than inside a SafeAreaView.
+  const insets = useSafeAreaInsets();
 
   return (
     <View
@@ -49,7 +53,7 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
           borderColor: "rgba(199,204,209,0.16)",
           paddingTop: 12,
           paddingHorizontal: 22,
-          paddingBottom: 42,
+          paddingBottom: Math.max(insets.bottom, 16) + 26,
         }}
       >
         <View

@@ -7,7 +7,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { AccessibilityInfo, Animated, Easing, Pressable, View } from "react-native";
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body } from "@/components/ui";
@@ -134,14 +141,17 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       toValue: 1,
       duration: 260,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      // Web has no native animated module — asking for it there only earns a
+      // warning and the JS fallback it was already going to use.
+      useNativeDriver: Platform.OS !== "web",
     }).start();
   }, [anim]);
 
   return (
     <Animated.View
-      pointerEvents="box-none"
       style={{
+        // `pointerEvents` as a prop is deprecated; it belongs in style now.
+        pointerEvents: "box-none",
         position: "absolute",
         top: insets.top + 8,
         left: 16,

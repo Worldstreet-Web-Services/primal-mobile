@@ -22,6 +22,7 @@ import {
   type Chain,
   type DecaneConnectNative,
 } from "decane-connect-kit-expo";
+import { Platform } from "react-native";
 
 const APP_ID = process.env.EXPO_PUBLIC_DECANE_APP_ID ?? "";
 
@@ -53,11 +54,16 @@ export const REDIRECT_URI = "paradigm://auth";
 const CHAINS: Chain[] = ["evm:8453", "evm:1", "solana:mainnet", "tron:mainnet"];
 
 /**
- * Mirrors `usingMockApi` in src/lib/api.ts. Without credentials the SDK cannot
- * initialise at all, so onboarding stays walkable on a fake session rather than
- * the app being unusable for anyone without them.
+ * Mirrors `usingMockApi` in src/lib/api.ts. Two reasons to fall back:
+ *
+ * 1. **No credentials** — the SDK cannot initialise, so onboarding stays
+ *    walkable rather than the app being unusable for anyone without them.
+ * 2. **Web** — this package is native-only (secure-store, passkeys, keystore).
+ *    `expo start --web` is a layout-preview target; real sign-in needs a
+ *    development build.
  */
-export const usingMockAuth = API_KEY === "" || APP_ID === "";
+export const usingMockAuth =
+  Platform.OS === "web" || API_KEY === "" || APP_ID === "";
 
 export type AuthMethod = "google" | "email" | "kingschat";
 

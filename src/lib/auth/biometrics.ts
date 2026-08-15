@@ -9,6 +9,10 @@
  */
 
 import * as LocalAuthentication from "expo-local-authentication";
+import { Platform } from "react-native";
+
+/** No biometric APIs on web — see the note in storage.ts. */
+const isWeb = Platform.OS === "web";
 
 export type BiometricKind = "face" | "fingerprint" | "iris" | "none";
 
@@ -21,6 +25,8 @@ export interface BiometricCapability {
 }
 
 export async function getCapability(): Promise<BiometricCapability> {
+  if (isWeb) return { available: false, kind: "none", label: "Biometrics" };
+
   const [hasHardware, isEnrolled, types] = await Promise.all([
     LocalAuthentication.hasHardwareAsync(),
     LocalAuthentication.isEnrolledAsync(),
@@ -46,6 +52,8 @@ export type BiometricOutcome =
   | { ok: false; reason: "cancelled" | "not_enrolled" | "lockout" | "failed" };
 
 export async function authenticate(promptMessage: string): Promise<BiometricOutcome> {
+  if (isWeb) return { ok: false, reason: "not_enrolled" };
+
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage,
     // The PIN keypad is already on screen as the fallback, so the OS passcode

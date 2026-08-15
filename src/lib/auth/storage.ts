@@ -13,6 +13,7 @@
 
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 const KEYS = {
   pinHash: "paradigm.auth.pin_hash",
@@ -28,15 +29,54 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
+/**
+ * SecureStore is iOS/Android only — on web the module exists but its methods
+ * do not, so calling one throws `getValueWithKeyAsync is not a function` and
+ * takes down whatever awaited it.
+ *
+ * Web is a **layout-preview target only**: Decane itself can't run there either
+ * (native modules), so auth is always mocked. This shim keeps `expo start --web`
+ * booting for UI work; it is `localStorage`, it is not secure, and nothing that
+ * matters is ever stored through it on that platform.
+ */
+const isWeb = Platform.OS === "web";
+
+const webStore = {
+  get(key: string): string | null {
+    try {
+      return globalThis.localStorage?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string): void {
+    try {
+      globalThis.localStorage?.setItem(key, value);
+    } catch {
+      /* private mode / storage disabled — dev-only path, ignore */
+    }
+  },
+  remove(key: string): void {
+    try {
+      globalThis.localStorage?.removeItem(key);
+    } catch {
+      /* as above */
+    }
+  },
+};
+
 async function put(key: string, value: string): Promise<void> {
+  if (isWeb) return webStore.set(key, value);
   await SecureStore.setItemAsync(key, value, OPTIONS);
 }
 
 async function get(key: string): Promise<string | null> {
+  if (isWeb) return webStore.get(key);
   return SecureStore.getItemAsync(key, OPTIONS);
 }
 
 async function drop(key: string): Promise<void> {
+  if (isWeb) return webStore.remove(key);
   await SecureStore.deleteItemAsync(key, OPTIONS);
 }
 

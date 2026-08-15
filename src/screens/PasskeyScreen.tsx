@@ -5,7 +5,18 @@ import { C, F } from '../theme/tokens';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { MetallicButton, Display, Body } from '../components/ui';
 
-export default function PasskeyScreen({ onEnable, onSkip }: { onEnable?: () => void; onSkip?: () => void }) {
+export default function PasskeyScreen({
+  onEnable,
+  onSkip,
+  enabling = false,
+  label = 'Face ID',
+}: {
+  onEnable?: () => void;
+  onSkip?: () => void;
+  enabling?: boolean;
+  /** What this device actually offers — Face ID, Touch ID, Fingerprint. */
+  label?: string;
+}) {
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22, paddingBottom: 30 }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 12 }}>
@@ -17,11 +28,11 @@ export default function PasskeyScreen({ onEnable, onSkip }: { onEnable?: () => v
           </Svg>
         </View>
         <Display size={26}>Add a passkey</Display>
-        <Body size={13.5} color={C.sub} style={{ textAlign: 'center', lineHeight: 22 }}>Unlock Primal and sign transactions with Face ID. Your key is split across this device, Decane, and recovery — no one can sign without you.</Body>
+        <Body size={13.5} color={C.sub} style={{ textAlign: 'center', lineHeight: 22 }}>Unlock Primal and sign transactions with {label}. Your key is split across this device, Decane, and recovery — no one can sign without you.</Body>
       </View>
       <View style={{ gap: 10 }}>
-        <MetallicButton label='Enable Face ID' onPress={onEnable} />
-        <Pressable onPress={onSkip} style={{ height: 48, alignItems: 'center', justifyContent: 'center' }}>
+        <MetallicButton label={`Enable ${label}`} onPress={onEnable} loading={enabling} />
+        <Pressable onPress={enabling ? undefined : onSkip} style={{ height: 48, alignItems: 'center', justifyContent: 'center', opacity: enabling ? 0.45 : 1 }}>
           <Body size={14} color={C.sub}>Maybe later</Body>
         </Pressable>
         <Body size={11} color={C.dim} style={{ textAlign: 'center' }}>New devices need email step-up before money can leave.</Body>

@@ -5,15 +5,36 @@ import { C } from '../theme/tokens';
 import { MetallicButton, Label, Body, Display, PinDots, Keypad } from '../components/ui';
 
 // Design 3e: app unlock — metallic brand block, Face ID / passkey, PIN fallback.
-export default function UnlockScreen({ onUnlock }: { onUnlock?: () => void }) {
+export default function UnlockScreen({
+  onPin,
+  onBiometrics,
+  checking = false,
+  biometricsAvailable = true,
+  biometricLabel = 'Face ID',
+}: {
+  /** Resolves false on a wrong PIN so the dots can clear for a retry. */
+  onPin?: (pin: string) => Promise<boolean>;
+  onBiometrics?: () => void;
+  checking?: boolean;
+  biometricsAvailable?: boolean;
+  biometricLabel?: string;
+}) {
   const [pin, setPin] = useState('');
-  const handleKey = (k: string) => {
+
+  const handleKey = async (k: string) => {
+    if (checking) return;
     if (k === 'del') { setPin(pin.slice(0, -1)); return; }
     if (pin.length >= 4) return;
+
     const next = pin + k;
     setPin(next);
-    if (next.length === 4 && onUnlock) onUnlock();
+    if (next.length < 4) return;
+
+    const ok = await onPin?.(next);
+    // Clear on failure so the next attempt starts from an empty keypad.
+    if (!ok) setPin('');
   };
+
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22, paddingTop: 20, paddingBottom: 30 }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -27,8 +48,12 @@ export default function UnlockScreen({ onUnlock }: { onUnlock?: () => void }) {
         <Display size={36} style={{ letterSpacing: 0.5 }}>Primal</Display>
         <Body size={14} color={C.sub} style={{ textAlign: 'center', lineHeight: 21 }}>One account. One balance.{'\n'}Every rail.</Body>
       </View>
-      <MetallicButton label='Unlock with Face ID' onPress={onUnlock} />
-      <Label style={{ textAlign: 'center', marginTop: 20 }}>Or enter your PIN</Label>
+      {biometricsAvailable ? (
+        <MetallicButton label={`Unlock with ${biometricLabel}`} onPress={onBiometrics} loading={checking} />
+      ) : null}
+      <Label style={{ textAlign: 'center', marginTop: 20 }}>
+        {biometricsAvailable ? 'Or enter your PIN' : 'Enter your PIN'}
+      </Label>
       <View style={{ marginTop: 14 }}>
         <PinDots filled={pin.length} />
       </View>

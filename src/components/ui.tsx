@@ -2,6 +2,7 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
@@ -193,28 +194,53 @@ export function Card({
   );
 }
 
+/**
+ * Indeterminate spinner. `ActivityIndicator` is the platform-native control and
+ * needs no animation loop of our own, so async state looks the same here as it
+ * does everywhere else on the device.
+ */
+export function Spinner({
+  size = "small",
+  color = C.text,
+}: {
+  size?: "small" | "large";
+  color?: string;
+}) {
+  return <ActivityIndicator size={size} color={color} />;
+}
+
 export function MetallicButton({
   label,
   onPress,
   height = 52,
   radius = 16,
   size = 15,
+  loading = false,
+  disabled = false,
 }: {
   label: string;
   onPress?: () => void;
   height?: number;
   radius?: number;
   size?: number;
+  /** Swaps the label for a spinner and blocks presses. */
+  loading?: boolean;
+  disabled?: boolean;
 }) {
+  const inert = loading || disabled;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
       style={{
         shadowColor: "#fff",
         shadowOpacity: 0.35,
         shadowRadius: 14,
         shadowOffset: { width: 0, height: 8 },
         elevation: 6,
+        opacity: disabled && !loading ? 0.45 : 1,
       }}
     >
       <LinearGradient
@@ -238,11 +264,15 @@ export function MetallicButton({
             backgroundColor: "rgba(255,255,255,0.5)",
           }}
         />
-        <Text
-          style={{ color: C.ink, fontFamily: F.bodySemibold, fontSize: size }}
-        >
-          {label}
-        </Text>
+        {loading ? (
+          <Spinner color={C.ink} />
+        ) : (
+          <Text
+            style={{ color: C.ink, fontFamily: F.bodySemibold, fontSize: size }}
+          >
+            {label}
+          </Text>
+        )}
       </LinearGradient>
     </Pressable>
   );
@@ -252,14 +282,22 @@ export function GhostButton({
   label,
   onPress,
   height = 46,
+  loading = false,
+  disabled = false,
 }: {
   label: string;
   onPress?: () => void;
   height?: number;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
+  const inert = loading || disabled;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
       style={{
         height,
         borderRadius: 14,
@@ -268,11 +306,16 @@ export function GhostButton({
         borderColor: C.border,
         alignItems: "center",
         justifyContent: "center",
+        opacity: disabled && !loading ? 0.45 : 1,
       }}
     >
-      <Text style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: 13 }}>
-        {label}
-      </Text>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <Text style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: 13 }}>
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }

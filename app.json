@@ -33,7 +33,14 @@
           "imageWidth": 76
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Primal to unlock your account and approve transactions with Face ID."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

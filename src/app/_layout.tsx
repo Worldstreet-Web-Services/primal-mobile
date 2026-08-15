@@ -3,6 +3,10 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import { ToastProvider } from "@/components/Toast";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 import "../global.css";
 
@@ -28,14 +32,20 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "#0A0B0D" },
-        }}
-      />
-    </>
+    // SafeAreaProvider is explicit because the toast renders outside the
+    // navigator, so it can't rely on the one react-navigation installs.
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "#0A0B0D" },
+            }}
+          />
+        </ToastProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

@@ -19,11 +19,15 @@ const securityRows = [
 export default function ProfileScreen({
   onBack,
   bottom = 40,
+  onSignOut,
+  signingOut = false,
 }: {
   /** Omit on a tab root — without it the header drops its back chevron. */
   onBack?: () => void;
   /** Tail space — raise it on tab screens so the floating bar can't cover content. */
   bottom?: number;
+  onSignOut?: () => void;
+  signingOut?: boolean;
 }) {
   const [frozen, setFrozen] = useState(false);
   return (
@@ -80,7 +84,11 @@ export default function ProfileScreen({
           </Pressable>
         </View>
       </Card>
-      <Body size={13} color={C.down} style={{ textAlign: 'center', marginTop: 16, fontFamily: F.bodyMedium }}>Sign out</Body>
+      <Pressable onPress={onSignOut} disabled={signingOut} style={{ paddingVertical: 8, opacity: signingOut ? 0.5 : 1 }}>
+        <Body size={13} color={C.down} style={{ textAlign: 'center', marginTop: 16, fontFamily: F.bodyMedium }}>
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </Body>
+      </Pressable>
     </Screen>
   );
 }

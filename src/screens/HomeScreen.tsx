@@ -1,11 +1,10 @@
 import { View } from "react-native";
 
+import { BalanceCard, type BalanceDelta } from "@/components/BalanceCard";
 import {
-  BalanceCard,
   FeatureGrid,
   MediaCarousel,
   ProfileHeader,
-  type BalanceDelta,
   type Feature,
   type MediaItem,
 } from "@/components/home";

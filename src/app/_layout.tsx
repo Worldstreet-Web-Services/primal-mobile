@@ -10,10 +10,12 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    // Display face. Static instances rather than the variable TTF — RN maps
+    // Display face: Mona Sans, matching wsws-frontend (Geist body + Mona Sans
+    // headers). Static instances rather than the variable TTF — RN maps
     // fontFamily to a concrete face, so weight axes don't resolve on Android.
-    "SpaceGrotesk-SemiBold": require("@/assets/fonts/SpaceGrotesk-SemiBold.ttf"),
-    "SpaceGrotesk-Bold": require("@/assets/fonts/SpaceGrotesk-Bold.ttf"),
+    "MonaSans-Medium": require("@/assets/fonts/MonaSans-Medium.ttf"),
+    "MonaSans-SemiBold": require("@/assets/fonts/MonaSans-SemiBold.ttf"),
+    "MonaSans-Bold": require("@/assets/fonts/MonaSans-Bold.ttf"),
     "Geist-Regular": require("@/assets/fonts/Geist-Regular.ttf"),
     "Geist-Medium": require("@/assets/fonts/Geist-Medium.ttf"),
     "Geist-SemiBold": require("@/assets/fonts/Geist-SemiBold.ttf"),

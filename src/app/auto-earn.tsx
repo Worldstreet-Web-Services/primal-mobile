@@ -21,7 +21,11 @@ export default function AutoEarn() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <AutoEarnScreen top={headerHeight} bottom={ctaBottom + CTA_HEIGHT + 24} />
+      <AutoEarnScreen
+        top={headerHeight}
+        bottom={ctaBottom + CTA_HEIGHT + 24}
+        onFund={() => router.push("/fund")}
+      />
 
       <View
         pointerEvents="box-none"
@@ -36,6 +40,7 @@ export default function AutoEarn() {
           label="Buy & hold"
           height={CTA_HEIGHT}
           icon={<SparkleIcon size={16} />}
+          onPress={() => router.push("/buy")}
         />
       </View>
 

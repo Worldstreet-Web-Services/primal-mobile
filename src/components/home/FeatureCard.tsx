@@ -100,9 +100,15 @@ export function FeatureCard({
             show at their own footers. */}
         <Text
           numberOfLines={1}
+          // Mona Sans runs wider than the old display face — long titles
+          // (COPY TRADING) shrink instead of ellipsizing. The length step is
+          // the cross-platform floor; adjustsFontSizeToFit refines on native
+          // but is a no-op on react-native-web.
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
           style={{
             fontFamily: F.display,
-            fontSize: 18,
+            fontSize: feature.title.length > 10 ? 14.5 : 18,
             letterSpacing: 0.3,
             color: C.text,
             marginTop: 8,

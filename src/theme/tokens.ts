@@ -46,8 +46,9 @@ export const C = {
 };
 
 export const F = {
-  display: "SpaceGrotesk-SemiBold",
-  displayBold: "SpaceGrotesk-Bold",
+  // Mona Sans headers over Geist body — the wsws-frontend pairing.
+  display: "MonaSans-SemiBold",
+  displayBold: "MonaSans-Bold",
   body: "Geist-Regular",
   bodyMedium: "Geist-Medium",
   bodySemibold: "Geist-SemiBold",

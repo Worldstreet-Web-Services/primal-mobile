@@ -11,7 +11,10 @@ export default function CopyTrading() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <CopyTradingScreen top={headerHeight} />
+      <CopyTradingScreen
+        top={headerHeight}
+        onFund={() => router.push("/fund")}
+      />
       <NavHeader
         wordmark="COPY TRADING"
         tagline="POWERED BY WORLDSTREET"

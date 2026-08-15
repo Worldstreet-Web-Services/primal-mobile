@@ -6,7 +6,6 @@ import {
   Screen,
   BackHeader,
   MetallicButton,
-  Card,
   Label,
   Mono,
   Body,

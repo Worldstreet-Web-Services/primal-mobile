@@ -123,7 +123,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   } = useVaultActions();
 
   const [myAddress, setMyAddress] = useState<string | null>(null);
-  const [pendingWei, setPendingWei] = useState("40000000000000000");
+  const [pendingWei, setPendingWei] = useState("0");
   // Bundler accepted the play; the on-chain receipt hasn't landed yet.
   const [confirming, setConfirming] = useState(false);
   // Drives the lobby rows' per-second time-left redraw.
@@ -181,24 +181,10 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   const offline = error && games.length === 0;
   const live = !offline && !loading;
 
-  // TEMP-PREVIEW
-  const nowS = Math.floor(Date.now() / 1000);
-  const mk = (id: number, usd: number, endsIn: number) => ({
-    gameId: id,
-    starter: "0xAb1234567890abcdef1234567890abcdef123456",
-    king: "0xCd9876543210fedcba9876543210fedcba987654",
-    pot: moneyFromWei(String((BigInt(Math.round(usd * 1e6)) * 10n ** 18n) / 3000n / 1000000n), 3000),
-    minWager: moneyFromWei(String((BigInt(50 * 1e6) * 10n ** 18n) / 3000n / 1000000n), 3000),
-    endTime: nowS + endsIn,
-    timeRemaining: endsIn,
-    settled: false,
-    active: true,
-  });
-  // TEMP-PREVIEW END
-  const featured = featuredGame(games, featuredId) ?? mk(63, 1240, 9);
+  const featured = featuredGame(games, featuredId);
   const others = games.filter(
     (g) => g.active && !g.settled && g.gameId !== featured?.gameId,
-  ).concat([mk(61, 420, 44), mk(59, 96, 8)]);
+  );
 
   useEffect(() => {
     if (!others.length) return;
@@ -210,7 +196,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   const unit = firstUnitUsd([
     ...games.flatMap((g) => [g.pot, g.minWager]),
     ...winners.flatMap((w) => [w.toWinner, w.pot]),
-  ]) || 3000;
+  ]);
 
   /** Chain truth immediately after OUR confirmed action — the indexer
    * trails the chain, and waiting for it re-arms the wager button. */
@@ -494,55 +480,55 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             An empty floor has no king to name — the stage above says it once,
             and once is enough. */}
         {!emptyTable && (
-        <Card
-          style={{
-            marginTop: 18,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            borderRadius: 20,
-            paddingVertical: 15,
-            paddingHorizontal: 16,
-            backgroundColor: C.raised,
-            borderColor: iAmKing ? "rgba(124,231,176,0.28)" : C.hairline,
-          }}
-        >
-          <View
+          <Card
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: iAmKing ? C.upBg : C.inset,
-              borderWidth: 1,
-              borderColor: iAmKing ? "rgba(124,231,176,0.32)" : C.hairline,
+              marginTop: 18,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
+              gap: 14,
+              borderRadius: 20,
+              paddingVertical: 15,
+              paddingHorizontal: 16,
+              backgroundColor: C.raised,
+              borderColor: iAmKing ? "rgba(124,231,176,0.28)" : C.hairline,
             }}
           >
-            <Text
+            <View
               style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 13,
-                letterSpacing: 0.5,
-                color: iAmKing ? C.up : C.silver,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: iAmKing ? C.upBg : C.inset,
+                borderWidth: 1,
+                borderColor: iAmKing ? "rgba(124,231,176,0.32)" : C.hairline,
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {iAmKing ? "YOU" : kingInitials}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Body size={14} semibold color={iAmKing ? C.up : C.text}>
-              {iAmKing
-                ? "You hold the crown"
-                : kingLabel
-                  ? `${kingLabel} holds the crown`
-                  : "No king yet"}
-            </Body>
-            <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
-              {iAmKing ? "Outlast the clock and the pot is yours" : kingSub}
-            </Body>
-          </View>
-        </Card>
+              <Text
+                style={{
+                  fontFamily: F.monoSemibold,
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                  color: iAmKing ? C.up : C.silver,
+                }}
+              >
+                {iAmKing ? "YOU" : kingInitials}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Body size={14} semibold color={iAmKing ? C.up : C.text}>
+                {iAmKing
+                  ? "You hold the crown"
+                  : kingLabel
+                    ? `${kingLabel} holds the crown`
+                    : "No king yet"}
+              </Body>
+              <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
+                {iAmKing ? "Outlast the clock and the pot is yours" : kingSub}
+              </Body>
+            </View>
+          </Card>
         )}
 
         {/* Money already won is money you hold — it wears the up tone, never

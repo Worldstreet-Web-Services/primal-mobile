@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { View, Pressable } from "react-native";
+import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import {
   BackHeader,
   MetallicButton,
   GhostButton,
-  Card,
   Label,
   Mono,
   Body,
@@ -14,6 +13,14 @@ import {
   PinDots,
   Keypad,
 } from "../components/ui";
+import {
+  InstrumentRow,
+  MetaChip,
+  QuoteCard,
+  QuoteRow,
+  SectionHead,
+  Settle,
+} from "../components/crypto";
 
 // Buy & hold — pick an asset, key in ₦, PIN to buy. Fiat balance funds it.
 const PIN_LENGTH = 4;
@@ -27,6 +34,8 @@ type Asset = {
   priceLabel: string;
   delta: string;
   up: boolean;
+  /** Dollar-pegged — the disc carries `up`, as on every other crypto list. */
+  stable?: boolean;
 };
 const assets: Asset[] = [
   {
@@ -60,6 +69,7 @@ const assets: Asset[] = [
     priceLabel: "₦1,590",
     delta: "+0.1%",
     up: true,
+    stable: true,
   },
 ];
 
@@ -117,42 +127,46 @@ export default function BuyScreen({
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <View
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
-              backgroundColor: C.brandGlow,
-              borderWidth: 1,
-              borderColor: "rgba(131,190,96,0.35)",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Svg width={34} height={34} viewBox="0 0 24 24">
-              <Path
-                d="m5 12.5 4.5 4.5L19 7.5"
-                stroke={C.brand}
-                strokeWidth={2.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </Svg>
-          </View>
-          <Display size={24} style={{ marginTop: 22 }}>
-            Bought and holding
-          </Display>
-          <Mono size={13} color={C.up} style={{ marginTop: 10 }}>
-            {qty} {asset.sym} · ₦{withCommas(digits)}.00
-          </Mono>
-          <Body
-            size={12.5}
-            color={C.sub}
-            style={{ marginTop: 8, textAlign: "center", lineHeight: 18 }}
-          >
-            It lands in your crypto holdings — sell anytime.
-          </Body>
+          <Settle distance={14}>
+            <View style={{ alignItems: "center" }}>
+              <View
+                style={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: 38,
+                  backgroundColor: C.brandGlow,
+                  borderWidth: 1,
+                  borderColor: "rgba(131,190,96,0.35)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Svg width={34} height={34} viewBox="0 0 24 24">
+                  <Path
+                    d="m5 12.5 4.5 4.5L19 7.5"
+                    stroke={C.brand}
+                    strokeWidth={2.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </Svg>
+              </View>
+              <Display size={26} style={{ marginTop: 24 }}>
+                Bought and holding
+              </Display>
+              <Mono size={13.5} color={C.up} style={{ marginTop: 12 }}>
+                {qty} {asset.sym} · ₦{withCommas(digits)}.00
+              </Mono>
+              <Body
+                size={12.5}
+                color={C.dim}
+                style={{ marginTop: 10, textAlign: "center", lineHeight: 18 }}
+              >
+                It lands in your crypto holdings. Sell anytime.
+              </Body>
+            </View>
+          </Settle>
         </View>
         <View style={{ paddingBottom: 36 }}>
           <MetallicButton label="Done" onPress={onDone} />
@@ -170,35 +184,33 @@ export default function BuyScreen({
             onBack={() => setStep("asset")}
           />
         </View>
-        <View style={{ marginTop: 34, alignItems: "center" }}>
-          <Body size={11.5} color={C.dim}>
-            You're buying
-          </Body>
-          <Display
-            size={44}
-            color={digits ? C.text : C.dim}
-            style={{ marginTop: 8 }}
-          >
-            ₦{withCommas(digits || "0")}
-          </Display>
-          <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
-            ≈ {qty} {asset.sym}
-          </Mono>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <View style={{ alignItems: "center" }}>
+            <Label>Buying</Label>
+            <Display
+              size={44}
+              color={digits ? C.text : C.dim}
+              style={{ marginTop: 12 }}
+            >
+              ₦{withCommas(digits || "0")}
+            </Display>
+            <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+              ≈ {qty} {asset.sym}
+            </Mono>
+            <View style={{ marginTop: 14 }}>
+              <MetaChip label={`1 ${asset.sym} = ${asset.priceLabel}`} />
+            </View>
+          </View>
         </View>
-        <Body
-          size={11}
-          color={C.dim}
-          style={{ textAlign: "center", marginTop: 14 }}
-        >
-          Pays from your fiat balance · {available} available
-        </Body>
         <View
           style={{
-            marginTop: "auto",
             paddingHorizontal: 22,
             paddingBottom: 36,
           }}
         >
+          <Mono size={11.5} color={C.dim} style={{ marginBottom: 14 }}>
+            Pays from fiat · {available}
+          </Mono>
           <Keypad onKey={handleAmountKey} />
           <View style={{ marginTop: 16 }}>
             {amt > 0 ? (
@@ -227,83 +239,34 @@ export default function BuyScreen({
             }}
           />
         </View>
-        <View style={{ marginTop: 24, alignItems: "center" }}>
-          <Body size={11.5} color={C.dim}>
-            You're buying
-          </Body>
-          <Display size={40} style={{ marginTop: 6 }}>
-            ₦{withCommas(digits)}
-            <Display size={24} color={C.dim}>
-              .00
+        <Settle>
+          <View style={{ marginTop: 26, alignItems: "center" }}>
+            <Label>Buying</Label>
+            <Display size={40} style={{ marginTop: 10 }}>
+              ₦{withCommas(digits)}
+              <Display size={24} color={C.dim}>
+                .00
+              </Display>
             </Display>
-          </Display>
-          <Mono size={12} color={C.up} style={{ marginTop: 6 }}>
-            ≈ {qty} {asset.sym}
-          </Mono>
-        </View>
-        <Card
-          style={{
-            marginTop: 18,
-            marginHorizontal: 20,
-            borderRadius: 16,
-            paddingVertical: 4,
-            paddingHorizontal: 16,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingVertical: 11,
-              borderBottomWidth: 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <Body size={12.5} color={C.sub}>
-              Rate
-            </Body>
-            <Mono size={12.5} color={C.text}>
-              1 {asset.sym} = {asset.priceLabel}
+            <Mono size={12.5} color={C.sub} style={{ marginTop: 8 }}>
+              ≈ {qty} {asset.sym}
             </Mono>
           </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingVertical: 11,
-              borderBottomWidth: 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <Body size={12.5} color={C.sub}>
-              Fee
-            </Body>
-            <Mono size={12.5} color={C.text}>
-              ₦250{" "}
-              <Mono size={12.5} color={C.dim}>
-                · in quote
-              </Mono>
-            </Mono>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingVertical: 11,
-            }}
-          >
-            <Body size={12.5} color={C.sub}>
-              Total debit
-            </Body>
-            <Mono
-              size={12.5}
-              color={C.text}
-              style={{ fontFamily: F.monoSemibold }}
-            >
-              ₦{withCommas(String(amt + FEE))}.00
-            </Mono>
-          </View>
-        </Card>
+          <QuoteCard style={{ marginTop: 22, marginHorizontal: 22 }}>
+            <QuoteRow label="Asset" value={`${asset.name} · ${asset.sym}`} />
+            <QuoteRow
+              label="Rate"
+              value={`1 ${asset.sym} = ${asset.priceLabel}`}
+            />
+            <QuoteRow label="Fee" value="₦250" tail="· in quote" />
+            <QuoteRow
+              label="Total debit"
+              value={`₦${withCommas(String(amt + FEE))}.00`}
+              strong
+              last
+            />
+          </QuoteCard>
+        </Settle>
         <View
           style={{
             marginTop: "auto",
@@ -311,10 +274,10 @@ export default function BuyScreen({
             paddingBottom: 36,
           }}
         >
-          <Body size={12} color={C.sub} style={{ textAlign: "center" }}>
-            Enter PIN to buy
-          </Body>
-          <View style={{ marginTop: 14, marginBottom: 18 }}>
+          <View style={{ alignItems: "center" }}>
+            <Label>Enter PIN to buy</Label>
+          </View>
+          <View style={{ marginTop: 16, marginBottom: 20 }}>
             <PinDots filled={pin.length} />
           </View>
           <Keypad onKey={handlePinKey} />
@@ -325,76 +288,47 @@ export default function BuyScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <View style={{ paddingHorizontal: 22 }}>
+      <View style={{ flex: 1, paddingHorizontal: 22 }}>
         <BackHeader title="Buy" onBack={onBack} />
-        <View style={{ marginTop: 22 }}>
-          <Label>Pick an asset</Label>
-          {assets.map((a, i) => (
-            <Pressable
-              key={a.sym}
-              onPress={() => {
-                setAsset(a);
-                setDigits("");
-                setPin("");
-                setStep("amount");
-              }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: 14,
-                borderBottomWidth: i === assets.length - 1 ? 0 : 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 20,
-                  backgroundColor: a.up ? C.upBg : "rgba(255,255,255,0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
+        <View style={{ marginTop: 24 }}>
+          <SectionHead
+            label="Pick an asset"
+            right={
+              <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+                PRICE · 24H
+              </Mono>
+            }
+          />
+          <View style={{ marginTop: 2 }}>
+            {assets.map((a, i) => (
+              <InstrumentRow
+                key={a.sym}
+                symbol={a.sym}
+                name={a.name}
+                sub={a.sym}
+                value={a.priceLabel}
+                meta={`${a.delta} · 24h`}
+                metaTone={a.up ? "up" : "down"}
+                stable={a.stable}
+                last={i === assets.length - 1}
+                accessibilityLabel={`Buy ${a.name}`}
+                onPress={() => {
+                  setAsset(a);
+                  setDigits("");
+                  setPin("");
+                  setStep("amount");
                 }}
-              >
-                <Mono
-                  size={9}
-                  color={a.up ? C.up : C.silver}
-                  style={{ fontFamily: F.monoSemibold }}
-                >
-                  {a.sym}
-                </Mono>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Body size={13.5} semibold>
-                  {a.name}
-                </Body>
-                <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-                  {a.sym}
-                </Body>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Mono size={13} color={C.text}>
-                  {a.priceLabel}
-                </Mono>
-                <Mono
-                  size={11}
-                  color={a.up ? C.up : C.down}
-                  style={{ marginTop: 2 }}
-                >
-                  {a.delta} · 24h
-                </Mono>
-              </View>
-            </Pressable>
-          ))}
+              />
+            ))}
+          </View>
         </View>
-        <Body
-          size={11}
-          color={C.dim}
-          style={{ textAlign: "center", marginTop: 18 }}
-        >
-          Pays from your fiat balance · {available} available
-        </Body>
+        <View style={{ flex: 1 }} />
+        <View style={{ alignItems: "center", gap: 12, paddingBottom: 34 }}>
+          <Body size={11.5} color={C.dim} style={{ textAlign: "center" }}>
+            Bought assets settle into your crypto holdings.
+          </Body>
+          <MetaChip label={`Fiat balance · ${available}`} />
+        </View>
       </View>
     </View>
   );

@@ -6,7 +6,6 @@ import {
   Body,
   Mono,
   Label,
-  MetallicButton,
   GhostButton,
   SegTabs,
   Chip,
@@ -152,23 +151,17 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
               </View>
             </PressableScale>
 
-            <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <MetallicButton
-                  label={copied === "va" ? "Copied" : "Copy number"}
-                  height={48}
-                  radius={14}
-                  size={13.5}
-                  onPress={() => void copy("va", user.va.replace(/ /g, ""))}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <GhostButton
-                  label={copied === "block" ? "Copied" : "Copy all details"}
-                  height={48}
-                  onPress={() => void copy("block", bankBlock())}
-                />
-              </View>
+            {/* The plate above already copies the number on tap, so the only
+                button left is the one it cannot do: hand over the whole block
+                — name, bank and number — in one paste. */}
+            <View style={{ marginTop: 14 }}>
+              <GhostButton
+                label={
+                  copied === "block" ? "Copied" : "Copy name, bank and number"
+                }
+                height={48}
+                onPress={() => void copy("block", bankBlock())}
+              />
             </View>
 
             <Body
@@ -222,7 +215,7 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
                   borderColor:
                     copied === "addr" ? "rgba(124,231,176,0.4)" : C.border,
                   borderRadius: 16,
-                  paddingVertical: 13,
+                  paddingVertical: 14,
                   paddingHorizontal: 16,
                   flexDirection: "row",
                   alignItems: "center",
@@ -231,24 +224,18 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
               >
                 <Mono
                   size={12}
-                  color={C.silver}
-                  style={{ flex: 1, lineHeight: 18 }}
+                  color={C.text}
+                  style={{
+                    flex: 1,
+                    lineHeight: 18,
+                    fontFamily: F.monoSemibold,
+                  }}
                 >
                   {nw.address}
                 </Mono>
-                <CopyMark copied={copied === "addr"} />
+                <CopyMark copied={copied === "addr"} label="COPY" />
               </View>
             </PressableScale>
-
-            <View style={{ marginTop: 16 }}>
-              <MetallicButton
-                label={copied === "addr" ? "Copied" : "Copy address"}
-                height={48}
-                radius={14}
-                size={13.5}
-                onPress={() => void copy("addr", nw.address)}
-              />
-            </View>
 
             <View
               style={{

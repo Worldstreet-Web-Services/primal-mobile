@@ -192,16 +192,27 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
           >
             Deciding who stood last
           </Text>
-          <Text
+          <View
             style={{
-              marginTop: 10,
-              fontFamily: F.monoSemibold,
-              fontSize: 15,
-              color: C.silver,
+              flexDirection: "row",
+              alignItems: "flex-end",
+              gap: 7,
+              marginTop: 12,
             }}
           >
-            {`${formatUsd(phase.potUsd)} on the line`}
-          </Text>
+            <Text
+              style={{
+                fontFamily: F.monoSemibold,
+                fontSize: 15,
+                color: C.silver,
+              }}
+            >
+              {formatUsd(phase.potUsd)}
+            </Text>
+            <Body size={12.5} color={C.dim}>
+              on the line
+            </Body>
+          </View>
         </View>
       </Dim>
     );
@@ -226,7 +237,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
           borderRadius: 28,
           borderWidth: 1,
           borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
-          backgroundColor: C.sheet,
+          backgroundColor: C.raised,
           paddingHorizontal: 32,
           paddingVertical: 32,
           opacity: pop,
@@ -270,7 +281,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
             color: C.text,
           }}
         >
-          {youWon ? "You outlasted the table" : truncateAddress(phase.winner)}
+          {youWon ? "You stood last" : truncateAddress(phase.winner)}
         </Text>
         <Text
           style={{

@@ -193,6 +193,60 @@ export function GlassSurface({
  */
 export const PILL = 999;
 
+/**
+ * Circular icon button — the quiet chrome action at the edge of a header row.
+ * Takes the glyph as a child so it stays icon-agnostic.
+ */
+export function CircleAction({
+  onPress,
+  children,
+  size = 40,
+  badge = false,
+  accessibilityLabel,
+}: {
+  onPress?: () => void;
+  children: React.ReactNode;
+  size?: number;
+  /** Unread marker in the top-right notch. */
+  badge?: boolean;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: PILL,
+        borderWidth: 1,
+        borderColor: C.border,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+      {badge ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 7,
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: C.brand,
+            borderWidth: 1.5,
+            borderColor: C.canvas,
+          }}
+        />
+      ) : null}
+    </Pressable>
+  );
+}
+
 export function Shine() {
   return (
     <View
@@ -865,14 +919,23 @@ export function PrimaryButton({
   label,
   onPress,
   icon,
+  trailing,
   height = 56,
   radius = PILL,
+  uppercase = true,
+  color = C.brandSoft,
 }: {
   label: string;
   onPress?: () => void;
   icon?: React.ReactNode;
+  /** Glyph after the label — the "and then onward" shape, e.g. an arrow. */
+  trailing?: React.ReactNode;
   height?: number;
   radius?: number;
+  /** Off for conversational CTAs, where tracked caps read as shouting. */
+  uppercase?: boolean;
+  /** Fill. `C.brand` is the brighter cousin, for a lone CTA on a dark page. */
+  color?: string;
 }) {
   return (
     <PressableScale onPress={onPress} scale={0.98}>
@@ -882,7 +945,7 @@ export function PrimaryButton({
         style={{
           height,
           borderRadius: radius,
-          backgroundColor: C.brandSoft,
+          backgroundColor: color,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
@@ -892,14 +955,15 @@ export function PrimaryButton({
         {icon}
         <Text
           style={{
-            fontFamily: F.bodySemibold,
-            fontSize: 14,
-            letterSpacing: 1.4,
+            fontFamily: uppercase ? F.bodySemibold : F.displayBold,
+            fontSize: uppercase ? 14 : 16,
+            letterSpacing: uppercase ? 1.4 : 0.2,
             color: C.brandSoftInk,
           }}
         >
-          {label.toUpperCase()}
+          {uppercase ? label.toUpperCase() : label}
         </Text>
+        {trailing}
       </View>
     </PressableScale>
   );

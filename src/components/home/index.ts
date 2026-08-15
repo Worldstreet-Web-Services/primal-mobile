@@ -1,10 +1,12 @@
 export { ArtSlot } from "./ArtSlot";
-export { FeatureCard, FeatureShelf } from "./FeatureCard";
+export { FeatureCard, FeatureGrid } from "./FeatureCard";
 export type { Feature, FeatureTone } from "./FeatureCard";
 export { GreetingHero } from "./GreetingHero";
 export { NavHeader } from "./NavHeader";
 export type { NavHeaderDirection } from "./NavHeader";
+export { MediaCard, MediaCarousel } from "./MediaCard";
+export type { MediaItem } from "./MediaCard";
 export { MediaRow, MediaStack } from "./MediaRow";
-export type { MediaItem } from "./MediaRow";
+export { Avatar, ProfileHeader } from "./ProfileHeader";
 export { SpaceNav, SpaceTile } from "./SpaceNav";
 export type { Space } from "./SpaceNav";

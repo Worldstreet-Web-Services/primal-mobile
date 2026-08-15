@@ -1,85 +1,90 @@
 import { View } from "react-native";
 
 import {
-  FeatureShelf,
-  GreetingHero,
-  MediaStack,
-  SpaceNav,
+  BalanceCard,
+  FeatureGrid,
+  MediaCarousel,
+  ProfileHeader,
+  type BalanceDelta,
   type Feature,
   type MediaItem,
-  type Space,
 } from "@/components/home";
 import { Screen } from "@/components/ui";
 import {
   features as defaultFeatures,
   media as defaultMedia,
+  portfolioDelta,
   portfolioTotal,
-  spaces as defaultSpaces,
+  tagline as defaultTagline,
 } from "@/data/home";
 import { user } from "@/data/mock";
-import { firstNameOf, greetingFor } from "@/lib/greeting";
+import { firstNameOf } from "@/lib/greeting";
 
-const heroArtwork = require("../../assets/images/pills.png");
+/** Page gutter. The media rail escapes it, so it has to be shared. */
+const GUTTER = 14;
 
 export interface HomeScreenProps {
   name?: string;
-  greeting?: string;
+  tagline?: string;
   /** Preformatted total across every space. */
   balance?: string;
-  // heroArtwork?: ImageSource | number;
-  spaces?: Space[];
+  balanceDelta?: BalanceDelta;
   features?: Feature[];
   media?: MediaItem[];
-  /** Head space for a nav header floating above the scroll view. */
+  /** Head space — safe-area top, or a nav header's height when one floats. */
   top?: number;
   unread?: boolean;
   onNotifications?: () => void;
-  onSelectSpace?: (key: string) => void;
+  onOpenProfile?: () => void;
   onOpenFeature?: (key: string) => void;
   onOpenMedia?: (key: string) => void;
-  onOpenHero?: () => void;
+  onOpenBalance?: () => void;
 }
 
 /**
- * Ecosystem home: greeting, the four product doorways, the promoted
- * capabilities, then editorial. Every section is a standalone component and
- * every list is a prop, so this file is only layout and spacing.
+ * Ecosystem home: who you are, what you're worth, the product doorways, then
+ * editorial. Every section is a standalone component and every list is a prop,
+ * so this file is only layout and spacing.
  */
 export default function HomeScreen({
   name = firstNameOf(user.name),
-  greeting = greetingFor(),
+  tagline = defaultTagline,
   balance = portfolioTotal,
-  spaces = defaultSpaces,
+  balanceDelta = portfolioDelta,
   features = defaultFeatures,
   media = defaultMedia,
   top = 0,
-  onSelectSpace,
+  unread = false,
+  onNotifications,
+  onOpenProfile,
   onOpenFeature,
   onOpenMedia,
-  onOpenHero,
+  onOpenBalance,
 }: HomeScreenProps) {
   return (
-    <Screen pad={16} top={top}>
-      <View style={{ marginTop: 14 }}>
-        <GreetingHero
-          greeting={greeting}
-          name={name}
-          balance={balance}
-          artwork={heroArtwork}
-          onPress={onOpenHero}
-        />
+    <Screen pad={GUTTER} top={top} bottom={48}>
+      <ProfileHeader
+        name={name}
+        tagline={tagline}
+        unread={unread}
+        onPress={onOpenProfile}
+        onNotifications={onNotifications}
+        style={{ marginTop: 6 }}
+      />
+
+      <BalanceCard
+        amount={balance}
+        delta={balanceDelta}
+        onPress={onOpenBalance}
+        style={{ marginTop: 18 }}
+      />
+
+      <View style={{ marginTop: 30 }}>
+        <FeatureGrid features={features} rows={[3, 2]} onOpen={onOpenFeature} />
       </View>
 
-      {/* Ecosystem rail hidden (client call 2026-08-14) — the four feature
-          icons below are the doorways. SpaceNav + its data stay intact for
-          when a partner-apps surface returns. */}
-
-      <View style={{ marginTop: 24 }}>
-        <FeatureShelf features={features} onOpen={onOpenFeature} />
-      </View>
-
-      <View style={{ marginTop: 26 }}>
-        <MediaStack items={media} onOpen={onOpenMedia} />
+      <View style={{ marginTop: 30 }}>
+        <MediaCarousel items={media} bleed={GUTTER} onOpen={onOpenMedia} />
       </View>
     </Screen>
   );

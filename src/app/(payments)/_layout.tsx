@@ -1,8 +1,8 @@
 import { FloatingBackdrop } from "@/components/FloatingBackdrop";
 import { GlassDrawer } from "@/components/GlassDrawer";
 import { Logo } from "@/components/Logo";
-import { C } from "@/theme/tokens";
 import { DRAWER_DELAY } from "@/lib/motion";
+import { C } from "@/theme/tokens";
 import { Slot } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, useWindowDimensions, View } from "react-native";
@@ -41,7 +41,7 @@ const PaymentLayout = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <FloatingBackdrop opacity={0.7} />
+      <FloatingBackdrop opacity={0.25} />
 
       <Animated.View
         style={{
@@ -74,7 +74,7 @@ const PaymentLayout = () => {
         width={width}
         delay={DRAWER_DELAY}
         effect="clear"
-        tintOpacity={0.55}
+        tintOpacity={0.95}
         style={{
           marginHorizontal: 8,
           paddingTop: 28,

@@ -1,18 +1,10 @@
-import { type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
 import { C, F } from "../../theme/tokens";
 import { ArrowRight } from "../icons";
 import { PressableScale, Shine } from "../ui";
 import { ArtSlot } from "./ArtSlot";
-
-export interface MediaItem {
-  key: string;
-  title: string;
-  /** Optional kicker above the title — episode count, "live", a date… */
-  kicker?: string;
-  artwork?: ImageSource | number;
-}
+import type { MediaItem } from "./MediaCard";
 
 /**
  * Full-width editorial row (podcast, news). Title sits on the baseline with

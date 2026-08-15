@@ -5,8 +5,12 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { PinPromptProvider } from "@/components/PinPrompt";
 import { PrivacyOverlay } from "@/components/PrivacyOverlay";
+import { ToastProvider } from "@/components/Toast";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 import "../global.css";
 
@@ -34,21 +38,34 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    // Gesture root is required for any RNGH gesture; the modal provider is the
-    // portal every `Sheet` mounts into, which is what keeps a sheet clear of
-    // the clipping and stacking of whatever opened it.
+    // Gesture root is required for any RNGH gesture, so it stays outermost.
+    // SafeAreaProvider is explicit because the toast and the PIN prompt render
+    // outside the navigator, so they can't rely on the one react-navigation
+    // installs. The modal provider is the portal every `Sheet` mounts into,
+    // which is what keeps a sheet clear of the clipping and stacking of
+    // whatever opened it.
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <BottomSheetModalProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#0A0B0D" },
-          }}
-        />
-        {/* Last sibling, so it covers every route including modals. */}
-        <PrivacyOverlay />
-      </BottomSheetModalProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <ToastProvider>
+            {/* Inside the toast provider so a failed PIN can still surface one,
+                and outside the navigator so the prompt survives route changes. */}
+            <PinPromptProvider>
+              <BottomSheetModalProvider>
+                <StatusBar style="light" />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#0A0B0D" },
+                  }}
+                />
+                {/* Last sibling, so it covers every route including modals. */}
+                <PrivacyOverlay />
+              </BottomSheetModalProvider>
+            </PinPromptProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

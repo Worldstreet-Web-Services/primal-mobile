@@ -1,16 +1,20 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { C, F } from "../theme/tokens";
+import { View, Pressable } from "react-native";
+import { C } from "../theme/tokens";
 import Svg, { Path, Circle } from "react-native-svg";
 import { MetallicButton, Display, Body } from "../components/ui";
 
 export default function PasskeyScreen({
   onEnable,
   onSkip,
+  enabling = false,
+  label = "Face ID",
 }: {
   onEnable?: () => void;
   onSkip?: () => void;
+  enabling?: boolean;
+  /** What this device actually offers — Face ID, Touch ID, Fingerprint. */
+  label?: string;
 }) {
   return (
     <View
@@ -60,16 +64,25 @@ export default function PasskeyScreen({
           color={C.sub}
           style={{ textAlign: "center", lineHeight: 22 }}
         >
-          Unlock Paradigm and sign transactions with Face ID. Your key is split
+          Unlock Paradigm and sign transactions with {label}. Your key is split
           across this device, Decane, and recovery — no one can sign without
           you.
         </Body>
       </View>
       <View style={{ gap: 10 }}>
-        <MetallicButton label="Enable Face ID" onPress={onEnable} />
+        <MetallicButton
+          label={`Enable ${label}`}
+          onPress={onEnable}
+          loading={enabling}
+        />
         <Pressable
-          onPress={onSkip}
-          style={{ height: 48, alignItems: "center", justifyContent: "center" }}
+          onPress={enabling ? undefined : onSkip}
+          style={{
+            height: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: enabling ? 0.45 : 1,
+          }}
         >
           <Body size={14} color={C.sub}>
             Maybe later

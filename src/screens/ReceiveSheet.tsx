@@ -26,15 +26,34 @@ const bankBlock = () =>
   `${user.name}\n${user.bank}\n${user.va.replace(/ /g, "")}`;
 
 // Designs 4c + 4d: receive sheet — bank VA with copy affordance / crypto network picker.
-export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
+export default function ReceiveSheet({
+  onClose,
+  addresses,
+}: {
+  onClose?: () => void;
+  /** Real Decane wallet addresses, keyed to the network tabs below. */
+  addresses?: { evm?: string; solana?: string; tron?: string } | null;
+}) {
   const [tab, setTab] = useState(0);
   const [net, setNet] = useState(0);
-  const nw = NETWORKS[net];
   const { copied, copy } = useCopy();
   // Bottom-anchored, so the sheet owns its own home-indicator clearance —
   // the route mounts it bare rather than inside a SafeAreaView.
   const insets = useSafeAreaInsets();
 
+  // Keyed by the catalog's `kind`; bitcoin has no Decane wallet, so it stays
+  // undefined and falls through to the empty state below.
+  const live: Record<string, string | undefined> = {
+    evm: addresses?.evm,
+    solana: addresses?.solana,
+    tron: addresses?.tron,
+  };
+
+  // Show the real address or nothing. A mock deposit address is money sent to
+  // an account nobody holds the key to, so it must never reach this screen —
+  // which is also why the QR below only renders once `addr` exists.
+  const base = NETWORKS[net];
+  const nw = { ...base, addr: live[base.kind] ?? null };
   return (
     <View
       style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
@@ -201,46 +220,62 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
               {nw.note}
             </Body>
 
-            <View style={{ marginTop: 16 }}>
-              <QrPlate value={nw.address} size={126} caption={nw.label} />
-            </View>
-
-            <PressableScale
-              onPress={() => void copy("addr", nw.address)}
-              scale={0.985}
-            >
-              <View
-                accessibilityRole="button"
-                accessibilityLabel="Copy deposit address"
-                style={{
-                  marginTop: 16,
-                  backgroundColor: C.card,
-                  borderWidth: 1,
-                  borderColor:
-                    copied === "addr" ? "rgba(124,231,176,0.4)" : C.border,
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                }}
+            {nw.addr ? (
+              <View style={{ marginTop: 16 }}>
+                <QrPlate value={nw.addr} size={126} caption={nw.label} />
+              </View>
+            ) : null}
+            {nw.addr ? (
+              <PressableScale
+                onPress={() => void copy("addr", nw.addr as string)}
+                scale={0.985}
               >
-                <Mono
-                  size={12}
-                  color={C.text}
+                <View
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy deposit address"
                   style={{
-                    flex: 1,
-                    lineHeight: 18,
-                    fontFamily: F.monoSemibold,
+                    marginTop: 16,
+                    backgroundColor: C.card,
+                    borderWidth: 1,
+                    borderColor:
+                      copied === "addr" ? "rgba(124,231,176,0.4)" : C.border,
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  {nw.address}
-                </Mono>
-                <CopyMark copied={copied === "addr"} label="COPY" />
-              </View>
-            </PressableScale>
-
+                  <Mono
+                    size={12}
+                    color={C.text}
+                    style={{
+                      flex: 1,
+                      lineHeight: 18,
+                      fontFamily: F.monoSemibold,
+                    }}
+                  >
+                    {nw.addr}
+                  </Mono>
+                  <CopyMark copied={copied === "addr"} label="COPY" />
+                </View>
+              </PressableScale>
+            ) : (
+              <Body
+                size={12.5}
+                color={C.dim}
+                style={{
+                  textAlign: "center",
+                  marginTop: 16,
+                  maxWidth: 280,
+                  alignSelf: "center",
+                  lineHeight: 19,
+                }}
+              >
+                No {nw.label} address yet — sign in to create your wallet.
+              </Body>
+            )}
             <View
               style={{
                 marginTop: 16,

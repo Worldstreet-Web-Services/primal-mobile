@@ -34,9 +34,16 @@ const METHODS = [
  */
 export default function SignInScreen({
   onSignIn,
+  pending = null,
+  creatingWallet = false,
 }: {
   onSignIn?: (method: string) => void;
+  /** Which provider is mid-flight — that row spins, the others dim out. */
+  pending?: string | null;
+  /** First-time key generation: Shamir split + enclave session, several seconds. */
+  creatingWallet?: boolean;
 }) {
+  const busy = pending !== null;
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
 
@@ -182,9 +189,35 @@ export default function SignInScreen({
                 )
               }
               onPress={() => onSignIn?.(m.id)}
+              loading={pending === m.id}
+              disabled={busy && pending !== m.id}
             />
           </Animated.View>
         ))}
+
+        <Animated.View style={[{ marginTop: 26 }, step(5)]}>
+          <Text
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              lineHeight: 16,
+              textAlign: "center",
+              color: C.dim,
+            }}
+          >
+            {creatingWallet ? (
+              "Creating your wallet — this takes a few seconds. Keep the app open."
+            ) : (
+              <>
+                By continuing you agree to Paradigm&apos;s{" "}
+                <Text style={{ color: C.sub }}>Terms</Text> and{" "}
+                <Text style={{ color: C.sub }}>Privacy Policy</Text>. A smart
+                wallet is created on your behalf — Paradigm can never move your
+                funds.
+              </>
+            )}
+          </Text>
+        </Animated.View>
       </GlassDrawer>
     </View>
   );

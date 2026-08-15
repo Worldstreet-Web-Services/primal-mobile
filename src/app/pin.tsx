@@ -1,12 +1,38 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useToast } from "@/components/Toast";
+import { useAuth } from "@/lib/auth/AuthContext";
 import CreatePinScreen from "@/screens/CreatePinScreen";
 
 export default function Pin() {
+  const { createPin } = useAuth();
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+
+  const onDone = async (pin: string) => {
+    setSaving(true);
+    try {
+      await createPin(pin);
+      toast.success("PIN set", "You'll enter it every time money leaves Paradigm.");
+      router.replace("/passkey");
+    } catch {
+      toast.error("Couldn't save your PIN", "Try once more.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
-      <CreatePinScreen onDone={() => router.push("/passkey")} />
+      <CreatePinScreen
+        onDone={onDone}
+        onMismatch={() =>
+          toast.warning("PINs didn't match", "Start again with your new PIN.")
+        }
+        saving={saving}
+      />
     </SafeAreaView>
   );
 }

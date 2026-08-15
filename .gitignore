@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# npm lockfile — this repo uses Bun (bun.lock).
+package-lock.json

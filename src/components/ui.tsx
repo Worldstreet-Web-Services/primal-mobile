@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
@@ -290,22 +291,46 @@ export function Card({
   );
 }
 
+/**
+ * Indeterminate spinner. `ActivityIndicator` is the platform-native control and
+ * needs no animation loop of our own, so async state looks the same here as it
+ * does everywhere else on the device.
+ */
+export function Spinner({
+  size = "small",
+  color = C.text,
+}: {
+  size?: "small" | "large";
+  color?: string;
+}) {
+  return <ActivityIndicator size={size} color={color} />;
+}
+
 export function MetallicButton({
   label,
   onPress,
   height = 52,
   radius = PILL,
   size = 15,
+  loading = false,
+  disabled = false,
 }: {
   label: string;
   onPress?: () => void;
   height?: number;
   radius?: number;
   size?: number;
+  /** Swaps the label for a spinner and blocks presses. */
+  loading?: boolean;
+  disabled?: boolean;
 }) {
+  const inert = loading || disabled;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
       style={{
         // Glow picks up the fill — a white halo around gold reads as haze.
         shadowColor: C.brand,
@@ -313,6 +338,7 @@ export function MetallicButton({
         shadowRadius: 14,
         shadowOffset: { width: 0, height: 8 },
         elevation: 6,
+        opacity: disabled && !loading ? 0.45 : 1,
       }}
     >
       <View
@@ -336,15 +362,19 @@ export function MetallicButton({
             backgroundColor: "rgba(255,255,255,0.5)",
           }}
         />
-        <Text
-          style={{
-            color: C.brandInk,
-            fontFamily: F.bodySemibold,
-            fontSize: size,
-          }}
-        >
-          {label}
-        </Text>
+        {loading ? (
+          <Spinner color={C.brandInk} />
+        ) : (
+          <Text
+            style={{
+              color: C.brandInk,
+              fontFamily: F.bodySemibold,
+              fontSize: size,
+            }}
+          >
+            {label}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -357,6 +387,8 @@ export function GhostButton({
   radius = PILL,
   size = 13,
   style,
+  loading = false,
+  disabled = false,
 }: {
   label: string;
   onPress?: () => void;
@@ -365,12 +397,16 @@ export function GhostButton({
   /** Label size — raise it when the button is paired with a full-weight CTA. */
   size?: number;
   style?: ViewStyle;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
+  const inert = loading || disabled;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
       style={[
         {
           height,
@@ -380,13 +416,20 @@ export function GhostButton({
           borderColor: C.border,
           alignItems: "center",
           justifyContent: "center",
+          opacity: disabled && !loading ? 0.45 : 1,
         },
         style,
       ]}
     >
-      <Text style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: size }}>
-        {label}
-      </Text>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <Text
+          style={{ color: C.text, fontFamily: F.bodyMedium, fontSize: size }}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -1310,19 +1353,31 @@ export function AuthButton({
   onPress,
   tone = "neutral",
   height = 48,
+  loading = false,
+  disabled = false,
 }: {
   label: string;
   icon?: React.ReactNode;
   onPress?: () => void;
   tone?: "brand" | "neutral";
   height?: number;
+  /** Sign-in is a network round-trip — the pressed provider spins. */
+  loading?: boolean;
+  disabled?: boolean;
 }) {
   const brand = tone === "brand";
+  const inert = loading || disabled;
+  const ink = brand ? C.brandSoftInk : C.text;
   return (
-    <PressableScale onPress={onPress} scale={0.98}>
+    <PressableScale
+      onPress={inert ? undefined : onPress}
+      scale={0.98}
+      disabled={inert}
+    >
       <View
         accessibilityRole="button"
         accessibilityLabel={label}
+        accessibilityState={{ disabled: inert, busy: loading }}
         style={{
           height,
           borderRadius: PILL,
@@ -1333,18 +1388,28 @@ export function AuthButton({
           backgroundColor: brand ? C.brand : "rgba(255,255,255,0.09)",
           borderWidth: brand ? 0 : 1,
           borderColor: C.hairline,
+          // Dim only the untouched providers; the spinning one stays lit.
+          opacity: disabled && !loading ? 0.4 : 1,
         }}
       >
-        {icon}
-        <Text
-          style={{
-            fontFamily: F.bodySemibold,
-            fontSize: 15,
-            color: brand ? C.brandSoftInk : C.text,
-          }}
-        >
-          {label}
-        </Text>
+        {loading ? (
+          <Spinner color={ink} />
+        ) : (
+          <>
+            {icon}
+            <Text
+              style={{
+                // Semibold from the premium pass — an auth CTA carries more
+                // weight than the body buttons.
+                fontFamily: F.bodySemibold,
+                fontSize: 15,
+                color: ink,
+              }}
+            >
+              {label}
+            </Text>
+          </>
+        )}
       </View>
     </PressableScale>
   );

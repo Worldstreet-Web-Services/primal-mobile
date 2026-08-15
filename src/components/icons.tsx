@@ -244,6 +244,166 @@ export function SparkleIcon({ size = 16, color = C.brandSoftInk }: IconProps) {
   );
 }
 
+/** Wallet — the self-custody funding route. */
+export function WalletIcon({
+  size = 22,
+  color = C.text,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3.2 8.4a2.2 2.2 0 0 1 2.2-2.2h11.2a2.2 2.2 0 0 1 2.2 2.2v7.2a2.2 2.2 0 0 1-2.2 2.2H5.4a2.2 2.2 0 0 1-2.2-2.2V8.4Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M3.2 9.6V7.2c0-.9.6-1.6 1.5-1.8l9.3-1.6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15.4 12h3.4"
+        stroke={color}
+        strokeWidth={strokeWidth + 0.4}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** Classical bank front — the local rails. */
+export function BankIcon({
+  size = 22,
+  color = C.text,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 9.4 12 4l9 5.4"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M5.6 10.4v7.2M10 10.4v7.2M14 10.4v7.2M18.4 10.4v7.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M3.6 20.2h16.8"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function CloseIcon({
+  size = 18,
+  color = C.text,
+  strokeWidth = 1.9,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 6l12 12M18 6 6 18"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon({
+  size = 16,
+  color = C.silver,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="m6 9.5 6 6 6-6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Two offset sheets — the copy affordance on an address field. */
+export function CopyIcon({
+  size = 17,
+  color = C.silver,
+  strokeWidth = 1.6,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 9.2a2 2 0 0 1 2-2h6.8a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V9.2Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15.6 7.2V8a2 2 0 0 1-2 2H6.2a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2H13"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+        transform="translate(0.8 -1.2)"
+      />
+    </Svg>
+  );
+}
+
+export function CheckIcon({
+  size = 17,
+  color = C.brand,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="m5 12.5 4.5 4.5L19 7.5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Exclamation in a ring — the warning on an irreversible step. */
+export function AlertIcon({
+  size = 18,
+  color = C.down,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={strokeWidth} />
+      <Path
+        d="M12 7.4v5.2"
+        stroke={color}
+        strokeWidth={strokeWidth + 0.3}
+        strokeLinecap="round"
+      />
+      <Circle cx={12} cy={16.3} r={1} fill={color} />
+    </Svg>
+  );
+}
+
 /** Concentric arcs — the ambient ring motif behind the greeting. */
 export function RingDecor({
   size = 260,
@@ -334,6 +494,41 @@ export function KingsChatMark({
         d="M8.6 12.6 7.9 8.9l2.35 1.85L12 8.1l1.75 2.65L16.1 8.9l-.7 3.7H8.6z"
         stroke={color}
         strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Solid play triangle — the affordance on a media card. */
+export function PlayIcon({ size = 18, color = C.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6 3.6 21 12 6 20.4V3.6z" fill={color} />
+    </Svg>
+  );
+}
+
+/** Mirror of `TrendUpIcon` — a short position, a loss, a falling series. */
+export function TrendDownIcon({
+  size = 13,
+  color = C.down,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3.5 6.5 9.5 13l3.6-3.6L20.5 17"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15.4 17.4h5.2v-5.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </Svg>

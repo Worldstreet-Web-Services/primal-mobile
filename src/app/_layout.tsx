@@ -4,6 +4,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
+import { PrivacyOverlay } from "@/components/PrivacyOverlay";
+
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -36,6 +38,8 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: "#0A0B0D" },
         }}
       />
+      {/* Last sibling, so it covers every route including modals. */}
+      <PrivacyOverlay />
     </>
   );
 }

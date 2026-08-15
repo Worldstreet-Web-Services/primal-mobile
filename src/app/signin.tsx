@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import {
   describeAuthError,
   isCancellation,
+  logAuthError,
   usingMockAuth,
 } from "@/lib/auth/decane";
 import SignInScreen from "@/screens/SignInScreen";
@@ -39,6 +40,9 @@ export default function SignIn() {
     } catch (error) {
       // A cancel is a deliberate user action, not a failure worth alarming over.
       if (isCancellation(error)) return;
+      // Staged failures already logged inside decane.signIn; this catches
+      // anything thrown after it (session adoption, storage).
+      logAuthError("signin.onSignIn", error);
       const { title, description } = describeAuthError(error);
       toast.error(title, description);
     }

@@ -167,13 +167,27 @@ export async function signIn(
 ): Promise<DecaneSession> {
   if (usingMockAuth) return mockSignIn(method);
 
-  const decane = await getClient();
-  const result =
-    method === "kingschat"
-      ? await decane.connectWithKingsChat()
-      : await decane.connectWithGoogle();
+  // Staged so a failure names the step. `createDecaneConnect` and the connect
+  // call fail for entirely different reasons (bad key / unlinked native module
+  // vs. rejected redirect), and both used to surface identically.
+  let decane: DecaneConnectNative;
+  try {
+    decane = await getClient();
+  } catch (error) {
+    logAuthError("createDecaneConnect", error);
+    throw error;
+  }
 
-  return toSession(decane, result.addresses, result.isNewUser);
+  try {
+    const result =
+      method === "kingschat"
+        ? await decane.connectWithKingsChat()
+        : await decane.connectWithGoogle();
+    return toSession(decane, result.addresses, result.isNewUser);
+  } catch (error) {
+    if (!isCancellation(error)) logAuthError(`connectWith:${method}`, error);
+    throw error;
+  }
 }
 
 export async function startEmailSignIn(email: string): Promise<void> {
@@ -231,13 +245,30 @@ export async function unlock(): Promise<void> {
   await decane.unlock();
 }
 
+/**
+ * Ends the Decane session and drops our client.
+ *
+ * Only disconnects a client that already exists — going through `getClient()`
+ * would *construct* one (restoring a persisted session) purely to tear it down,
+ * which on a failed-init device turns sign-out into a second error.
+ *
+ * Note `disconnect()` is the whole of sign-out: the device key share stays, by
+ * design, so signing in again restores the wallet without recovery. Wiping it
+ * is `clearDeviceState`, which the SDK documents as a repair tool for shares
+ * that can no longer be unlocked — not a logout.
+ */
 export async function signOut(): Promise<void> {
-  if (usingMockAuth) return;
+  const existing = client ?? (initialising ? await initialising.catch(() => null) : null);
+
   try {
-    const decane = await getClient();
-    await decane.disconnect();
+    if (existing) await existing.disconnect();
+  } catch (error) {
+    // Never leave the user stuck signed in because the network hiccuped —
+    // local state is cleared regardless by the caller.
+    logAuthError("disconnect", error);
   } finally {
     client = null;
+    initialising = null;
   }
 }
 
@@ -263,6 +294,37 @@ function toSession(
     accessToken: decane.getAccessToken(),
     expiresAt: decane.sessionExpiresAt(),
   };
+}
+
+/**
+ * Full detail to the console, once, at the point of failure.
+ *
+ * `describeAuthError` deliberately returns vague copy — a user can do nothing
+ * with `STALE_DEVICE_SHARE`. But vague copy with nothing logged behind it is
+ * undebuggable, which is exactly how "Something went wrong" became a dead end.
+ * `stage` says which step failed, since the SDK surfaces several errors as the
+ * same shape.
+ */
+export function logAuthError(stage: string, error: unknown): void {
+  const detail: Record<string, unknown> = { stage };
+
+  if (error instanceof DecaneConnectError) {
+    detail.kind = "DecaneConnectError";
+    detail.code = error.code;
+    detail.retryable = (error as { retryable?: boolean }).retryable;
+    detail.message = error.message;
+  } else if (error instanceof Error) {
+    detail.kind = error.name;
+    detail.message = error.message;
+    detail.stack = error.stack;
+  } else {
+    detail.kind = typeof error;
+    detail.value = error;
+  }
+
+  // Errors thrown across the native bridge often carry the useful part in
+  // non-enumerable or vendor fields, which JSON.stringify drops.
+  console.error("[decane] auth failed", detail, error);
 }
 
 /** User-facing copy. Never surface a raw SDK code to a person. */
@@ -316,6 +378,18 @@ export function describeAuthError(error: unknown): {
       default:
         break;
     }
+  }
+
+  // Unrecognised. In development, put the actual code/name in the toast — the
+  // person reading it is us, and "Something went wrong" is not a bug report.
+  if (__DEV__) {
+    const hint =
+      error instanceof DecaneConnectError
+        ? `code: ${error.code}`
+        : error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error);
+    return { title: "Sign-in failed", description: hint.slice(0, 140) };
   }
 
   return {

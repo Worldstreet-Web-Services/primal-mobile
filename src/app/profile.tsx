@@ -10,7 +10,7 @@ import { C } from "@/theme/tokens";
 // Pushed route now that the tab bar is gone, so the screen keeps its own plain
 // title and the default tail space — nothing floats over the content.
 export default function Profile() {
-  const { signOut } = useAuth();
+  const { signOut, addresses } = useAuth();
   const toast = useToast();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -28,7 +28,11 @@ export default function Profile() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <ProfileScreen onSignOut={onSignOut} signingOut={signingOut} />
+      <ProfileScreen
+        onSignOut={onSignOut}
+        signingOut={signingOut}
+        addresses={addresses}
+      />
     </View>
   );
 }

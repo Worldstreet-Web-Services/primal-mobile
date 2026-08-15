@@ -4,7 +4,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { describeAuthError, isCancellation } from "@/lib/auth/decane";
+import {
+  describeAuthError,
+  isCancellation,
+  logAuthError,
+} from "@/lib/auth/decane";
 import EmailSignInScreen from "@/screens/EmailSignInScreen";
 
 export default function EmailSignIn() {
@@ -24,6 +28,7 @@ export default function EmailSignIn() {
       toast.info("Code sent", `Check ${address}.`);
     } catch (error) {
       if (isCancellation(error)) return;
+      logAuthError("email-signin", error);
       const { title, description } = describeAuthError(error);
       toast.error(title, description);
     } finally {
@@ -40,6 +45,7 @@ export default function EmailSignIn() {
       router.replace("/");
     } catch (error) {
       if (isCancellation(error)) return;
+      logAuthError("email-signin", error);
       const { title, description } = describeAuthError(error);
       toast.error(title, description);
     } finally {

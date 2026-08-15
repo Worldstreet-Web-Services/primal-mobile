@@ -36,10 +36,27 @@ function QrBox({ size, label }: { size: number; label: string }) {
   );
 }
 
-export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
+export default function ReceiveSheet({
+  onClose,
+  addresses,
+}: {
+  onClose?: () => void;
+  /** Real Decane wallet addresses, keyed to the network tabs below. */
+  addresses?: { evm?: string; solana?: string; tron?: string } | null;
+}) {
   const [tab, setTab] = useState(0);
   const [net, setNet] = useState(0);
-  const nw = networks[net];
+
+  const live: Record<string, string | undefined> = {
+    evm: addresses?.evm,
+    sol: addresses?.solana,
+    trx: addresses?.tron,
+  };
+
+  // Show the real address or nothing. A mock deposit address is money sent to
+  // an account nobody holds the key to, so it must never reach this screen.
+  const base = networks[net];
+  const nw = { ...base, addr: live[base.key] ?? null };
   return (
     <View
       style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
@@ -161,19 +178,35 @@ export default function ReceiveSheet({ onClose }: { onClose?: () => void }) {
             <View style={{ marginTop: 16 }}>
               <QrBox size={130} label={"QR · " + nw.label + " address"} />
             </View>
-            <Mono
-              size={13}
-              color={C.silver}
-              style={{
-                textAlign: "center",
-                marginTop: 16,
-                maxWidth: 280,
-                alignSelf: "center",
-                lineHeight: 21,
-              }}
-            >
-              {nw.addr}
-            </Mono>
+            {nw.addr ? (
+              <Mono
+                size={13}
+                color={C.silver}
+                style={{
+                  textAlign: "center",
+                  marginTop: 16,
+                  maxWidth: 280,
+                  alignSelf: "center",
+                  lineHeight: 21,
+                }}
+              >
+                {nw.addr}
+              </Mono>
+            ) : (
+              <Body
+                size={12.5}
+                color={C.dim}
+                style={{
+                  textAlign: "center",
+                  marginTop: 16,
+                  maxWidth: 280,
+                  alignSelf: "center",
+                  lineHeight: 19,
+                }}
+              >
+                No {nw.label} address yet — sign in to create your wallet.
+              </Body>
+            )}
             <View
               style={{
                 marginTop: 14,

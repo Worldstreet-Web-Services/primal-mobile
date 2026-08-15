@@ -52,6 +52,12 @@ interface AuthState {
 }
 
 interface AuthApi extends AuthState {
+  /**
+   * The signed-in wallet's addresses, straight from Decane. Null until a
+   * session exists — screens must render a placeholder rather than a
+   * plausible-looking fake, since a wrong address is money sent nowhere.
+   */
+  addresses: DecaneSession["addresses"] | null;
   signIn: (method: Exclude<AuthMethod, "email">) => Promise<void>;
   startEmailSignIn: (email: string) => Promise<void>;
   verifyEmailCode: (email: string, code: string) => Promise<void>;
@@ -144,6 +150,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const adopt = useCallback(async (session: DecaneSession) => {
     setAccessToken(session.accessToken);
+
+    if (__DEV__ && !session.accessToken) {
+      // Sign-in succeeded but produced no JWT — the backend exchange has
+      // nothing to send, and that must not look like a clean success.
+      console.warn("[decane] connected but getAccessToken() returned null");
+    }
+
     // A returning user who still has a PIN skips straight past onboarding.
     const pinSet = await storage.hasPin();
     setState((s) => ({
@@ -192,9 +205,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    // Order matters: revoke the token first so nothing in flight can keep using
+    // it, then end the Decane session, then clear local state. Each step is
+    // independent — a failure in one must not leave the user half signed out,
+    // which is why `decane.signOut` swallows its own errors.
     setAccessToken(null);
     await decane.signOut();
     await storage.clearAll();
+
     setState({
       status: "signedOut",
       step: "pin",
@@ -255,6 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthApi>(
     () => ({
       ...state,
+      addresses: state.session?.addresses ?? null,
       capability,
       signIn,
       startEmailSignIn,

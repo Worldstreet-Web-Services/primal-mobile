@@ -13,8 +13,13 @@ import {
 } from "../components/ui";
 import { user } from "../data/mock";
 
-const evmShort = user.evm.slice(0, 6) + "…" + user.evm.slice(-4);
-const solShort = user.sol.slice(0, 4) + "…" + user.sol.slice(-4);
+/** Truncate for display only — never for anything a user might copy and send to. */
+function short(address: string | undefined, lead: number): string | null {
+  if (!address) return null;
+  return address.length <= lead + 6
+    ? address
+    : `${address.slice(0, lead)}…${address.slice(-4)}`;
+}
 
 const securityRows = [
   { title: "Transaction PIN", sub: "Required for money-out" },
@@ -29,6 +34,7 @@ export default function ProfileScreen({
   bottom = 40,
   onSignOut,
   signingOut = false,
+  addresses,
 }: {
   /** Omit on a tab root — without it the header drops its back chevron. */
   onBack?: () => void;
@@ -36,7 +42,11 @@ export default function ProfileScreen({
   bottom?: number;
   onSignOut?: () => void;
   signingOut?: boolean;
+  /** Real Decane wallet addresses. Absent until a session exists. */
+  addresses?: { evm?: string; solana?: string; tron?: string } | null;
 }) {
+  const evmShort = short(addresses?.evm, 6);
+  const solShort = short(addresses?.solana, 4);
   const [frozen, setFrozen] = useState(false);
   return (
     <Screen bottom={bottom}>
@@ -120,9 +130,15 @@ export default function ProfileScreen({
           <Body size={12} color={C.sub}>
             Wallets
           </Body>
-          <Mono size={12}>
-            {evmShort} · {solShort}
-          </Mono>
+          {evmShort && solShort ? (
+            <Mono size={12}>
+              {evmShort} · {solShort}
+            </Mono>
+          ) : (
+            <Body size={12} color={C.dim}>
+              Not created yet
+            </Body>
+          )}
         </View>
       </Card>
       <Label style={{ marginTop: 18 }}>Security</Label>

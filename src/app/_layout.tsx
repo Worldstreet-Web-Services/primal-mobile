@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { PinPromptProvider } from "@/components/PinPrompt";
 import { PrivacyOverlay } from "@/components/PrivacyOverlay";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/lib/auth/AuthContext";
@@ -40,15 +41,19 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <ToastProvider>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: "#0A0B0D" },
-            }}
-          />
-          {/* Last sibling, so it covers every route including modals. */}
-          <PrivacyOverlay />
+          {/* Inside the toast provider so a failed PIN can still surface one,
+              and outside the navigator so the sheet survives route changes. */}
+          <PinPromptProvider>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "#0A0B0D" },
+              }}
+            />
+            {/* Last sibling, so it covers every route including modals. */}
+            <PrivacyOverlay />
+          </PinPromptProvider>
         </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>

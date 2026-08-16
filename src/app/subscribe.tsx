@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { View } from "react-native";
 
 import { useAuth } from "@/lib/auth/AuthContext";
+import { isEntitled } from "@/lib/gateway/types";
 import { refundAddress } from "@/lib/gateway/devRefund";
 import CheckoutSheet from "@/screens/CheckoutSheet";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
@@ -34,11 +35,16 @@ export default function Subscribe() {
   const { primal, addresses, status, signOut, refreshEntitlement } = useAuth();
 
   /**
-   * Is this screen the entry gate rather than a detour from inside the app?
-   * True when the account has signed in but not finished onboarding — the state
-   * `index.tsx` now routes here before it will hand out a PIN.
+   * Is there anything behind this screen to go back TO?
+   *
+   * The test is entitlement, not onboarding. An earlier version asked whether
+   * the PIN had been set, which quietly failed for the commonest case of all: a
+   * member who finished onboarding and then lapsed is `ready`, so "Close" fell
+   * through to a fallback route and let them out into an app that would refuse
+   * them on every screen. While the gateway says they are not entitled, this
+   * screen IS the app, and the only honest way past it is out of the account.
    */
-  const atTheDoor = status === "onboarding";
+  const barred = !isEntitled(primal.state);
 
   /**
    * `null` means closed. A string is the subscription the sheet should resume;
@@ -77,11 +83,11 @@ export default function Subscribe() {
         // straight into the app the gate exists to hold, so the only honest
         // exit is out of the account entirely.
         onBack={
-          atTheDoor
+          barred
             ? () => void signOut()
-            : () => (router.canGoBack() ? router.back() : router.replace("/hub"))
+            : () => (router.canGoBack() ? router.back() : router.replace("/home"))
         }
-        backLabel={atTheDoor ? "Sign out" : "Close"}
+        backLabel={barred ? "Sign out" : "Close"}
         // A dead session is not a paywall. `replace`, so a signed-out user cannot
         // swipe back into a screen that will only refuse them again.
         onSignIn={() => router.replace("/signin")}

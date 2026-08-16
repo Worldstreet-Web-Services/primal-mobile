@@ -27,7 +27,11 @@ export default function Checkout() {
   /** Back and close land in the same place: there is one screen behind this. */
   const leave = useCallback(() => {
     if (router.canGoBack()) router.back();
-    else router.replace("/hub");
+    // "/" rather than a screen chosen here: the entry gate is the one thing
+    // that knows whether this account belongs in the app, at the paywall, or
+    // back at sign-in. Naming a destination is how a deep link out of checkout
+    // used to land on a stale hub nothing else in the app links to.
+    else router.replace("/");
   }, []);
 
   // Reached ONLY when the gateway itself confirmed entitlement — never from a

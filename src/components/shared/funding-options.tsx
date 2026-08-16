@@ -90,18 +90,46 @@ const FundingOptions = ({
       onConfirm?.(picked);
     };
 
-    return key === "local" ? (
-      <LocalBankCheckout
-        onBack={back}
-        onClose={close}
-        onConfirm={() => confirm("local")}
-      />
-    ) : (
-      <CryptoCheckout
-        onBack={back}
-        onClose={close}
-        onConfirm={() => confirm("decentralized")}
-      />
+    // NEITHER checkout is quoted here, and neither may be rendered.
+    //
+    // These are the pre-gateway design components. Mounted with no props they
+    // used to fall back to a hardcoded deposit address with a working Copy
+    // button — a fabricated destination for real money, three taps from the
+    // home screen. The real subscription checkout lives at `/subscribe`, quoted
+    // by the gateway.
+    //
+    // The funding these two routes (copy trading, auto-earn) would need does
+    // not exist: ARK and WorldStreet have no public backend routes at all. So
+    // this says so, instead of miming a payment that cannot happen.
+    void confirm;
+    return (
+      <View style={{ paddingVertical: 8 }}>
+        <Text
+          style={{
+            fontFamily: F.displayBold,
+            fontSize: 17,
+            color: C.text,
+            textAlign: "center",
+          }}
+        >
+          Funding isn't open yet
+        </Text>
+        <Text
+          style={{
+            fontFamily: F.body,
+            fontSize: 13,
+            lineHeight: 20,
+            color: C.sub,
+            textAlign: "center",
+            marginTop: 10,
+          }}
+        >
+          {key === "local"
+            ? "Bank funding for this space is still being connected."
+            : "Wallet funding for this space is still being connected."}{" "}
+          Nothing has been charged, and no deposit address is live.
+        </Text>
+      </View>
     );
   };
 

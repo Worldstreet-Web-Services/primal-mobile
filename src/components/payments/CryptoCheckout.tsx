@@ -18,17 +18,17 @@ export interface CryptoQuote {
   address: string;
 }
 
-// Checkout is quoted, not computed here: the fiat charge and its token
-// equivalent both arrive preformatted from the quote.
-const DEFAULT_QUOTE: CryptoQuote = {
-  plan: "Primal Premium",
-  name: "Montly Subscription",
-  amount: "$1,000",
-  amountSub: "1,000 USDC",
-  asset: { label: "USDC", color: "#2775CA" },
-  network: { label: "Polygon", color: "#8247E5" },
-  address: "0x71C249E91D31111a474EdF65F0aE9Ec3f1B2c7Ad",
-};
+// There is deliberately NO default quote.
+//
+// There used to be one, carrying a hardcoded deposit address, and `quote` was
+// optional — so `<CryptoCheckout />` with no props rendered a real-looking
+// address with a working Copy button. It was mounted exactly that way by the
+// funding sheet on two routes reachable from the home screen, which made a
+// fabricated destination for someone's money three taps from launch.
+//
+// `quote` is required now. A checkout with nothing to quote must not be
+// renderable at all, and the type system is the only thing that reliably
+// enforces that.
 
 /**
  * Pay from a self-custody wallet: what's owed, which asset and chain it settles
@@ -38,13 +38,14 @@ const DEFAULT_QUOTE: CryptoQuote = {
  * be, so it works as a sheet's contents or as a screen.
  */
 export function CryptoCheckout({
-  quote = DEFAULT_QUOTE,
+  quote,
   onBack,
   onClose,
   onConfirm,
   onChangeNetwork,
 }: {
-  quote?: CryptoQuote;
+  /** Required: see the note above — there is no safe default for a destination. */
+  quote: CryptoQuote;
   onBack?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;

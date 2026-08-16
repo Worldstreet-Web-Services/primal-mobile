@@ -19,7 +19,6 @@ import React, {
   useState,
 } from "react";
 
-import { setAccessToken } from "@/lib/api";
 import * as biometrics from "@/lib/auth/biometrics";
 import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
@@ -219,7 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setAccessToken(session.accessToken);
       setState((s) => ({
         ...s,
         status: pinSet ? "locked" : "onboarding",
@@ -517,7 +515,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [primal.state, refreshEntitlement]);
 
   const adopt = useCallback(async (session: DecaneSession) => {
-    setAccessToken(session.accessToken);
 
     if (__DEV__ && !session.accessToken) {
       // Sign-in succeeded but produced no JWT — the backend exchange has
@@ -577,7 +574,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // it, then end the Decane session, then clear local state. Each step is
     // independent — a failure in one must not leave the user half signed out,
     // which is why `decane.signOut` swallows its own errors.
-    setAccessToken(null);
     // Revoke the Primal refresh session before the wallet goes: once Decane is
     // disconnected there is no signer left to prove ownership, and a live
     // refresh token left on the server outlives the sign-out that was meant to

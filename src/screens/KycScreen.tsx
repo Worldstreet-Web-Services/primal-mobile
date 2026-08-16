@@ -234,6 +234,9 @@ export default function KycScreen({
     // "The account has been asked about and has not answered yet." Both
     // controls on this screen that can drop an idempotency key wait for it.
     refreshing: rereading,
+    // Whether the hook is still re-asking on its own. The "with the bank" panel
+    // states a cadence, and a stated cadence has to be one that is running.
+    watching,
     reload,
   } = useLinkpayAccount();
 
@@ -543,14 +546,27 @@ export default function KycScreen({
               {account?.status === "CUSTOMER_CREATED" ? "Almost there" : "Verifying your details"}
             </Display>
           </View>
+          {/* "Nothing needs doing from here" and "this screen is watching" are
+              both promises about the poll, so they end when it does. What the
+              bank is doing has not changed — only who is asking. */}
           <Body size={12.5} color={C.sub} style={{ marginTop: 12, lineHeight: 19 }}>
             {account?.status === "CUSTOMER_CREATED"
-              ? "You are on the bank's books and your account number is being issued. This screen is watching for it."
-              : "The bank is checking your BVN against the name you gave. It usually takes a minute or two, and nothing needs doing from here."}
+              ? watching
+                ? "You are on the bank's books and your account number is being issued. This screen is watching for it."
+                : "You are on the bank's books and your account number is being issued. It is taking longer than usual, so Paradigm has stopped asking on its own — check whenever you want the latest."
+              : watching
+                ? "The bank is checking your BVN against the name you gave. It usually takes a minute or two, and nothing needs doing from here."
+                : "The bank is still checking your BVN against the name you gave. It is taking longer than usual, so Paradigm has stopped asking on its own — check whenever you want the latest."}
           </Body>
           <SectionRule space={16} />
+          {/* The cadence is only claimed while it is actually running. The hook
+              stops re-asking when this screen is not in front, when the app is
+              in the background, and once its window is spent — a label that
+              went on saying "every 10 seconds" through any of those would be
+              the screen lying about work it is not doing, and "Check now" would
+              read as the redundant option rather than the only one left. */}
           <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
-            CHECKING EVERY 10 SECONDS
+            {watching ? "CHECKING EVERY 10 SECONDS" : "CHECK WHEN YOU ARE READY"}
           </Mono>
         </View>
 

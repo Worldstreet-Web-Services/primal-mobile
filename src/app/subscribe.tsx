@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { View } from "react-native";
 
 import { useAuth } from "@/lib/auth/AuthContext";
+import { refundAddress } from "@/lib/gateway/devRefund";
 import CheckoutSheet from "@/screens/CheckoutSheet";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import { C } from "@/theme/tokens";
@@ -30,7 +31,14 @@ import { C } from "@/theme/tokens";
  * paywall to sit on.
  */
 export default function Subscribe() {
-  const { primal, addresses, refreshEntitlement } = useAuth();
+  const { primal, addresses, status, signOut, refreshEntitlement } = useAuth();
+
+  /**
+   * Is this screen the entry gate rather than a detour from inside the app?
+   * True when the account has signed in but not finished onboarding — the state
+   * `index.tsx` now routes here before it will hand out a PIN.
+   */
+  const atTheDoor = status === "onboarding";
 
   /**
    * `null` means closed. A string is the subscription the sheet should resume;
@@ -46,8 +54,13 @@ export default function Subscribe() {
     // The gateway is the only authority on entitlement, so ask it again rather
     // than assuming a settled payment has propagated yet.
     void refreshEntitlement();
+    // Once the account is open, the paywall and the drawer over it are both
+    // spent. Closing the sheet first means this screen is already on its MEMBER
+    // face for the frames the transition is running — and `replace`, not
+    // `push`, so a back gesture cannot land the user on a checkout they have
+    // already paid, over a paywall that no longer applies to them.
     setCheckout(null);
-    router.push("/welcome-aboard");
+    router.replace("/welcome-aboard");
   }, [refreshEntitlement]);
 
   return (
@@ -55,10 +68,20 @@ export default function Subscribe() {
       <SubscriptionScreen
         state={primal.state}
         onCheckout={(subscriptionId) => setCheckout(subscriptionId ?? "")}
-        // Six screens push here, and a seventh path is the deep link — which has
-        // no back stack at all. Falling back to the hub keeps the paywall from
-        // being a room with no door.
-        onBack={() => (router.canGoBack() ? router.back() : router.replace("/hub"))}
+        // Two different situations wear the same button.
+        //
+        // Mid-app (a naira screen 403'd and pushed here) Back means "return to
+        // what I was doing". But at the DOOR — signed in, onboarding not yet
+        // done, membership unpaid — there is nothing behind this screen: it is
+        // the gate. Falling back to /hub there would walk an unpaid user
+        // straight into the app the gate exists to hold, so the only honest
+        // exit is out of the account entirely.
+        onBack={
+          atTheDoor
+            ? () => void signOut()
+            : () => (router.canGoBack() ? router.back() : router.replace("/hub"))
+        }
+        backLabel={atTheDoor ? "Sign out" : "Close"}
         // A dead session is not a paywall. `replace`, so a signed-out user cannot
         // swipe back into a screen that will only refuse them again.
         onSignIn={() => router.replace("/signin")}
@@ -71,7 +94,10 @@ export default function Subscribe() {
             subscriptionId={checkout === "" ? null : checkout}
             // A failed route refunds to the user's own wallet. Null until Decane
             // has one, which the sheet reports rather than papering over.
-            walletAddress={addresses?.evm ?? null}
+            walletAddress={refundAddress(addresses?.evm ?? null)}
+            // Null covers two different states and they need different words:
+            // nobody signed in, versus a signed-in wallet still behind the lock.
+            signedOut={status === "signedOut"}
             onBack={close}
             onClose={close}
             onSignIn={() => router.replace("/signin")}

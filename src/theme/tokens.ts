@@ -11,9 +11,21 @@ export const C = {
   border: "rgba(255,255,255,0.16)",
   borderStrong: "rgba(255,255,255,0.34)",
   hairline: "rgba(255,255,255,0.11)",
+  /**
+   * The three text tiers, re-spaced 2026-08-16 for contrast on the charcoal
+   * ground. `dim` was #6A7078, which measured 2.52:1 on `inset` and 3.14:1 on
+   * the canvas — under the 4.5:1 body-text floor everywhere it was used, and
+   * worst precisely where it mattered most (the deposit address a user is told
+   * to check against their wallet). `sub` moved up with it to keep three
+   * readable steps rather than two.
+   *
+   * Worst case on any surface (canvas/raised/inset/sheet): text 11.4:1,
+   * sub 6.0:1, dim 4.45:1. Re-measure before changing any of them — the grounds
+   * are close together, so a small move here fails silently.
+   */
   text: "#F2F4F6",
-  sub: "#9BA1A8",
-  dim: "#6A7078",
+  sub: "#AEB4BB",
+  dim: "#949AA3",
   silver: "#C7CCD1",
   accent: "#d4d4d8", // Ark silver accent
   // Gain / money-in. Warm rather than green: no green anywhere by instruction

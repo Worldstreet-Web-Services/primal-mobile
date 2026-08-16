@@ -19,7 +19,11 @@ export default function Unlock() {
   const [biometricsLocked, setBiometricsLocked] = useState(false);
   const promptedOnMount = useRef(false);
 
-  const done = useCallback(() => router.replace("/home"), []);
+  // Back through the entry gate, not straight to /home. "/" is the one place
+  // that weighs membership as well as the lock, so a member whose subscription
+  // lapsed while the app was closed meets the paywall on unlock instead of
+  // discovering it by walking into a 403 three screens later.
+  const done = useCallback(() => router.replace("/"), []);
 
   const runBiometrics = useCallback(async () => {
     setChecking(true);

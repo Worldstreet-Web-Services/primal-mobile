@@ -17,9 +17,10 @@
  * them puts a paying user in front of a sign-in screen.
  */
 
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useIsFocused } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { appIsActive, onForeground } from "@/lib/appActive";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { isEntitlementRefusal } from "@/lib/gateway/entitlement";
 import {
@@ -89,6 +90,25 @@ const HANDSHAKE_STALLED =
   "Paradigm has not opened a session on this device yet. Try again — and if it keeps saying this, sign out and back in.";
 
 /**
+ * How often a provisioning account is re-asked about while someone is watching
+ * it. KycScreen prints this cadence, so the two move together.
+ */
+const PROVISION_POLL_MS = 10_000;
+
+/**
+ * How long the automatic re-asking runs before it stops.
+ *
+ * A poll with no terminal condition is a poll that outlives its reason: an
+ * account wedged in PENDING_KYC would otherwise wake the radio every ten
+ * seconds for as long as the app is installed, and the tick that finds it
+ * unchanged on minute two is the same tick that finds it unchanged on hour six.
+ * The bank's own answer is "a minute or two", so ten minutes is far past the
+ * point where waiting is the thing that helps — after it, the screen says so
+ * and the manual re-check is the way on.
+ */
+const PROVISION_POLL_WINDOW_MS = 10 * 60_000;
+
+/**
  * The phase implied by the app-level state alone, before LinkPay is asked
  * anything — or `null` when the gateway is the one that has to answer.
  *
@@ -147,6 +167,19 @@ export interface LinkpayAccountState {
    * would double every request hung off it.
    */
   version: number;
+  /**
+   * The hook is still re-asking about a provisioning account on its own.
+   *
+   * False once the account settles into any other phase, and false once the
+   * polling window is spent — at which point a screen that promised "checking
+   * every ten seconds" is telling the user something that has stopped being
+   * true, and owes them the manual control instead.
+   *
+   * It deliberately does NOT track focus or the foreground: those pause the
+   * asking for as long as nobody is looking, and a screen only reads this while
+   * it is the thing being looked at.
+   */
+  watching: boolean;
   reload: () => void;
 }
 
@@ -154,8 +187,10 @@ export interface LinkpayAccountState {
  * The user's LinkPay account, and what to show because of it.
  *
  * Re-reads on focus so a screen returning from KYC shows the account that was
- * just provisioned, and polls itself while provisioning is mid-flight — that
- * state resolves on the provider's clock, not on a tap.
+ * just provisioned, and re-asks on a slow cadence while provisioning is
+ * mid-flight — that state resolves on the provider's clock, not on a tap. The
+ * re-asking is gated on focus and on the foreground and is bounded in time; see
+ * the loop near the bottom for why each of those is not optional.
  */
 export function useLinkpayAccount(): LinkpayAccountState {
   const { primal, linkPrimal, status } = useAuth();
@@ -313,13 +348,90 @@ export function useLinkpayAccount(): LinkpayAccountState {
     };
   }, [gatePhase, gateError, nonce]);
 
-  // Provisioning finishes on the provider's clock. Re-ask on a slow cadence
-  // rather than leaving the user to guess whether tapping again would help.
+  /* ------------------------------------------------- provisioning re-asking */
+
+  // Whether an answer is already on its way. Mirrored into a ref rather than
+  // read as state by the loop below, because `refreshing` flips twice per load
+  // and a loop that listed it as a dependency would restart its own timer on
+  // every flip — the cadence would come out of whatever the network was doing
+  // rather than out of PROVISION_POLL_MS.
+  const rereadPending = useRef(false);
   useEffect(() => {
-    if (phase !== "provisioning") return;
-    const timer = setInterval(reload, 10_000);
-    return () => clearInterval(timer);
-  }, [phase, reload]);
+    rereadPending.current = refreshing;
+  }, [refreshing]);
+
+  // The window is anchored in a ref to the moment provisioning STARTED, so
+  // leaving the screen and coming back resumes the same window instead of
+  // being handed a fresh ten minutes on every visit.
+  const pollDeadline = useRef<number | null>(null);
+  const [pollSpent, setPollSpent] = useState(false);
+  useEffect(() => {
+    if (phase !== "provisioning") {
+      pollDeadline.current = null;
+      setPollSpent(false);
+      return;
+    }
+    pollDeadline.current ??= Date.now() + PROVISION_POLL_WINDOW_MS;
+  }, [phase]);
+
+  const focused = useIsFocused();
+
+  /**
+   * Provisioning finishes on the provider's clock, so the account is re-asked
+   * about rather than left to a tap the user has no reason to think would help.
+   *
+   * Everything about WHEN is a gate, and each gate is here for its own reason:
+   *
+   * - Not provisioning → there is nothing resolving, so there is no timer.
+   * - Not focused → this hook is mounted on three screens, two of them behind
+   *   tabs. Polling from a screen the user navigated away from spends their
+   *   battery on a panel nobody can see.
+   * - Backgrounded → the tick is SKIPPED, not stopped. iOS pauses JS timers
+   *   here and Android does not, so an ungated loop is an Android-only radio
+   *   drain; `onForeground` then re-asks the moment they come back rather than
+   *   making them wait out the remainder of an interval.
+   * - A re-read already outstanding → asking again just aborts the answer that
+   *   was on its way, and a request slower than the cadence would never land.
+   * - Window spent → see PROVISION_POLL_WINDOW_MS.
+   *
+   * One self-scheduling timeout, held in a closure variable, so there is exactly
+   * one timer per run of the effect: React's cleanup cancels it before any
+   * re-render can start a second, and unmounting cancels it outright.
+   */
+  useEffect(() => {
+    if (phase !== "provisioning" || !focused || pollSpent) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = () => {
+      timer = null;
+      if (cancelled) return;
+
+      const deadline = pollDeadline.current;
+      if (deadline !== null && Date.now() >= deadline) {
+        setPollSpent(true);
+        return;
+      }
+
+      if (appIsActive() && !rereadPending.current) reload();
+      timer = setTimeout(tick, PROVISION_POLL_MS);
+    };
+
+    timer = setTimeout(tick, PROVISION_POLL_MS);
+
+    const off = onForeground(() => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
+      tick();
+    });
+
+    return () => {
+      cancelled = true;
+      off();
+      if (timer) clearTimeout(timer);
+    };
+  }, [phase, focused, pollSpent, reload]);
 
   // Coming back from KYC (or from the background) should show what changed
   // while the screen was away. The first focus is skipped: the effect above has
@@ -335,7 +447,15 @@ export function useLinkpayAccount(): LinkpayAccountState {
     }, [reload]),
   );
 
-  return { phase, account, error, refreshing, version: nonce, reload };
+  return {
+    phase,
+    account,
+    error,
+    refreshing,
+    version: nonce,
+    watching: phase === "provisioning" && !pollSpent,
+    reload,
+  };
 }
 
 /* ----------------------------------------------------------------- overview */

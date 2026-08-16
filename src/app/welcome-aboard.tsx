@@ -18,7 +18,11 @@ export default function WelcomeAboard() {
   // overlay still up, which is the intended exit.
   const onContinue = () => {
     setLeaving(true);
-    router.replace("/home");
+    // Back to the entry gate, not straight to /home. Membership is now settled
+    // BEFORE onboarding, so a member arriving here may still have no PIN — and
+    // "/" is the one place that knows whether the next step is the app or the
+    // rest of setup. Jumping to /home would skip the app lock entirely.
+    router.replace("/");
   };
 
   return <WelcomeAboardScreen onContinue={onContinue} busy={leaving} />;

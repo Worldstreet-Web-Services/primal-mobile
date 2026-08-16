@@ -2,6 +2,7 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 
 import { useAuth } from "@/lib/auth/AuthContext";
+import { refundAddress } from "@/lib/gateway/devRefund";
 import CheckoutSheet from "@/screens/CheckoutSheet";
 
 /**
@@ -21,7 +22,7 @@ import CheckoutSheet from "@/screens/CheckoutSheet";
 
 export default function Checkout() {
   const { subscription } = useLocalSearchParams<{ subscription?: string }>();
-  const { addresses, refreshEntitlement } = useAuth();
+  const { addresses, status, refreshEntitlement } = useAuth();
 
   /** Back and close land in the same place: there is one screen behind this. */
   const leave = useCallback(() => {
@@ -35,7 +36,10 @@ export default function Checkout() {
     // Let the rest of the app hear it from the gateway too, so no other screen
     // is left holding a stale "unpaid" while this one moves on.
     void refreshEntitlement();
-    router.push("/welcome-aboard");
+    // `replace`, not `push`: this checkout has concluded, and leaving it under
+    // the welcome beat means a back gesture returns to a paid deposit address
+    // still telling the user to send money.
+    router.replace("/welcome-aboard");
   }, [refreshEntitlement]);
 
   return (
@@ -61,7 +65,10 @@ export default function Checkout() {
         subscriptionId={subscription ?? null}
         // A failed route refunds to the user's own wallet. Null until Decane
         // has one, which the sheet reports rather than papering over.
-        walletAddress={addresses?.evm ?? null}
+        walletAddress={refundAddress(addresses?.evm ?? null)}
+        // Null covers two different states and they need different words:
+        // nobody signed in, versus a signed-in wallet still behind the lock.
+        signedOut={status === "signedOut"}
         onBack={leave}
         onClose={leave}
         onSignIn={() => router.replace("/signin")}

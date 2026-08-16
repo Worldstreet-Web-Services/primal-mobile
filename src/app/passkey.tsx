@@ -12,7 +12,10 @@ export default function Passkey() {
   const toast = useToast();
   const [enabling, setEnabling] = useState(false);
 
-  const finish = () => router.replace("/home");
+  // Through "/" rather than at /home directly: onboarding's last step should
+  // hand back to the one router that decides where a signed-in, paid, unlocked
+  // account belongs, instead of asserting the answer itself.
+  const finish = () => router.replace("/");
 
   const onEnable = async () => {
     if (!capability?.available) {

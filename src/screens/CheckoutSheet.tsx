@@ -30,7 +30,7 @@ import {
   QuietButton,
 } from "@/components/ui";
 import { appIsActive, onForeground } from "@/lib/appActive";
-import { formatMoney, toBigInt } from "@/lib/gateway/money";
+import { formatMinor, formatMoney, toBigInt } from "@/lib/gateway/money";
 import * as subs from "@/lib/gateway/subscription";
 import { formatCountdown, millisUntil, toMillis } from "@/lib/gateway/time";
 import {
@@ -80,6 +80,30 @@ const SCRIM = "rgba(10,10,11,0.5)";
 const DANGER_TINT = "rgba(246,165,165,0.10)";
 const DANGER_EDGE = "rgba(246,165,165,0.32)";
 const BRAND_EDGE = "rgba(227,182,47,0.42)";
+/** Amber, at the danger pair's alphas: a locked wallet is a precondition the
+ *  user has not met yet, not something that has gone wrong. */
+const HOLD_TINT = "rgba(245,184,61,0.10)";
+const HOLD_EDGE = "rgba(245,184,61,0.32)";
+
+/**
+ * The published settlement figure, built the way `readSettlementText` builds the
+ * live one so the two can never print different shapes.
+ *
+ * Measured, not assumed: `formatMinor("1000000000", "USDC")` is `1,000.00` (6dp
+ * asset, trailing zeros trimmed to the 2dp floor) and both sides append the code
+ * once, giving `1,000.00 USDC`. What is NOT safe here is `formatMoney`, whose
+ * unknown-currency path returns a self-labelled `1000000000 (USDC minor units)`
+ * — appending the code to that is where a doubled `USDC … USDC` would come from,
+ * so the fallback below returns it bare instead of decorating it.
+ */
+const SETTLEMENT_FALLBACK = (() => {
+  const { amountMinor, currency } = subs.MEMBERSHIP_SETTLEMENT;
+  try {
+    return `${formatMinor(amountMinor, currency)} ${currency}`;
+  } catch {
+    return formatMoney(subs.MEMBERSHIP_SETTLEMENT);
+  }
+})();
 
 /**
  * Is the origin leg provably larger than what has to settle?
@@ -224,6 +248,13 @@ export interface CheckoutSheetProps {
   subscriptionId?: string | null;
   /** Where a failed route refunds to. The user's own wallet, never ours. */
   walletAddress: string | null;
+  /**
+   * Whether the null address is because nobody is signed in, as opposed to a
+   * signed-in wallet still behind the app lock. The sheet cannot tell the two
+   * apart from `walletAddress` alone, and they need different sentences and
+   * different actions.
+   */
+  signedOut?: boolean;
   onBack?: () => void;
   onClose?: () => void;
   /** The session died mid-flight; the route sends them to sign in. */
@@ -240,6 +271,7 @@ type Stage = "loading" | "ready" | "enabling" | "support" | "failed";
 export default function CheckoutSheet({
   subscriptionId,
   walletAddress,
+  signedOut = false,
   onBack,
   onClose,
   onSignIn,
@@ -596,12 +628,8 @@ export default function CheckoutSheet({
   }, [rise]);
 
   const price = formatMoney(subs.priceOf(subscription));
-  // One shape whichever side it comes from — "1,000.00 USDC". `formatMoney`
-  // prefixes the code for an asset with no symbol, so the fallback has to
-  // suppress that or the line reads "USDC 1,000.00 USDC".
-  const settlement =
-    subs.readSettlementText(payment) ??
-    `${formatMoney(subs.MEMBERSHIP_SETTLEMENT, { symbol: false })} ${subs.MEMBERSHIP_SETTLEMENT.currency}`;
+  /** One shape whichever side it comes from — "1,000.00 USDC". */
+  const settlement = subs.readSettlementText(payment) ?? SETTLEMENT_FALLBACK;
   const sheetStyle = {
     maxHeight: height - insets.top - 12,
     backgroundColor: C.sheet,
@@ -667,111 +695,123 @@ export default function CheckoutSheet({
     </View>
   );
 
-  const body = (() => {
+  /**
+   * Every stage renders as scrolling content plus — when it has one — the action
+   * for that stage, pinned outside the scroll the way the paywall pins its CTA.
+   * A deposit address is long, and on a small handset a CTA inside the scroll
+   * sits below the fold with nothing on screen saying it exists.
+   */
+  const panel: { content: React.ReactNode; footer?: React.ReactNode } = (() => {
     /* ------------------------------------------------------------ loading */
 
     if (stage === "loading") {
-      return (
-        <View style={{ alignItems: "center", paddingVertical: 54 }}>
-          <ParadigmLoader height={26} color={C.silver} />
-          <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
-            Opening your checkout
-          </Body>
-        </View>
-      );
+      return {
+        content: (
+          <View style={{ alignItems: "center", paddingVertical: 54 }}>
+            <ParadigmLoader height={26} color={C.silver} />
+            <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
+              Opening your checkout
+            </Body>
+          </View>
+        ),
+      };
     }
 
     /* ------------------------------------------------------------- failed */
 
     if (stage === "failed") {
-      return (
-        <View>
-          {notice ? <Notice notice={notice} /> : null}
-          <View style={{ marginTop: 20 }}>
-            <MetalButton
-              label="Try again"
-              onPress={() => setRecheck((n) => n + 1)}
-            />
-          </View>
-        </View>
-      );
+      return {
+        content: notice ? <Notice notice={notice} /> : <View />,
+        footer: (
+          <MetalButton
+            label="Try again"
+            onPress={() => setRecheck((n) => n + 1)}
+          />
+        ),
+      };
     }
 
     /* ---------------------------------------------------------- enabling */
 
     if (stage === "enabling") {
-      return (
-        <View style={{ paddingTop: 8 }}>
-          <View
-            style={{
-              alignItems: "center",
-              backgroundColor: C.brandGlow,
-              borderWidth: 1,
-              borderColor: BRAND_EDGE,
-              borderRadius: 20,
-              paddingVertical: 26,
-              paddingHorizontal: 20,
-            }}
-          >
-            <CheckIcon size={26} color={C.brand} />
-            <Display size={19} style={{ marginTop: 14, textAlign: "center" }}>
-              Payment confirmed.
-            </Display>
-            <Display size={19} color={C.brand} style={{ textAlign: "center" }}>
-              Enabling your account.
-            </Display>
+      return {
+        content: (
+          <View style={{ paddingTop: 8 }}>
             <View
               style={{
-                flexDirection: "row",
                 alignItems: "center",
-                gap: 8,
-                marginTop: 16,
+                backgroundColor: C.brandGlow,
+                borderWidth: 1,
+                borderColor: BRAND_EDGE,
+                borderRadius: 20,
+                paddingVertical: 26,
+                paddingHorizontal: 20,
               }}
             >
-              <PulseDot color={C.brand} />
-              <Body size={12} color={C.silver}>
-                Asking Primal{syncAttempt > 0 ? ` · ${syncAttempt + 1}` : ""}
-              </Body>
+              <CheckIcon size={26} color={C.brand} />
+              <Display size={19} style={{ marginTop: 14, textAlign: "center" }}>
+                Payment confirmed.
+              </Display>
+              <Display size={19} color={C.brand} style={{ textAlign: "center" }}>
+                Enabling your account.
+              </Display>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 16,
+                }}
+              >
+                <PulseDot color={C.brand} />
+                <Body size={12} color={C.silver}>
+                  Asking Primal{syncAttempt > 0 ? ` · ${syncAttempt + 1}` : ""}
+                </Body>
+              </View>
             </View>
+            <Body
+              size={12}
+              color={C.dim}
+              style={{ marginTop: 16, lineHeight: 18, textAlign: "center" }}
+            >
+              Your transfer has settled. Access switches on from Primal's side,
+              which usually takes a few seconds — nothing else is needed from you,
+              and nothing will be charged again.
+            </Body>
           </View>
-          <Body
-            size={12}
-            color={C.dim}
-            style={{ marginTop: 16, lineHeight: 18, textAlign: "center" }}
-          >
-            Your transfer has settled. Access switches on from Primal's side,
-            which usually takes a few seconds — nothing else is needed from you,
-            and nothing will be charged again.
-          </Body>
-        </View>
-      );
+        ),
+      };
     }
 
     /* ----------------------------------------------------------- support */
 
     if (stage === "support") {
-      return (
-        <View style={{ paddingTop: 8 }}>
-          <View
-            style={{
-              backgroundColor: C.raised,
-              borderWidth: 1,
-              borderColor: C.border,
-              borderRadius: 20,
-              padding: 18,
-            }}
-          >
-            <Display size={18}>Your payment landed</Display>
-            <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
-              Primal has the money but has not switched your access on yet.
-              Nothing is owed and nothing needs paying again — this is ours to
-              finish. Quote these to support and they can find it in one look.
-            </Body>
-            <TraceRow label="Subscription" value={subscription?.id ?? "—"} />
-            {payment?.id ? <TraceRow label="Payment" value={payment.id} /> : null}
-            <TraceRow label="Reference" value={trace} />
+      return {
+        content: (
+          <View style={{ paddingTop: 8 }}>
+            <View
+              style={{
+                backgroundColor: C.raised,
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 20,
+                padding: 18,
+              }}
+            >
+              <Display size={18}>Your payment landed</Display>
+              <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
+                Primal has the money but has not switched your access on yet.
+                Nothing is owed and nothing needs paying again — this is ours to
+                finish. Quote these to support and they can find it in one look.
+              </Body>
+              <TraceRow label="Subscription" value={subscription?.id ?? "—"} />
+              {payment?.id ? <TraceRow label="Payment" value={payment.id} /> : null}
+              <TraceRow label="Reference" value={trace} />
+            </View>
           </View>
-          <View style={{ marginTop: 18, gap: 10 }}>
+        ),
+        footer: (
+          <View style={{ gap: 10 }}>
             <MetalButton
               label="Check once more"
               loading={busy}
@@ -782,43 +822,43 @@ export default function CheckoutSheet({
             />
             <QuietButton label="Close" onPress={close} />
           </View>
-        </View>
-      );
+        ),
+      };
     }
 
     /* ------------------------------------------------- terminal, not paid */
 
     if (terminal && status !== "SETTLED") {
       const expired = status === "EXPIRED";
-      return (
-        <View style={{ paddingTop: 8 }}>
-          <View
-            style={{
-              backgroundColor: DANGER_TINT,
-              borderWidth: 1,
-              borderColor: DANGER_EDGE,
-              borderRadius: 20,
-              padding: 18,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
-              <AlertIcon size={17} color={C.down} />
-              <Body size={13.5} semibold color={C.down}>
-                {expired ? "Payment window closed" : "Payment failed"}
+      return {
+        content: (
+          <View style={{ paddingTop: 8 }}>
+            <View
+              style={{
+                backgroundColor: DANGER_TINT,
+                borderWidth: 1,
+                borderColor: DANGER_EDGE,
+                borderRadius: 20,
+                padding: 18,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+                <AlertIcon size={17} color={C.down} />
+                <Body size={13.5} semibold color={C.down}>
+                  {expired ? "Payment window closed" : "Payment failed"}
+                </Body>
+              </View>
+              <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
+                {expired
+                  ? "This deposit address is no longer watched. Do not send anything to it — start a fresh checkout and you will be given a new one."
+                  : "Primal could not settle this payment. If anything left your wallet it refunds to the address you started from."}
               </Body>
             </View>
-            <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
-              {expired
-                ? "This deposit address is no longer watched. Do not send anything to it — start a fresh checkout and you will be given a new one."
-                : "Primal could not settle this payment. If anything left your wallet it refunds to the address you started from."}
-            </Body>
+            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
           </View>
-          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-          <View style={{ marginTop: 18, gap: 10 }}>
-            <MetalButton label="Back to membership" onPress={onBack ?? close} />
-          </View>
-        </View>
-      );
+        ),
+        footer: <MetalButton label="Back to membership" onPress={onBack ?? close} />,
+      };
     }
 
     /* ---------------------------------------------- quoted on a bad route */
@@ -826,40 +866,40 @@ export default function CheckoutSheet({
     // A payment exists but its chain or asset did not resolve out of the
     // trusted table. There is no safe instruction to print here, so none is.
     if (payment && !quote.safe) {
-      return (
-        <View style={{ paddingTop: 8 }}>
-          <View
-            style={{
-              backgroundColor: DANGER_TINT,
-              borderWidth: 1,
-              borderColor: DANGER_EDGE,
-              borderRadius: 20,
-              padding: 18,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
-              <AlertIcon size={17} color={C.down} />
-              <Body size={13.5} semibold color={C.down}>
-                Do not send anything
+      return {
+        content: (
+          <View style={{ paddingTop: 8 }}>
+            <View
+              style={{
+                backgroundColor: DANGER_TINT,
+                borderWidth: 1,
+                borderColor: DANGER_EDGE,
+                borderRadius: 20,
+                padding: 18,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+                <AlertIcon size={17} color={C.down} />
+                <Body size={13.5} semibold color={C.down}>
+                  Do not send anything
+                </Body>
+              </View>
+              <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
+                This checkout was quoted on a route this app does not recognise,
+                so it cannot tell you what to send or where. Nothing has been
+                charged. Quote the reference below to support.
               </Body>
+              <TraceRow label="Network" value={quote.networkName} />
+              {quote.assetAddress ? (
+                <TraceRow label="Asset" value={quote.assetAddress} />
+              ) : null}
+              <TraceRow label="Subscription" value={subscription?.id ?? "—"} />
+              <TraceRow label="Reference" value={trace} />
             </View>
-            <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
-              This checkout was quoted on a route this app does not recognise,
-              so it cannot tell you what to send or where. Nothing has been
-              charged. Quote the reference below to support.
-            </Body>
-            <TraceRow label="Network" value={quote.networkName} />
-            {quote.assetAddress ? (
-              <TraceRow label="Asset" value={quote.assetAddress} />
-            ) : null}
-            <TraceRow label="Subscription" value={subscription?.id ?? "—"} />
-            <TraceRow label="Reference" value={trace} />
           </View>
-          <View style={{ marginTop: 18 }}>
-            <MetalButton label="Back to membership" onPress={onBack ?? close} />
-          </View>
-        </View>
-      );
+        ),
+        footer: <MetalButton label="Back to membership" onPress={onBack ?? close} />,
+      };
     }
 
     /* ------------------------------------------------------ route + amount */
@@ -939,30 +979,78 @@ export default function CheckoutSheet({
     /* ------------------------------------------------- nothing to pay yet */
 
     if (!payment) {
-      return (
-        <View>
-          {planCard}
-          {routeBlock}
-          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-          <View style={{ marginTop: 24 }}>
+      return {
+        content: (
+          <View>
+            {planCard}
+            {routeBlock}
+            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+          </View>
+        ),
+        footer: (
+          <View>
+            {/* The button's own disabled treatment is a dim silver face with a
+                #6B6E71 label — legible as "quiet", not as "you cannot press
+                this", and `ui.tsx` is not ours to change. So the state is stated
+                ABOVE the control instead of being inferred from it: a held
+                panel, at full contrast, carrying the same one sentence that used
+                to sit underneath. Not a second copy of it — when the wallet is
+                open this block is gone and the quiet reassurance takes its
+                place. Order matters for a screen reader too: the reason is read
+                before the button it disables. */}
+            {walletAddress ? null : (
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 11,
+                  marginBottom: 14,
+                  backgroundColor: HOLD_TINT,
+                  borderWidth: 1,
+                  borderColor: HOLD_EDGE,
+                  borderRadius: 16,
+                  padding: 14,
+                }}
+              >
+                <View style={{ paddingTop: 1 }}>
+                  <AlertIcon size={17} color={C.amber} />
+                </View>
+                {/* Two different reasons produce a null address, and telling a
+                    signed-OUT person to "unlock your wallet" points them at a
+                    wallet that does not exist yet. The route knows which it is;
+                    this only says what it was told. */}
+                <View style={{ flex: 1 }}>
+                  <Body size={12.5} semibold color={C.amber}>
+                    {signedOut ? "Sign in to continue" : "Wallet locked"}
+                  </Body>
+                  <Body size={12.5} color={C.sub} style={{ marginTop: 4, lineHeight: 18 }}>
+                    {signedOut
+                      ? "Paradigm needs your wallet address before it can take a payment — it is where the provider refunds you if the route fails."
+                      : "Unlock your wallet first — a payment needs somewhere to refund to if the route fails."}
+                  </Body>
+                </View>
+              </View>
+            )}
+            {signedOut ? (
+              <QuietButton label="Sign in" onPress={() => onSignIn?.()} />
+            ) : null}
             <MetalButton
               label="Get deposit address"
               loading={busy}
               disabled={!walletAddress}
               onPress={() => void requestAddress()}
             />
+            {walletAddress ? (
+              <Body
+                size={11}
+                color={C.dim}
+                style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
+              >
+                A failed route refunds to your own wallet.
+              </Body>
+            ) : null}
           </View>
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ marginTop: 14, textAlign: "center", lineHeight: 17 }}
-          >
-            {walletAddress
-              ? "A failed route refunds to your own wallet."
-              : "Unlock your wallet first — a payment needs somewhere to refund to if the route fails."}
-          </Body>
-        </View>
-      );
+        ),
+      };
     }
 
     /* ------------------------------------------------------- live payment */
@@ -1068,13 +1156,18 @@ export default function CheckoutSheet({
                 {edges.tail}
               </Mono>
             </Mono>
+            {/* Not `C.dim`. This panel exists so the user can check the route
+                against their own wallet before sending $1,000, and a string
+                that has to be COMPARED character by character is the last place
+                in the app for the quietest tier — the anti-poisoning design is
+                undone if the thing being compared is hard to read. */}
             <View style={{ marginTop: 14, gap: 4 }}>
-              <Body size={11.5} color={C.dim}>
+              <Body size={11.5} color={C.sub}>
                 {quote.networkName}
                 {quote.chainId === null ? "" : ` · chain ${quote.chainId}`}
               </Body>
               {quote.assetAddress ? (
-                <Mono size={10.5} color={C.dim} style={{ lineHeight: 15 }}>
+                <Mono size={11} color={C.sub} style={{ lineHeight: 16 }}>
                   {quote.asset?.symbol} contract {quote.assetAddress}
                 </Mono>
               ) : null}
@@ -1156,28 +1249,32 @@ export default function CheckoutSheet({
     /* The window has shut but the gateway has not said so yet. The loop has
        spent its final check, so from here it is the user's call. */
     if (shut) {
-      return (
-        <View>
-          {planCard}
-          {statusStrip}
-          <View
-            style={{
-              marginTop: 16,
-              backgroundColor: DANGER_TINT,
-              borderWidth: 1,
-              borderColor: DANGER_EDGE,
-              borderRadius: 16,
-              padding: 14,
-            }}
-          >
-            <Body size={12.5} color={C.silver} style={{ lineHeight: 18 }}>
-              The payment window has closed. Do not send anything to the address
-              you were given. If you sent before it closed, check once more —
-              Primal decides whether it counted, not this app.
-            </Body>
+      return {
+        content: (
+          <View>
+            {planCard}
+            {statusStrip}
+            <View
+              style={{
+                marginTop: 16,
+                backgroundColor: DANGER_TINT,
+                borderWidth: 1,
+                borderColor: DANGER_EDGE,
+                borderRadius: 16,
+                padding: 14,
+              }}
+            >
+              <Body size={12.5} color={C.silver} style={{ lineHeight: 18 }}>
+                The payment window has closed. Do not send anything to the address
+                you were given. If you sent before it closed, check once more —
+                Primal decides whether it counted, not this app.
+              </Body>
+            </View>
+            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
           </View>
-          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-          <View style={{ marginTop: 20, gap: 10 }}>
+        ),
+        footer: (
+          <View style={{ gap: 10 }}>
             <MetalButton
               label="Check once more"
               loading={busy}
@@ -1185,54 +1282,60 @@ export default function CheckoutSheet({
             />
             <QuietButton label="Back to membership" onPress={onBack ?? close} />
           </View>
-        </View>
-      );
+        ),
+      };
     }
 
     /* The watching beat: everything still on screen, weighted differently. */
     if (acknowledged) {
-      return (
-        <View>
-          {planCard}
-          {statusStrip}
-          {amountBlock}
-          {addressBlock}
-          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-          <Body
-            size={12}
-            color={C.dim}
-            style={{ marginTop: 18, lineHeight: 18, textAlign: "center" }}
-          >
-            Watching for your transfer. You can close this — it keeps running,
-            and your subscription switches on the moment it confirms.
-          </Body>
-          <View style={{ marginTop: 16 }}>
-            <QuietButton label="Close" onPress={close} />
+      return {
+        content: (
+          <View>
+            {planCard}
+            {statusStrip}
+            {amountBlock}
+            {addressBlock}
+            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {/* Stays in the scroll: it is the tail of the status narrative, and
+                the Close it mentions is pinned directly below it. */}
+            <Body
+              size={12}
+              color={C.dim}
+              style={{ marginTop: 18, lineHeight: 18, textAlign: "center" }}
+            >
+              Watching for your transfer. You can close this — it keeps running,
+              and your subscription switches on the moment it confirms.
+            </Body>
           </View>
-        </View>
-      );
+        ),
+        footer: <QuietButton label="Close" onPress={close} />,
+      };
     }
 
-    return (
-      <View>
-        {planCard}
-        {routeBlock}
-        {amountBlock}
-        {addressBlock}
-        {warning}
-        {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-        <View style={{ marginTop: 22 }}>
-          <MetalButton label="Continue" onPress={() => setAcknowledged(true)} />
+    return {
+      content: (
+        <View>
+          {planCard}
+          {routeBlock}
+          {amountBlock}
+          {addressBlock}
+          {warning}
+          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
         </View>
-        <Body
-          size={11}
-          color={C.dim}
-          style={{ marginTop: 14, textAlign: "center", lineHeight: 17 }}
-        >
-          Your subscription unlocks instantly upon transaction confirmation.
-        </Body>
-      </View>
-    );
+      ),
+      footer: (
+        <View>
+          <MetalButton label="Continue" onPress={() => setAcknowledged(true)} />
+          <Body
+            size={11}
+            color={C.dim}
+            style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
+          >
+            Your subscription unlocks instantly upon transaction confirmation.
+          </Body>
+        </View>
+      ),
+    };
   })();
 
   return (
@@ -1263,15 +1366,36 @@ export default function CheckoutSheet({
         ]}
       >
         {header}
+        {/* `flexShrink: 1` is load-bearing: RN defaults it to 0, so inside a
+            panel bounded only by `maxHeight` the scroller would keep its full
+            content height and push the pinned footer off the bottom of the
+            screen — the exact failure this change exists to fix. */}
         <ScrollView
           showsVerticalScrollIndicator={false}
+          style={{ flexShrink: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingBottom: Math.max(insets.bottom, 16) + 20,
+            paddingBottom: panel.footer ? 20 : Math.max(insets.bottom, 16) + 20,
           }}
         >
-          {body}
+          {panel.content}
         </ScrollView>
+        {/* A sibling, not an overlay: the longest address block scrolls up to
+            this edge and stops, so nothing can ever pass under the action. */}
+        {panel.footer ? (
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 16,
+              paddingBottom: Math.max(insets.bottom, 16) + 6,
+              borderTopWidth: 1,
+              borderTopColor: C.hairline,
+              backgroundColor: C.sheet,
+            }}
+          >
+            {panel.footer}
+          </View>
+        ) : null}
       </Animated.View>
     </View>
   );

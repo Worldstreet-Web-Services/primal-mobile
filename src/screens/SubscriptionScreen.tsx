@@ -359,6 +359,12 @@ export interface SubscriptionScreenProps {
    */
   onCheckout: (subscriptionId: string | null) => void;
   onBack?: () => void;
+  /**
+   * What the back control says. Defaults to "Close", which is right when this
+   * screen is a detour from inside the app — but when it is the entry gate the
+   * only way past it is out of the account, and the control has to say so.
+   */
+  backLabel?: string;
   /** The session died mid-flight; the route sends them to sign in. */
   onSignIn?: () => void;
   /** Re-probe entitlement after a cancellation (or a sync) changes it. */
@@ -369,6 +375,7 @@ export default function SubscriptionScreen({
   state,
   onCheckout,
   onBack,
+  backLabel = "Close",
   onSignIn,
   onEntitlementChanged,
 }: SubscriptionScreenProps) {
@@ -533,6 +540,26 @@ export default function SubscriptionScreen({
   const cardW = Math.min(baseW, Math.round(cardH / CARD_RATIO));
   const stride = cardW + CARD_GAP;
 
+  /**
+   * The trailing inset that makes the pagination TRUE.
+   *
+   * Snap points sit at `k * stride`, and card `k` only lands on the left gutter
+   * at that offset. With a symmetric gutter the content simply ends too soon:
+   * the shelf can be dragged no further than `content - viewport`, which for two
+   * 300pt cards on a 393pt phone is ~40pt short of the second snap point, and
+   * for three is a whole card short of the third. The dots then advertise a
+   * position the shelf physically cannot take — the last one worst of all, since
+   * it can never be the card resting at the gutter.
+   *
+   * Padding the tail by exactly the empty space to the right of a gutter-aligned
+   * card makes the scrollable range `(n - 1) * stride` for ANY n: every snap
+   * point is reachable, the last card comes fully to the gutter, and the dot for
+   * it lights up because the content got there rather than because the offset
+   * happened to round up. The `GUTTER` floor is a safety net for a viewport too
+   * narrow to leave any tail; the card cap (76% of width) keeps it unused.
+   */
+  const shelfTail = Math.max(GUTTER, width - GUTTER - cardW);
+
   const onShelfScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (stride <= 0) return;
@@ -594,7 +621,7 @@ export default function SubscriptionScreen({
             {onBack ? (
               <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
                 <Body size={13} color={C.sub}>
-                  Close
+                  {backLabel}
                 </Body>
               </Pressable>
             ) : null}
@@ -629,12 +656,32 @@ export default function SubscriptionScreen({
             {ending ? "Your membership is ending" : "You have Paradigm"}
           </Text>
 
+          {/* Composed rather than interpolated, because the price is money and
+              money is set with `Mono`. Plain `Mono` here, not the semibold cut:
+              on this face the figure is a fact in a sentence, not the offer, so
+              it gets the tabular numerals without the paywall's emphasis. */}
           <Body size={15} color={C.sub} style={{ marginTop: 12, lineHeight: 23 }}>
-            {renews
-              ? ending
-                ? `Everything keeps working until ${renews}. Nothing will be charged after that.`
-                : `Renews ${renews} at ${price} per ${subs.MEMBERSHIP_PERIOD}.`
-              : `Billed ${price} per ${subs.MEMBERSHIP_PERIOD}.`}
+            {renews ? (
+              ending ? (
+                `Everything keeps working until ${renews}. Nothing will be charged after that.`
+              ) : (
+                <>
+                  {`Renews ${renews} at `}
+                  <Mono size={15} color={C.sub}>
+                    {price}
+                  </Mono>
+                  {` per ${subs.MEMBERSHIP_PERIOD}.`}
+                </>
+              )
+            ) : (
+              <>
+                {"Billed "}
+                <Mono size={15} color={C.sub}>
+                  {price}
+                </Mono>
+                {` per ${subs.MEMBERSHIP_PERIOD}.`}
+              </>
+            )}
           </Body>
 
           {membership ? (
@@ -754,7 +801,7 @@ export default function SubscriptionScreen({
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
               <Body size={13} color={C.sub}>
-                Close
+                {backLabel}
               </Body>
             </Pressable>
           ) : null}
@@ -775,7 +822,18 @@ export default function SubscriptionScreen({
                 onPress={() => onCheckout(pending?.subscription.id ?? null)}
               >
                 You have a payment open on this device
-                {pendingCountdown ? ` — it closes in ${pendingCountdown}` : ""}.
+                {/* The countdown re-renders every second and changes digits as
+                    it falls — a bare `Text` lets the whole sentence twitch on
+                    each tick. `Mono` holds the figure's width. */}
+                {pendingCountdown ? (
+                  <>
+                    {" — it closes in "}
+                    <Mono size={12.5} color={C.silver}>
+                      {pendingCountdown}
+                    </Mono>
+                  </>
+                ) : null}
+                .
               </StatusStrip>
             ) : (
               <StatusStrip tone="dim" live={false}>
@@ -806,9 +864,12 @@ export default function SubscriptionScreen({
 
           <Body size={15} color={C.sub} style={{ marginTop: 14, lineHeight: 23 }}>
             Get exclusive benefits with Paradigm Subscription{" "}
-            <Text style={{ fontFamily: F.bodySemibold, color: C.text }}>
+            {/* The figure goes through `Mono` for the tabular numerals, and
+                `monoSemibold` — the same cut `bodySemibold` resolves to — so it
+                keeps the weight the design gives it against the sentence. */}
+            <Mono size={15} color={C.text} style={{ fontFamily: F.monoSemibold }}>
               {price}
-            </Text>{" "}
+            </Mono>{" "}
             per {subs.MEMBERSHIP_PERIOD}.
           </Body>
         </Animated.View>
@@ -835,7 +896,11 @@ export default function SubscriptionScreen({
             snapToAlignment="start"
             onScroll={onShelfScroll}
             scrollEventThrottle={16}
-            contentContainerStyle={{ paddingHorizontal: GUTTER, gap: CARD_GAP }}
+            contentContainerStyle={{
+              paddingLeft: GUTTER,
+              paddingRight: shelfTail,
+              gap: CARD_GAP,
+            }}
           >
             {BENEFITS.map((benefit) => (
               <BenefitCard

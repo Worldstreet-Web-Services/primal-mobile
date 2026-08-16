@@ -174,10 +174,27 @@ async function solanaRows(owner: string): Promise<RawRow[]> {
  * invalid EVM address counts every EVM chain as failed for the same reason:
  * "couldn't read" must never come back as "empty wallet".
  */
+/**
+ * What a read of the chains actually produced.
+ *
+ * `complete` is the load-bearing field. An empty `holdings` list means two
+ * completely different things — "this wallet is empty" and "we only managed to
+ * reach one of seven chains" — and a caller that cannot tell them apart will
+ * print $0.00 for the second. Home does exactly that: a crypto leg reading zero
+ * lets it promote the naira balance to a headline TOTAL PORTFOLIO with
+ * "CRYPTO $0.00" beneath, so a leg of unknown size is counted as nothing and
+ * the total is stated as the member's whole holdings.
+ */
+export interface HoldingsRead {
+  holdings: Holding[];
+  /** False when any chain job failed — the list is a floor, not a total. */
+  complete: boolean;
+}
+
 export async function fetchHoldings(
   evm: string | null,
   solana: string | null,
-): Promise<Holding[]> {
+): Promise<HoldingsRead> {
   const jobs: Promise<RawRow[] | null>[] = [];
   if (evm) {
     if (isAddress(evm)) {
@@ -195,6 +212,10 @@ export async function fetchHoldings(
   if (results.every((r) => r === null)) {
     throw new Error("Every chain read failed");
   }
+
+  // Some chains answered and some did not: the rows below are real, but they
+  // are not everything this wallet holds.
+  const complete = results.every((r) => r !== null);
 
   const rows = results.filter((r): r is RawRow[] => r !== null).flat();
   const prices = await fetchPricesUsd(rows.map((r) => r.token.symbol));
@@ -218,7 +239,7 @@ export async function fetchHoldings(
     })
     .filter((h) => h.valueUsd >= DUST_FLOOR_USD)
     .sort((a, b) => b.valueUsd - a.valueUsd);
-  return holdings;
+  return { holdings, complete };
 }
 
 /** Whether a row needs its network spelled out ("· Base"): every token row,

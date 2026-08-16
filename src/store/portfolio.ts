@@ -20,6 +20,13 @@ interface PortfolioState {
   /** A refresh is in flight while data is already on screen. */
   refreshing: boolean;
   error: boolean;
+  /**
+   * True when every chain answered. False means the holdings below are a FLOOR,
+   * not a total — some chains failed while others succeeded, so an empty or
+   * small list may simply be the part we could see. Anything that would state a
+   * total, or read zero as "nothing held", has to consult this first.
+   */
+  complete: boolean;
 
   /** Load if stale — screens call this on mount. Safe to call repeatedly. */
   ensure: () => void;
@@ -40,7 +47,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     const evm = addrs?.evm ?? null;
     const solana = addrs?.solana ?? null;
     if (!evm && !solana) {
-      set({ loading: false, refreshing: false, error: true });
+      set({ loading: false, refreshing: false, error: true, complete: false });
       return;
     }
 
@@ -57,7 +64,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
     if (isRefresh) set({ refreshing: true });
     try {
-      const holdings = await fetchHoldings(evm, solana);
+      const { holdings, complete } = await fetchHoldings(evm, solana);
       lastFetchedAt = Date.now();
       set({
         holdings,
@@ -65,10 +72,11 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         loading: false,
         refreshing: false,
         error: false,
+        complete,
       });
     } catch {
       // Keep any previously shown data; only flag error.
-      set({ loading: false, refreshing: false, error: true });
+      set({ loading: false, refreshing: false, error: true, complete: false });
     }
   };
 
@@ -88,6 +96,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
   return {
     holdings: [],
+    complete: false,
     totalUsd: 0,
     loading: true,
     refreshing: false,

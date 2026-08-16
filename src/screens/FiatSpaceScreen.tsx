@@ -362,16 +362,29 @@ export default function FiatSpaceScreen({
         <Body size={11.5} color={C.dim}>
           Available balance
         </Body>
+        {/* The skeleton is reserved for a balance still in the air. One that
+            arrived without a readable figure gets the em dash and a reason:
+            shimmering over it would claim a request is running when the only
+            request there was is finished, and it would never resolve. */}
         {available ? (
           <AmountText value={formatMoney(available)} size={46} style={{ marginTop: 6 }} />
-        ) : balanceError ? (
+        ) : balanceError || balance ? (
           <>
             <Display size={46} color={C.dim} style={{ marginTop: 6 }}>
               —
             </Display>
-            <Body size={11.5} color={C.down} style={{ marginTop: 8 }}>
-              {balanceError}
+            <Body size={11.5} color={C.down} style={{ marginTop: 8, lineHeight: 17 }}>
+              {balanceError ?? "Paradigm could not read the balance the gateway sent."}
             </Body>
+            <Pressable
+              onPress={reload}
+              accessibilityRole="button"
+              style={{ marginTop: 12, alignSelf: "flex-start" }}
+            >
+              <Mono size={10} color={C.silver} style={{ letterSpacing: 1.4 }}>
+                TRY AGAIN
+              </Mono>
+            </Pressable>
           </>
         ) : (
           <Pulse width={230} height={40} radius={12} style={{ marginTop: 10 }} />

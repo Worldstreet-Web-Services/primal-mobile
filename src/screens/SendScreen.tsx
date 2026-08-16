@@ -32,6 +32,7 @@ import {
   isEntitlementError,
   type Balance,
   type Bank,
+  type Money,
 } from "../lib/gateway/types";
 import { C, F } from "../theme/tokens";
 
@@ -68,6 +69,27 @@ function groupNuban(digits: string): string {
   const b = digits.slice(4, 7);
   const c = digits.slice(7, 10);
   return [a, b, c].filter(Boolean).join(" ");
+}
+
+/**
+ * `amount > balance`, and `false` for anything it cannot read.
+ *
+ * `compareMoney` throws on a wire value that is not an integer minor-unit
+ * string, and this is evaluated in the render body of the last step before a
+ * payout — a gateway that serialises a Decimal as `"12500.00"` would take the
+ * whole flow down with an uncaught exception. Declining to compare is the
+ * lesser harm: the warning goes quiet, the gateway still refuses an overdrawn
+ * payout on its own, and the screen already treats a missing balance that way.
+ * The twin of `exceeds` in SendConfirmScreen, for the same reason.
+ */
+function overBalance(amount: Money | null, balance: Money | null): boolean {
+  if (!amount || !balance) return false;
+  if (balance.currency.toUpperCase() !== CURRENCY) return false;
+  try {
+    return compareMoney(amount, balance) > 0;
+  } catch {
+    return false;
+  }
 }
 
 function monogram(name: string): string {
@@ -635,11 +657,7 @@ export default function SendScreen({
       amount = null;
     }
   }
-  const overdrawn =
-    amount !== null &&
-    available !== null &&
-    available.currency.toUpperCase() === CURRENCY &&
-    compareMoney(amount, available) > 0;
+  const overdrawn = overBalance(amount, available);
   const canContinue = amount !== null && !overdrawn;
 
   const commit = () => {

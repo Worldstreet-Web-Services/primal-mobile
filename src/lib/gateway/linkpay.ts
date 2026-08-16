@@ -29,6 +29,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 import { get, newIdempotencyKey, post } from "./client";
+import { normalizeCurrency } from "./money";
 import { toMillis } from "./time";
 import {
   ApiError,
@@ -88,6 +89,25 @@ function unwrap(raw: unknown, ...keys: string[]): Record<string, unknown> {
   return node;
 }
 
+/** Minor units are an integer count of the smallest unit. Nothing else is one. */
+const MINOR_UNITS = /^-?\d+$/;
+
+/**
+ * A minor-unit string, or nothing.
+ *
+ * `"12500.00"` is what an ORM Decimal looks like after JSON.stringify, and it
+ * is not a minor-unit amount — reading it as one would mean guessing whether
+ * the gateway meant ₦125.00 or ₦12,500.00. Worse, every arithmetic helper in
+ * `money.ts` THROWS on it, and screens compare balances in their render body,
+ * so one malformed field arrives as a red box over someone's payout. It reads
+ * as absent instead: rows print an em dash, comparisons decline to be made,
+ * and the gateway stays the authority on the figure.
+ */
+function minorUnits(raw: string, currency: string): Money | undefined {
+  const trimmed = raw.trim();
+  return MINOR_UNITS.test(trimmed) ? { amountMinor: trimmed, currency } : undefined;
+}
+
 /**
  * Read a money value in whichever shape it arrives: nested (`{amountMinor,
  * currency}`), split across sibling fields, or a bare minor-unit string beside
@@ -96,7 +116,8 @@ function unwrap(raw: unknown, ...keys: string[]): Record<string, unknown> {
  * A JSON *number* is accepted only when it is an integer, and never converted
  * from a decimal. `100.5` as a number would be a gateway bug, and guessing
  * whether it meant ₦1.005 or ₦100.50 is exactly the guess that loses money —
- * so it reads as absent and the row renders an em dash instead of a lie.
+ * so it reads as absent and the row renders an em dash instead of a lie. A
+ * *string* gets the identical treatment, for the identical reason.
  */
 function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined {
   if (value === null || value === undefined) return undefined;
@@ -109,7 +130,7 @@ function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined
         ? { amountMinor: String(value), currency }
         : undefined;
     }
-    return { amountMinor: value.trim(), currency };
+    return minorUnits(value, currency);
   }
 
   const node = obj(value);
@@ -123,7 +144,7 @@ function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined
       : undefined;
   }
   const amountMinor = str(rawAmount);
-  return amountMinor ? { amountMinor, currency } : undefined;
+  return amountMinor ? minorUnits(amountMinor, currency) : undefined;
 }
 
 /**
@@ -504,8 +525,84 @@ const memoryKeys = new Map<string, string>();
 
 /** Slot for the one account a user provisions. */
 export const PROVISION_SLOT = "linkpay.account";
-/** Slot for the payout currently being confirmed. */
+/**
+ * The stem every payout slot is built on — and, on its own, the slot that
+ * records written before payouts had one of their own were reserved under.
+ *
+ * Never hand this to `reserveIdempotencyKey` directly, and never derive a slot
+ * at a call site either: `planWithdrawal` is the only sanctioned way to get a
+ * key for a payout, because it is the only thing that knows a record already on
+ * disk outranks anything a caller could derive.
+ */
 export const WITHDRAWAL_SLOT = "linkpay.withdrawal";
+
+/**
+ * A stable short name for WHAT a payout moves — every field that decides where
+ * the money goes, and nothing that changes between two attempts at it.
+ *
+ * Two FNV-1a passes, concatenated. Not a security hash — nothing secret goes in
+ * — just a stable name for a tuple, in a keychain key that has to stay
+ * alphanumeric. It is one-way all the same, which is what lets the persisted
+ * payout record carry it: the account number that goes in never comes back out,
+ * and the record stays as thin on the person as it was before.
+ */
+export function withdrawalFingerprint(payout: {
+  amount: Money;
+  accountNumber: string;
+  bankUuid: string;
+}): string {
+  const fingerprint = [
+    payout.amount.amountMinor.trim(),
+    normalizeCurrency(payout.amount.currency),
+    payout.accountNumber.replace(/\D/g, ""),
+    payout.bankUuid,
+    // Joined on a character no bank feed can put inside a field, exactly as
+    // `purchaseFingerprint` does: the boundaries have to be unambiguous or
+    // "50" + "00123" fingerprints the same tuple as "5000" + "123". Written as
+    // an escape on purpose — a raw NUL byte in a source file makes every tool
+    // that reads it treat this module as binary.
+  ].join("\u0000");
+
+  const fnv = (seed: number, prime: number): string => {
+    let hash = seed >>> 0;
+    for (let i = 0; i < fingerprint.length; i += 1) {
+      hash = (hash ^ fingerprint.charCodeAt(i)) >>> 0;
+      hash = Math.imul(hash, prime) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+  };
+
+  return `${fnv(0x811c9dc5, 0x01000193)}${fnv(0x243f6a88, 0x01000193)}`;
+}
+
+/**
+ * The idempotency slot for ONE ATTEMPT at one intended payout.
+ *
+ * Derived from every field that decides where the money goes, exactly as
+ * `purchaseSlot` does for VAS. The SAME payout retried — after a timeout, a
+ * crash, a relaunch — reserves the SAME key, and a DIFFERENT payout can never
+ * be handed a key another payout already spent.
+ *
+ * One fixed slot for every payout a user ever makes is the version of this
+ * that loses money: a key reserved for ₦50,000 to Chidi and never released is
+ * handed straight to ₦20,000 to Ada, and the gateway then either 409s forever
+ * or replays Chidi's transfer as the answer to Ada's.
+ *
+ * The fingerprint alone is not the slot either, and that is the other half of
+ * it. Retrying the ₦5,000 to Ada that timed out and sending Ada ₦5,000 again
+ * next week produce byte-identical payouts, so a fingerprint-only slot hands
+ * the second one the first one's spent key — and a gateway doing its job then
+ * answers Ada's second transfer with her first one, which is a receipt for
+ * money that never moved. The attempt number is what separates them, and
+ * `retireWithdrawal` is the only thing allowed to move it on: it does so at the
+ * one moment the earlier attempt can no longer be resumed.
+ *
+ * Private on purpose. A caller holding a derived slot is one step from
+ * reserving under it for a payout whose key is already sitting in a record —
+ * which is the same transfer under two keys. `planWithdrawal` is the door.
+ */
+const slotFor = (fingerprint: string, attempt: number): string =>
+  `${WITHDRAWAL_SLOT}.${fingerprint}.${attempt}`;
 
 const slotKey = (slot: string) => `paradigm.idem.${slot}`;
 
@@ -567,6 +664,122 @@ export async function releaseIdempotencyKey(slot: string): Promise<void> {
   }
 }
 
+/* ----------------------------------------------- which attempt is current */
+
+/**
+ * Which attempt at a given payout the next send belongs to.
+ *
+ * The twin of `PurchaseAttempt` in `services.ts`, and it exists for the same
+ * reason: the fingerprint says WHAT is being sent, and only the attempt number
+ * can say whether an identical payout is the same operation retried or a second
+ * one the user meant. Nothing about the person is in here — the fingerprint is
+ * the one-way hash, never the account number it was built from.
+ */
+interface WithdrawalAttempt {
+  fingerprint: string;
+  /** Only ever moves forward, and only when an attempt is retired. */
+  attempt: number;
+}
+
+const ATTEMPTS_KEY = "paradigm.linkpay.withdrawal_attempts";
+/** Only payouts whose fingerprint may come round again need a row. */
+const ATTEMPT_LIMIT = 8;
+
+let attemptMemory: WithdrawalAttempt[] | null = null;
+
+function readAttemptRow(value: unknown): WithdrawalAttempt | null {
+  const row = obj(value);
+  const fingerprint = typeof row.fingerprint === "string" ? row.fingerprint : "";
+  const attempt =
+    typeof row.attempt === "number" && Number.isInteger(row.attempt) && row.attempt >= 0
+      ? row.attempt
+      : null;
+  if (fingerprint === "" || attempt === null) return null;
+  return { fingerprint, attempt };
+}
+
+/**
+ * The rows, or `null` when the store could not be read at all.
+ *
+ * The distinction is the whole safety of this record, exactly as it is on the
+ * VAS side: `[]` is a fact — no payout has ever been retired — and a keychain
+ * that merely refused to answer must never be allowed to say it. Nothing is
+ * cached on failure either, or one bad read becomes the answer for the launch.
+ */
+async function readAttempts(): Promise<WithdrawalAttempt[] | null> {
+  if (attemptMemory) return attemptMemory;
+  if (isWeb) {
+    attemptMemory = [];
+    return attemptMemory;
+  }
+  try {
+    const raw = await SecureStore.getItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+    attemptMemory = Array.isArray(parsed)
+      ? parsed.map(readAttemptRow).filter((row): row is WithdrawalAttempt => row !== null)
+      : [];
+    return attemptMemory;
+  } catch {
+    return null;
+  }
+}
+
+async function saveAttempts(list: WithdrawalAttempt[]): Promise<void> {
+  const trimmed = list.slice(-ATTEMPT_LIMIT);
+  attemptMemory = trimmed;
+  if (isWeb) return;
+  try {
+    await SecureStore.setItemAsync(ATTEMPTS_KEY, JSON.stringify(trimmed), STORE_OPTIONS);
+  } catch {
+    // The memory copy still holds for this launch.
+  }
+}
+
+/**
+ * The attempt a NEW payout with this fingerprint belongs to.
+ *
+ * An unreadable store reads as attempt 0 on purpose: that answer re-sends the
+ * SAME key rather than minting a second one, and a replayed request costs a
+ * wasted round trip where a second key costs a second transfer.
+ */
+async function currentAttempt(fingerprint: string): Promise<number> {
+  const list = await readAttempts();
+  return list?.find((row) => row.fingerprint === fingerprint)?.attempt ?? 0;
+}
+
+async function rememberAttempt(fingerprint: string, attempt: number): Promise<void> {
+  const list = await readAttempts();
+  // Unreadable: this payout goes out without a row, which is exactly the
+  // behaviour this module had before the row existed. Writing anyway would
+  // persist a list that was never loaded and drop every other fingerprint's
+  // attempt back to 0 — handing each of them a spent key.
+  if (!list) return;
+  if (list.some((row) => row.fingerprint === fingerprint && row.attempt === attempt)) return;
+  await saveAttempts([
+    ...list.filter((row) => row.fingerprint !== fingerprint),
+    { fingerprint, attempt },
+  ]);
+}
+
+/**
+ * The attempt reserved under `slot` is over and can never be resumed.
+ *
+ * Matched by slot rather than by fingerprint so it is a no-op for anything that
+ * is not the CURRENT attempt — a settle landing late cannot push the counter
+ * past an attempt that is still in the air. A record written before payouts
+ * carried an attempt at all reserved the bare stem, which no derived slot ever
+ * equals, so it simply matches nothing.
+ */
+async function closeWithdrawalAttempt(slot: string): Promise<void> {
+  const list = await readAttempts();
+  if (!list) return;
+  await saveAttempts(
+    list.map((row) =>
+      slotFor(row.fingerprint, row.attempt) === slot ? { ...row, attempt: row.attempt + 1 } : row,
+    ),
+  );
+}
+
 /* ------------------------------------------------- in-flight payout record */
 
 /**
@@ -579,7 +792,25 @@ export async function releaseIdempotencyKey(slot: string): Promise<void> {
  * somebody's bank account.
  */
 export interface PendingWithdrawal {
+  /**
+   * The slot the key was reserved under — carried here so that whoever ends
+   * this operation releases THAT slot, not whichever slot the payout in front
+   * of them happens to derive. The screen that reserved it may be long gone.
+   */
+  slot: string;
   idempotencyKey: string;
+  /**
+   * The payout fingerprint the slot was derived from.
+   *
+   * Carried so that "is this record the payout in front of me?" is decided on
+   * the SAME field set the key was derived from. Deciding it on the destination
+   * tail while the key hashes the full digits means two accounts at one bank
+   * that share a last-4 are one payout for resume and two for the key — the
+   * record gets adopted and a second key gets minted for it.
+   *
+   * Absent on records written before payouts carried one.
+   */
+  fingerprint?: string;
   amountMinor: string;
   currency: string;
   destinationLast4: string;
@@ -613,8 +844,16 @@ export async function loadPendingWithdrawal(): Promise<PendingWithdrawal | null>
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingWithdrawal;
     if (typeof parsed?.idempotencyKey !== "string") return null;
-    pendingMemory = parsed;
-    return parsed;
+    // A record written before payouts carried their own slot was reserved
+    // under the bare stem, so that is where its key still lives. Backfilling
+    // it here is what lets an upgrade release the old key instead of orphaning
+    // it in the keychain forever.
+    const record: PendingWithdrawal = {
+      ...parsed,
+      slot: typeof parsed.slot === "string" && parsed.slot !== "" ? parsed.slot : WITHDRAWAL_SLOT,
+    };
+    pendingMemory = record;
+    return record;
   } catch {
     return null;
   }
@@ -630,6 +869,27 @@ export async function clearPendingWithdrawal(): Promise<void> {
   }
 }
 
+/** One page of the withdrawal feed, and how far back the scan will walk. */
+const FIND_PAGE = 20;
+const FIND_MAX_PAGES = 5;
+
+export interface PendingLookup {
+  /** The payout, when a row matched. */
+  withdrawal: Withdrawal | null;
+  /**
+   * Whether `withdrawal: null` is evidence the gateway does not have it.
+   *
+   * "I looked and did not find it" and "it never happened" are different
+   * sentences, and only the second one may release a key. The scan earns the
+   * second only when it walked the feed back past this attempt's own floor (or
+   * ran out of feed) AND could read every figure it walked past. A window that
+   * stopped short, or a row whose amount would not parse, leaves a payout the
+   * scan cannot rule out — and the key is the only thing standing between that
+   * payout and a second debit.
+   */
+  conclusive: boolean;
+}
+
 /**
  * Find the payout a timed-out request may already have created.
  *
@@ -639,24 +899,68 @@ export async function clearPendingWithdrawal(): Promise<void> {
  * tight enough that two different payouts cannot be confused unless the user
  * sent the identical amount to the identical account inside the same minute —
  * in which case the idempotency key would have collapsed them anyway.
+ *
+ * The scan walks back until the feed is older than this attempt could be, so a
+ * busy account cannot push the row it is looking for out of the window and turn
+ * a live transfer into "never sent". It walks a bounded number of pages, and
+ * says so rather than pretending, when the bound runs out first.
  */
 export async function findPendingWithdrawal(
   record: PendingWithdrawal,
   call: Call = {},
-): Promise<Withdrawal | null> {
-  const page = await listWithdrawals({ skip: 0, take: 20 }, call);
+): Promise<PendingLookup> {
   const floor = record.startedAt - 60_000;
+  // Every in-window row so far was either matched or positively ruled out. One
+  // the scan could not read is one it cannot swear is somebody else's.
+  let cleared = true;
 
-  for (const withdrawal of page.items) {
-    if (withdrawal.id === "") continue;
-    if (withdrawal.amount?.amountMinor !== record.amountMinor) continue;
-    const destination = withdrawal.destinationAccount ?? "";
-    if (!destination.endsWith(record.destinationLast4)) continue;
-    const createdMs = toMillis(withdrawal.createdAt);
-    if (createdMs !== null && createdMs < floor) continue;
-    return withdrawal;
+  for (let page = 0; page < FIND_MAX_PAGES; page += 1) {
+    const feed = await listWithdrawals({ skip: page * FIND_PAGE, take: FIND_PAGE }, call);
+    const rows = feed.items;
+
+    let oldestSeen: number | null = null;
+    let descending = true;
+    for (const withdrawal of rows) {
+      const createdMs = toMillis(withdrawal.createdAt);
+      if (createdMs !== null) {
+        if (oldestSeen !== null && createdMs > oldestSeen) descending = false;
+        oldestSeen = createdMs;
+      }
+      // Created before this attempt could have created it: not this payout, and
+      // not a row the scan has to account for either.
+      if (createdMs !== null && createdMs < floor) continue;
+
+      const destination = withdrawal.destinationAccount;
+      // Money that went to a different account is not this payout, whatever
+      // else the row carries.
+      if (destination !== undefined && !destination.endsWith(record.destinationLast4)) continue;
+
+      if (destination === undefined || withdrawal.id === "" || !withdrawal.amount) {
+        // In the window, and nothing on it rules it out: no destination to
+        // compare, no reference to name it by, or a figure that would not parse
+        // — "5000.00" is not minor units and guessing at it is the guess that
+        // loses money. It is never matched on, but it does cost this scan the
+        // right to say the payout is not there.
+        cleared = false;
+        continue;
+      }
+      if (withdrawal.amount.amountMinor !== record.amountMinor) continue;
+      return { withdrawal, conclusive: true };
+    }
+
+    // The end of the feed is the strongest possible negative: there is nothing
+    // left that could be the payout, whatever order the rows came in.
+    if (rows.length < FIND_PAGE) return { withdrawal: null, conclusive: cleared };
+    if (feed.total !== null && (page + 1) * FIND_PAGE >= feed.total) {
+      return { withdrawal: null, conclusive: cleared };
+    }
+    // Newest first — checked rather than assumed, because a feed that came back
+    // oldest-first would otherwise let page one end the scan before it started.
+    if (descending && oldestSeen !== null && oldestSeen < floor) {
+      return { withdrawal: null, conclusive: cleared };
+    }
   }
-  return null;
+  return { withdrawal: null, conclusive: false };
 }
 
 /* ----------------------------------------------------------------- polling */
@@ -667,6 +971,16 @@ interface PollOptions {
   /** Give up after this long and leave the caller on its last known state. */
   maxMs?: number;
   onError?: (error: unknown) => void;
+  /**
+   * The poll stopped on its own — it reached the end of the thing it was
+   * watching, hit `maxMs`, or lost the session. NOT called when the caller
+   * stops it, because the caller already knows.
+   *
+   * A screen that says "watching your transfer" has to hear this: a spinner
+   * over someone's money that nothing is actually feeding is a lie, not a
+   * cosmetic problem.
+   */
+  onStopped?: () => void;
 }
 
 /**
@@ -687,35 +1001,38 @@ function startPolling(
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
 
-  const stop = () => {
+  // `self` marks the stops the poll decides on itself, which are the ones the
+  // caller has not heard about yet.
+  const stop = (self = false) => {
     if (stopped) return;
     stopped = true;
     if (timer) clearTimeout(timer);
     controller.abort();
+    if (self) options.onStopped?.();
   };
 
   const run = async () => {
     if (stopped) return;
     let next = interval;
     try {
-      if (await tick(controller.signal)) return stop();
+      if (await tick(controller.signal)) return stop(true);
     } catch (error) {
       if (stopped) return;
       if (SessionExpiredError.is(error)) {
         options.onError?.(error);
-        return stop();
+        return stop(true);
       }
       if (ApiError.is(error) && error.statusCode === 429) {
         next = Math.max(interval, error.retryAfterMs ?? interval * 2);
       }
       options.onError?.(error);
     }
-    if (stopped || Date.now() + next > deadline) return stop();
+    if (stopped || Date.now() + next > deadline) return stop(true);
     timer = setTimeout(() => void run(), next);
   };
 
   void run();
-  return stop;
+  return () => stop();
 }
 
 /**
@@ -748,6 +1065,258 @@ export function watchDeposits(
     const page = await listDeposits({ skip: 0, take: 10 }, { signal });
     return onUpdate(page.items);
   }, options);
+}
+
+/* ------------------------------------------------- the payout, past a screen */
+
+/**
+ * A payout outlives the screen that started it.
+ *
+ * The confirm screen invites the user to leave while the bank still has the
+ * money — so the poll that decides when the key may be dropped cannot live on
+ * that screen's lifetime. If it did, walking away one second before the
+ * transfer settled would leave the key reserved forever, and the next payout
+ * would inherit it.
+ *
+ * So the poll lives here. Screens subscribe while they are mounted and
+ * unsubscribe when they are not; the tracker keeps going either way, and the
+ * moment the payout is terminal — the one moment it can no longer be resumed —
+ * it releases that payout's key and clears its record.
+ *
+ * When it gives up before that, it says so out loud (`stopped`) rather than
+ * leaving a screen narrating a transfer nobody is watching. The key and the
+ * record survive that, deliberately: the operation is still resumable, and the
+ * key is the only thing that stops the resume from paying twice.
+ */
+export type WithdrawalWatchEvent =
+  /** A fresh, non-terminal status. */
+  | { kind: "update"; withdrawal: Withdrawal }
+  /** Terminal. The key is released and the record is cleared by the time this lands. */
+  | { kind: "settled"; withdrawal: Withdrawal }
+  /** One failed status check. The payout is unaffected. */
+  | { kind: "error"; error: unknown }
+  /** Nobody is watching any more, and the payout had not finished. */
+  | { kind: "stopped" };
+
+type WithdrawalWatcher = (event: WithdrawalWatchEvent) => void;
+
+interface Tracked {
+  id: string;
+  latest: Withdrawal | null;
+  /** Terminal seen — suppresses the `stopped` the poll fires on its way out. */
+  done: boolean;
+  stop: () => void;
+}
+
+/** Ten minutes: longer than a NIP transfer, short of polling a dead app forever. */
+const TRACK_MAX_MS = 10 * 60 * 1000;
+
+const watchers = new Set<WithdrawalWatcher>();
+let tracked: Tracked | null = null;
+
+function broadcast(event: WithdrawalWatchEvent): void {
+  // Copied first: a listener that unsubscribes on `settled` must not shorten
+  // the set the loop is walking.
+  for (const watcher of [...watchers]) watcher(event);
+}
+
+/**
+ * Hear about the payout being tracked. Returns the unsubscribe — call it from
+ * the effect's cleanup. Unsubscribing does NOT stop the tracker.
+ */
+export function subscribeToWithdrawal(watcher: WithdrawalWatcher): () => void {
+  watchers.add(watcher);
+  return () => {
+    watchers.delete(watcher);
+  };
+}
+
+/** The payout currently being tracked, and its last known state. */
+export function trackedWithdrawal(): { id: string; latest: Withdrawal | null } | null {
+  return tracked ? { id: tracked.id, latest: tracked.latest } : null;
+}
+
+/**
+ * Follow `withdrawalId` to a terminal state and retire `record` when it gets
+ * there. Idempotent: asking again for the payout already being tracked adopts
+ * that poll rather than starting a second one.
+ */
+export function trackWithdrawal(record: PendingWithdrawal, withdrawalId: string): void {
+  if (withdrawalId === "") return;
+  if (tracked && tracked.id === withdrawalId) return;
+  tracked?.stop();
+
+  const entry: Tracked = { id: withdrawalId, latest: null, done: false, stop: () => {} };
+  tracked = entry;
+
+  entry.stop = watchWithdrawal(
+    withdrawalId,
+    (next) => {
+      entry.latest = next;
+      if (!isTerminalTransfer(next.status)) {
+        broadcast({ kind: "update", withdrawal: next });
+        return;
+      }
+      entry.done = true;
+      void (async () => {
+        await retireWithdrawal(record);
+        if (tracked === entry) tracked = null;
+        broadcast({ kind: "settled", withdrawal: next });
+      })();
+    },
+    {
+      intervalMs: 4_000,
+      maxMs: TRACK_MAX_MS,
+      onError: (error) => broadcast({ kind: "error", error }),
+      onStopped: () => {
+        if (entry.done) return;
+        if (tracked === entry) tracked = null;
+        broadcast({ kind: "stopped" });
+      },
+    },
+  );
+}
+
+/**
+ * Retire a payout: drop its key, drop its record.
+ *
+ * Two callers only, and they are the same statement said two ways — the
+ * operation this record names can no longer be resumed. Either it reached a
+ * terminal state, or the gateway never took it AND the user is now asking for
+ * something else. A timeout is neither, and neither is leaving the screen.
+ */
+export async function retireWithdrawal(record: PendingWithdrawal): Promise<void> {
+  // The attempt moves on BEFORE the key is dropped, in the sibling's order and
+  // for the sibling's reason: a keychain that silently refuses the delete must
+  // still not be able to hand this spent key to the next payout with the same
+  // details. The retired slot is simply never asked for again.
+  await closeWithdrawalAttempt(record.slot);
+  await releaseIdempotencyKey(record.slot);
+  const current = await loadPendingWithdrawal();
+  // Only clear the record if it is still this payout's. A settle that lands
+  // late must not wipe the record of a payout that started after it.
+  if (!current || current.idempotencyKey === record.idempotencyKey) {
+    await clearPendingWithdrawal();
+  }
+}
+
+export interface PendingOutcome {
+  /** What the gateway has for this record, or `null` when it has nothing. */
+  withdrawal: Withdrawal | null;
+  /** Terminal — the key has been released and the record cleared. */
+  retired: boolean;
+  /**
+   * Whether `withdrawal: null` may be read as "the gateway never took it".
+   *
+   * Only the id path earns this for free: a 404 for a reference the gateway
+   * itself issued IS the gateway saying it has no such payout. A list scan that
+   * simply did not match is `false` unless it walked back far enough to prove
+   * absence — see `PendingLookup`. Callers must not retire a key on a `false`.
+   */
+  conclusive: boolean;
+}
+
+/**
+ * What became of a payout we are holding a record for.
+ *
+ * Asks by id when the gateway gave us one, and by amount + destination tail +
+ * "created no earlier than we started" when it did not. A terminal answer
+ * retires the operation on the spot; anything else — live, never received, or
+ * a lookup that threw — leaves the key and the record exactly where they are,
+ * because in every one of those cases the payout is still resumable.
+ */
+export async function reconcilePendingWithdrawal(
+  record: PendingWithdrawal,
+  call: Call = {},
+): Promise<PendingOutcome> {
+  let found: Withdrawal | null;
+  let conclusive: boolean;
+  if (record.withdrawalId) {
+    try {
+      found = await getWithdrawal(record.withdrawalId, call);
+      conclusive = true;
+    } catch (error) {
+      // A 404 is an answer, not a failure: the gateway does not have this
+      // payout, and it is the only "not found" here that is authoritative.
+      if (ApiError.is(error) && error.statusCode === 404) {
+        found = null;
+        conclusive = true;
+      } else throw error;
+    }
+  } else {
+    const lookup = await findPendingWithdrawal(record, call);
+    found = lookup.withdrawal;
+    conclusive = lookup.conclusive;
+  }
+
+  if (!found) return { withdrawal: null, retired: false, conclusive };
+  // Answered, but with nothing that can be followed or matched again. That is
+  // not the gateway saying the payout does not exist, so it may not retire one.
+  if (found.id === "") return { withdrawal: null, retired: false, conclusive: false };
+  if (record.withdrawalId !== found.id) {
+    await savePendingWithdrawal({ ...record, withdrawalId: found.id });
+  }
+  if (!isTerminalTransfer(found.status)) {
+    return { withdrawal: found, retired: false, conclusive: true };
+  }
+
+  await retireWithdrawal({ ...record, withdrawalId: found.id });
+  return { withdrawal: found, retired: true, conclusive: true };
+}
+
+/**
+ * What the next release of THIS payout must be sent under.
+ *
+ * The one distinction this function exists to make: a record already on disk
+ * names an operation that may ALREADY BE IN FLIGHT at the gateway, and its key
+ * is the key the gateway may be holding — so for a resume, the record's own
+ * slot and key are authoritative and nothing is derived at all. Deriving a slot
+ * for a payout that already has a key is how the same transfer goes out twice:
+ * a record written before payouts derived their own slot sits under the bare
+ * stem, and re-deriving would reserve an empty slot and mint a SECOND key for
+ * money already moving.
+ *
+ * The derived slot governs a NEW operation only, and it carries the attempt
+ * number so a payout the user deliberately repeats is a new operation rather
+ * than a replay of the last identical one.
+ *
+ * `resume` is the caller's decision, because only the screen knows whether the
+ * record in front of it is this payout or an earlier one.
+ */
+export interface WithdrawalPlan {
+  slot: string;
+  idempotencyKey: string;
+  /** Undefined only for a resumed record written before payouts carried one. */
+  fingerprint?: string;
+  /** True when this replays an operation already reserved, not a new one. */
+  resumed: boolean;
+}
+
+export async function planWithdrawal(
+  payout: { amount: Money; accountNumber: string; bankUuid: string },
+  resume: PendingWithdrawal | null,
+): Promise<WithdrawalPlan> {
+  if (resume) {
+    return {
+      slot: resume.slot,
+      idempotencyKey: resume.idempotencyKey,
+      fingerprint: resume.fingerprint,
+      resumed: true,
+    };
+  }
+  const fingerprint = withdrawalFingerprint(payout);
+  const attempt = await currentAttempt(fingerprint);
+  const slot = slotFor(fingerprint, attempt);
+  // The row goes down before the key is reserved: a row with no key behind it
+  // costs nothing, where a key with no row behind it is the one a later payout
+  // with the same details walks into.
+  await rememberAttempt(fingerprint, attempt);
+  return {
+    slot,
+    fingerprint,
+    idempotencyKey: await reserveIdempotencyKey(slot, "withdrawal"),
+    resumed: false,
+  };
 }
 
 /* ---------------------------------------------------------------- activity */

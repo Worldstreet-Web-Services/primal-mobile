@@ -47,6 +47,20 @@ import { C, F } from "../theme/tokens";
 const POLL_MS = 6_000;
 /** Stop watching after this long rather than polling until the battery dies. */
 const WATCH_MS = 20 * 60 * 1000;
+/**
+ * The backstop for when the screen must stop SAYING it is watching.
+ *
+ * `onStopped` is the exact answer and is preferred, but the poll can only
+ * notice its own deadline when its own timer fires, and a phone that spent
+ * those twenty minutes asleep does not fire it until it wakes. So the elapsed
+ * wall clock is read as well: `startPolling` gives up as soon as one more
+ * interval would overshoot `maxMs`, so taking the earlier of the two bounds
+ * means the pulse dot can be a beat early but never a lie. A spinner over
+ * someone's money after the asking has stopped is the defect, not the stopping.
+ */
+const WATCH_ENDS_MS = WATCH_MS - POLL_MS;
+/** Said to the user, so it is derived from the constant rather than typed. */
+const WATCH_MINUTES = Math.round(WATCH_MS / 60_000);
 
 function CheckSeal() {
   return (
@@ -181,6 +195,17 @@ export default function FundBankScreen({
   const [feedError, setFeedError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  /** When the current watch was armed — the clock the expiry is read off. */
+  const [watchStartedAt, setWatchStartedAt] = useState<number | null>(null);
+  /**
+   * When the poll told us it gave up — exact, where the clock below is a
+   * backstop. The instant matters and not just the fact: `onStopped` fires for
+   * a lost session as readily as for the deadline, and comparing THIS against
+   * the start is the only way to tell the two apart from here.
+   */
+  const [stoppedAt, setStoppedAt] = useState<number | null>(null);
+  /** Bumped to arm a fresh watch after the last one ran out. */
+  const [watchNonce, setWatchNonce] = useState(0);
 
   /** Ids that were already in the feed when this screen opened. */
   const seen = useRef<Set<string> | null>(null);
@@ -222,8 +247,17 @@ export default function FundBankScreen({
 
   // Watch the deposit feed. The first tick is a baseline, not news: a transfer
   // from last week must not announce itself as the one being waited for.
+  //
+  // `onStopped` is the poll saying it has given up — on the deadline, on a
+  // terminal deposit, or on a lost session. The wall-clock start is recorded
+  // alongside it because that callback rides the poll's own timer, and a phone
+  // that spent those twenty minutes asleep does not run it until it wakes.
+  // Reading elapsed time off `now` survives suspension, because both are wall
+  // clock; whichever notices first is the one the screen believes.
   useEffect(() => {
     if (phase !== "ready") return;
+    setWatchStartedAt(Date.now());
+    setStoppedAt(null);
 
     const stop = watchDeposits(
       (deposits) => {
@@ -263,11 +297,37 @@ export default function FundBankScreen({
           if (SessionExpiredError.is(err)) return;
           setFeedError(describeLinkpayFailure(err));
         },
+        onStopped: () => setStoppedAt(Date.now()),
       },
     );
 
     return stop;
-  }, [phase]);
+  }, [phase, watchNonce]);
+
+  /**
+   * Watch again, on a tap.
+   *
+   * Deliberately not automatic: once the watch has run out, the person holding
+   * the phone is the one who knows whether a transfer is still coming, and a
+   * poll that re-arms itself is how a screen ends up asking until the battery
+   * dies — which is the thing WATCH_MS exists to prevent.
+   *
+   * A returned transfer is let go of here rather than followed. It is finished,
+   * and a re-armed watch still tracking it would match it on the very first
+   * tick and stop again at once — a control that promises to look and doesn't.
+   * A DETECTED one is kept, because that is still the transfer being waited on.
+   */
+  const restartWatch = () => {
+    if (tracking.current && incoming?.status === "REJECTED") {
+      // Into the baseline, so the fresh watch reads it as history rather than
+      // announcing the same returned transfer a second time.
+      seen.current?.add(tracking.current);
+      tracking.current = null;
+      setIncoming(null);
+    }
+    setFeedError(null);
+    setWatchNonce((n) => n + 1);
+  };
 
   const header = (title: string, sub?: string) => (
     <View style={{ paddingHorizontal: 0 }}>
@@ -444,6 +504,60 @@ export default function FundBankScreen({
   const checkedAgo =
     lastChecked === null ? null : Math.max(0, Math.round((now - lastChecked) / 1000));
 
+  // Nothing is being asked any more. A `watchStartedAt` of `null` is the moment
+  // before the effect arms the watch, and that reads as watching, not as
+  // stopped — the first request is already on its way out.
+  //
+  // Two facts, not one. `onStopped` is the poll saying it gave up, and it says
+  // that for a lost session as readily as for the deadline; only elapsed time
+  // can attest that the twenty minutes ran out. So the callback decides WHETHER
+  // to stop claiming to watch, and the clock decides whether the screen may
+  // name the deadline as the reason — telling someone their twenty minutes are
+  // up when their session dropped is a false statement in exactly the place
+  // invariant 4 cares about.
+  //
+  // The reason is read at the instant the poll gave up, not at the instant the
+  // sentence is rendered: a session lost five minutes in must not turn into
+  // "after twenty minutes" simply because the user left the screen open that
+  // long. With no callback at all — a phone that slept through the deadline —
+  // `now` is the reading, and by then the deadline has genuinely passed.
+  const reasonReadAt = stoppedAt ?? now;
+  const deadlinePassed =
+    watchStartedAt !== null && reasonReadAt - watchStartedAt >= WATCH_ENDS_MS;
+  const watchEnded =
+    stoppedAt !== null ||
+    (watchStartedAt !== null && now - watchStartedAt >= WATCH_ENDS_MS);
+
+  const amountSuffix = incoming?.amount ? ` · ${formatMoney(incoming.amount)}` : "";
+  // The stop is stated either way; the deadline is named only when the clock
+  // says so. A stop with time left on it — a lost session is the one that
+  // reaches this screen — gets the same honest "not watching any more" without
+  // a reason invented for it.
+  const stoppedTail = deadlinePassed
+    ? `after ${WATCH_MINUTES} minutes`
+    : "for now";
+  const watchLine = rejected
+    ? "That transfer was returned rather than credited"
+    : watchEnded
+      ? detected
+        ? `Transfer detected${amountSuffix} — it will still credit, but this screen stopped checking ${stoppedTail}`
+        : `Stopped checking ${stoppedTail}. Anything you have already sent still credits — this screen just is not watching for it.`
+      : detected
+        ? `Transfer detected${amountSuffix} — crediting now`
+        : "Watching for your transfer";
+  const statusLine = incoming
+    ? `STATUS · ${depositStatusLabel(incoming.status).toUpperCase()}`
+    : null;
+  // A returned transfer keeps its own status line: it is a finished fact, not a
+  // claim that something is still being watched for.
+  const monoLine =
+    watchEnded && !rejected
+      ? checkedAgo === null
+        ? "NOT CHECKING"
+        : `NOT CHECKING · LAST LOOKED ${checkedAgo}S AGO`
+      : (statusLine ??
+        (checkedAgo === null ? "STANDING BY" : `CHECKED ${checkedAgo}S AGO`));
+
   return (
     <Screen>
       {header(
@@ -559,17 +673,21 @@ export default function FundBankScreen({
             gap: 9,
           }}
         >
+          {/* The pulse means "a request is going out on a timer". Once the
+              watch has run out that is no longer true, so the dot goes with
+              it — a dot that keeps beating over a dead poll is the whole
+              defect, not a decoration. */}
           {detected ? (
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.up }} />
-          ) : rejected ? null : (
+          ) : rejected || watchEnded ? null : (
             <PulseDot />
           )}
-          <Body size={13} color={detected ? C.up : rejected ? C.down : C.silver}>
-            {detected
-              ? `Transfer detected${incoming?.amount ? ` · ${formatMoney(incoming.amount)}` : ""} — crediting now`
-              : rejected
-                ? "That transfer was returned rather than credited"
-                : "Watching for your transfer"}
+          <Body
+            size={13}
+            color={rejected ? C.down : watchEnded ? C.sub : detected ? C.up : C.silver}
+            style={{ flexShrink: 1, lineHeight: 18 }}
+          >
+            {watchLine}
           </Body>
         </View>
         <Mono
@@ -577,16 +695,20 @@ export default function FundBankScreen({
           color={C.dim}
           style={{ textAlign: "center", marginTop: 8, letterSpacing: 1.2 }}
         >
-          {incoming
-            ? `STATUS · ${depositStatusLabel(incoming.status).toUpperCase()}`
-            : checkedAgo === null
-              ? "STANDING BY"
-              : `CHECKED ${checkedAgo}S AGO`}
+          {monoLine}
         </Mono>
         {feedError ? (
           <Body size={11.5} color={C.down} style={{ textAlign: "center", marginTop: 10 }}>
             {feedError}
           </Body>
+        ) : null}
+        {/* Offered whenever the asking has stopped — including after a returned
+            transfer, where the poll ends early and the user's next move is
+            usually to send another one. */}
+        {watchEnded ? (
+          <View style={{ marginTop: 14 }}>
+            <GhostButton label="Check now" onPress={restartWatch} />
+          </View>
         ) : null}
       </View>
 

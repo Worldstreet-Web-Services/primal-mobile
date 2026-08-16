@@ -21,6 +21,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/lib/auth/AuthContext";
+import { isEntitlementRefusal } from "@/lib/gateway/entitlement";
 import {
   describeLinkpayFailure,
   getAccount,
@@ -36,7 +37,6 @@ import {
   AbortedError,
   SessionExpiredError,
   isEntitled,
-  isEntitlementError,
   type Balance,
   type Money,
   type PrimalAppState,
@@ -74,6 +74,21 @@ function phaseForAccount(account: LinkpayAccount | null): AccountPhase {
 }
 
 /**
+ * How long an `unknown` that is not syncing and has left no error is given to
+ * become something, before the screen says so.
+ *
+ * The handshake waits for the wallet to be unlocked, and a screen reached
+ * before it starts — a deep link, a relaunch straight into /fiat — sits in an
+ * `unknown` that nothing on this side can advance. Generous enough that a
+ * handshake about to start is never interrupted by a wrong answer.
+ */
+const HANDSHAKE_GRACE_MS = 6_000;
+
+/** Written for a person, because it is the only thing they will be shown. */
+const HANDSHAKE_STALLED =
+  "Paradigm has not opened a session on this device yet. Try again — and if it keeps saying this, sign out and back in.";
+
+/**
  * The phase implied by the app-level state alone, before LinkPay is asked
  * anything — or `null` when the gateway is the one that has to answer.
  *
@@ -82,16 +97,26 @@ function phaseForAccount(account: LinkpayAccount | null): AccountPhase {
  * still routing a paying user to sign-in. But an `unknown` that has STOPPED
  * syncing and left an error behind is a dead end, not a loading state — an
  * offline launch would otherwise spin a skeleton forever.
+ *
+ * `stalled` is the third case, and the one that has no error to show: an
+ * `unknown` that is not syncing and never failed has not STARTED. Nothing here
+ * can make it start, so after the grace window it becomes an honest error with
+ * a retry rather than a skeleton that shimmers until the app is killed.
  */
-function phaseForAppState(primal: {
-  state: PrimalAppState;
-  syncing: boolean;
-  error: string | null;
-}): { phase: AccountPhase; error: string | null } | null {
+function phaseForAppState(
+  primal: {
+    state: PrimalAppState;
+    syncing: boolean;
+    error: string | null;
+  },
+  stalled: boolean,
+): { phase: AccountPhase; error: string | null } | null {
   if (primal.state === "unknown") {
-    return primal.syncing || !primal.error
-      ? { phase: "loading", error: null }
-      : { phase: "error", error: primal.error };
+    if (primal.syncing) return { phase: "loading", error: null };
+    if (primal.error) return { phase: "error", error: primal.error };
+    return stalled
+      ? { phase: "error", error: HANDSHAKE_STALLED }
+      : { phase: "loading", error: null };
   }
   if (primal.state === "anonymous" || primal.state === "session_expired") {
     return { phase: "signed_out", error: null };
@@ -106,7 +131,15 @@ export interface LinkpayAccountState {
   account: LinkpayAccount | null;
   /** Set only on `phase === "error"`. Already written for a person. */
   error: string | null;
-  /** A reload is in flight over content that is already on screen. */
+  /**
+   * A re-read is outstanding.
+   *
+   * True from the instant `reload` is CALLED until the account answer lands —
+   * not merely while the request is on the wire — because a caller that holds a
+   * control until the account has been re-read (KycScreen holds both of the
+   * ones that can drop an idempotency key) must not be handed a window in which
+   * the answer is pending and nothing says so.
+   */
   refreshing: boolean;
   /**
    * Bumped once per load attempt. Anything that should re-fetch alongside the
@@ -125,18 +158,54 @@ export interface LinkpayAccountState {
  * state resolves on the provider's clock, not on a tap.
  */
 export function useLinkpayAccount(): LinkpayAccountState {
-  const { primal, linkPrimal } = useAuth();
-  // Read as two primitives, not as the object: a fresh object every render
-  // would make the load effect below fire on every render.
-  const gate = phaseForAppState(primal);
-  const gatePhase = gate?.phase ?? null;
-  const gateError = gate?.error ?? null;
+  const { primal, linkPrimal, status } = useAuth();
 
   const [phase, setPhase] = useState<AccountPhase>("loading");
   const [account, setAccount] = useState<LinkpayAccount | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [nonce, setNonce] = useState(0);
+
+  /**
+   * Whether the handshake is something that could be running right now.
+   *
+   * Signing the SIWE challenge raises a biometric prompt on the passkey and
+   * enclave tiers, which is why AuthContext's own handshake refuses to run
+   * outside `ready`/`onboarding`: behind the lock screen it would be a prompt
+   * the user cannot explain. Everything this hook offers obeys the same rule —
+   * a retry control that reached past that guard would raise exactly the prompt
+   * the automatic path declined to raise.
+   */
+  const canHandshake = status === "ready" || status === "onboarding";
+
+  // An `unknown` with nothing in flight and nothing to report. It is a real
+  // state — the handshake deliberately waits for the wallet to unlock — and it
+  // is indistinguishable from "about to start", so it is given a window rather
+  // than being called dead on sight. Re-armed on every retry, so tapping "Try
+  // again" visibly re-enters the waiting state instead of doing nothing.
+  //
+  // A locked or still-restoring app has not STALLED, it is waiting for a gate
+  // it does not own: nothing here can start the handshake and nothing here
+  // should claim it can, so those statuses stay in `loading` and the lock gate
+  // is the screen that moves them on.
+  const idleHandshake =
+    canHandshake &&
+    primal.state === "unknown" &&
+    !primal.syncing &&
+    primal.error === null;
+  const [handshakeStalled, setHandshakeStalled] = useState(false);
+  useEffect(() => {
+    setHandshakeStalled(false);
+    if (!idleHandshake) return;
+    const timer = setTimeout(() => setHandshakeStalled(true), HANDSHAKE_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [idleHandshake, nonce]);
+
+  // Read as two primitives, not as the object: a fresh object every render
+  // would make the load effect below fire on every render.
+  const gate = phaseForAppState(primal, handshakeStalled);
+  const gatePhase = gate?.phase ?? null;
+  const gateError = gate?.error ?? null;
 
   const live = useRef(true);
   useEffect(() => {
@@ -148,10 +217,19 @@ export function useLinkpayAccount(): LinkpayAccountState {
 
   // Retrying from a screen has to reach whichever layer actually failed: a
   // handshake that never completed is fixed by `linkPrimal`, not by asking
-  // LinkPay a question the app has no session to ask with.
-  const needsHandshake = primal.state === "unknown";
+  // LinkPay a question the app has no session to ask with. `canHandshake` is
+  // carried into it so a tap can only start a handshake the automatic path
+  // would also have started.
+  const needsHandshake = primal.state === "unknown" && canHandshake;
   const reload = useCallback(() => {
     if (needsHandshake) void linkPrimal();
+    // Flagged here rather than in the effect below, so "a re-read is
+    // outstanding" is true from the moment it is asked for. The effect runs a
+    // commit later; a caller that gates a control on `refreshing` — the two
+    // KycScreen controls that can drop an idempotency key — would otherwise get
+    // a window in which the question has been asked and the screen says
+    // nothing is pending.
+    setRefreshing(true);
     setNonce((n) => n + 1);
   }, [needsHandshake, linkPrimal]);
 
@@ -186,7 +264,11 @@ export function useLinkpayAccount(): LinkpayAccountState {
           setPhase("signed_out");
           return;
         }
-        if (isEntitlementError(err)) {
+        // Any 403 from `/v1/linkpay/*`, not only one that spells out
+        // SUBSCRIPTION: the guard runs before the lookup, so there is nothing
+        // else on this route for a 403 to mean, and the paywall is a phase the
+        // route can act on where an error string is a dead end.
+        if (isEntitlementRefusal(err)) {
           setPhase("unentitled");
           return;
         }
@@ -230,9 +312,18 @@ export function useLinkpayAccount(): LinkpayAccountState {
 
 /* ----------------------------------------------------------------- overview */
 
+/** Said in place of the figure, in the same voice the em dash is drawn in. */
+const UNREADABLE_BALANCE =
+  "Paradigm could not read the balance the gateway sent, so it will not show you a figure it cannot vouch for.";
+
 export interface FiatOverview extends LinkpayAccountState {
   balance: Balance | null;
-  /** Balance failed but the account did not — the screen says so in place. */
+  /**
+   * The balance failed, or arrived with no figure worth stating, while the
+   * account itself is fine — the screen says so in place. Set together with a
+   * `balance` that has no `available`, so "unreadable" is never mistaken for
+   * "still loading".
+   */
   balanceError: string | null;
   activity: ActivityEntry[];
   activityLoading: boolean;
@@ -278,7 +369,14 @@ export function useFiatOverview(): FiatOverview {
       .then((next) => {
         if (cancelled) return;
         setBalance(next);
-        setBalanceError(null);
+        // A 200 is not the same as a figure. `readMoney` returns undefined
+        // rather than guess at an amount it cannot trust — an empty body, a key
+        // it does not probe, a decimal where minor units were promised — and a
+        // resolved call with no `available` is that refusal arriving. It is a
+        // stated failure, not a pending one: left as `null` here the screen has
+        // no way to tell it from a request still in the air, and shimmers a
+        // skeleton over the user's money for as long as they look at it.
+        setBalanceError(next.available ? null : UNREADABLE_BALANCE);
       })
       .catch((err) => {
         const message = guard(err);

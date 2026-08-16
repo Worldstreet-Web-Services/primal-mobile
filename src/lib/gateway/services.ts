@@ -31,8 +31,13 @@
  *    counts, not bodies.
  */
 
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+
 import { get, post } from "./client";
-import { normalizeCurrency, parseMinor, toBigInt } from "./money";
+import { releaseIdempotencyKey, reserveIdempotencyKey } from "./linkpay";
+import { addMoney, normalizeCurrency, parseMinor, toBigInt } from "./money";
+import { load as loadSession } from "./session";
 import {
   AbortedError,
   ApiError,
@@ -162,6 +167,25 @@ function readMoney(value: unknown, fallbackCurrency: string): Money | null {
   return null;
 }
 
+/**
+ * What actually leaves the balance, when the gateway did not say.
+ *
+ * A fee is ON TOP of the amount, never inside it, so falling back to `amount`
+ * alone would quote a total that is short by exactly the fee. When the two
+ * cannot be added — two currencies, a minor value that will not parse — this
+ * returns null and the screen says "—", because refusing to state a figure is
+ * the only honest alternative to stating a wrong one.
+ */
+function withFee(amount: Money | null, fee: Money | null): Money | null {
+  if (!amount) return null;
+  if (!fee) return amount;
+  try {
+    return addMoney(amount, fee);
+  } catch {
+    return null;
+  }
+}
+
 /** Positive, readable, integer minor units — the only amount worth sending. */
 export function isPayableAmount(amount: Money | null | undefined): boolean {
   if (!amount) return false;
@@ -222,7 +246,11 @@ export interface VasTransaction {
   status: TransferStatus;
   amount: Money | null;
   fee: Money | null;
-  /** What actually leaves the balance. Falls back to `amount` when unfeed. */
+  /**
+   * What actually leaves the balance. When the gateway does not state it, it is
+   * `amount` plus `fee` — fees are on top — and null when even that cannot be
+   * worked out.
+   */
   totalDebit: Money | null;
   serviceType: string | null;
   serviceCategory: string | null;
@@ -357,7 +385,7 @@ function readTransaction(raw: unknown, fallbackCurrency: string): VasTransaction
     status: asTransferStatus(pick(row, "status", "state", "transactionStatus", "transaction_status")),
     amount,
     fee,
-    totalDebit: total ?? amount,
+    totalDebit: total ?? withFee(amount, fee),
     serviceType: str(row, "serviceType", "service_type"),
     serviceCategory: str(row, "serviceCategory", "service_category", "category"),
     serviceProviderId: str(row, "serviceProviderId", "service_provider_id"),
@@ -877,21 +905,33 @@ export class PurchaseInputError extends Error {
 }
 
 /**
- * The idempotency slot for one intended purchase — feed it to
- * `reserveIdempotencyKey` from `./linkpay`.
+ * Two independent FNV-1a passes over `value`, concatenated into 16 hex digits.
  *
- * The slot is derived from every field that changes what the user is buying,
- * so the SAME intent retried (after a timeout, after a crash, after a relaunch)
- * reserves the SAME key, and a DIFFERENT intent can never collide with a key
- * already spent. That is the whole trick: the caller never has to decide
- * whether a failure was safe to retry, because retrying an identical intent is
- * always the same operation.
- *
- * Two independent FNV-1a passes, concatenated. Not a security hash — nothing
- * secret goes in — just a stable short name for a tuple, in a keychain key
- * that has to stay alphanumeric.
+ * Not a security hash — nothing secret goes in. It exists to turn something
+ * variable-length (a tuple, an account id) into a short alphanumeric name a
+ * keychain key can carry. One-way all the same: what goes in must never come
+ * back out of anything persisted.
  */
-export function purchaseSlot(intent: PurchaseIntent): string {
+function fnv1a64(value: string): string {
+  const pass = (seed: number): string => {
+    let hash = seed >>> 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash ^ value.charCodeAt(i)) >>> 0;
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+  };
+  return `${pass(0x811c9dc5)}${pass(0x243f6a88)}`;
+}
+
+/**
+ * A stable short name for WHAT a purchase buys — every field that changes what
+ * the user is getting, and nothing that changes between two attempts at it.
+ *
+ * One-way, like everything else that reaches storage here: the phone number and
+ * the meter number that go into it must never come back out.
+ */
+export function purchaseFingerprint(intent: PurchaseIntent): string {
   const fingerprint = [
     intent.serviceType,
     intent.serviceCategory,
@@ -900,18 +940,580 @@ export function purchaseSlot(intent: PurchaseIntent): string {
     intent.amount.amountMinor,
     normalizeCurrency(intent.amount.currency),
     intent.serviceProductCode ?? "",
-  ].join(" ");
+    // Joined on a character no biller feed can put inside a field, so "MTN"
+    // + "100" can never fingerprint the same as "MTN1" + "00". Written as an
+    // escape on purpose: a raw NUL byte in a source file makes every tool
+    // that reads it treat this module as binary.
+  ].join("\u0000");
 
-  const fnv = (seed: number, prime: number): string => {
-    let hash = seed >>> 0;
-    for (let i = 0; i < fingerprint.length; i += 1) {
-      hash = (hash ^ fingerprint.charCodeAt(i)) >>> 0;
-      hash = Math.imul(hash, prime) >>> 0;
-    }
-    return hash.toString(16).padStart(8, "0");
+  return fnv1a64(fingerprint);
+}
+
+/**
+ * The keychain stem every attempt at one intended purchase hangs off:
+ * `<stem>.<attempt>`.
+ *
+ * Scoped to the account, because a fingerprint is not. Two people sharing a
+ * handset can genuinely top the same line up for the same amount — identical
+ * intents, identical fingerprint — and an unscoped stem hands the second
+ * account the key the first one reserved, so a gateway doing its job answers
+ * their purchase with someone else's transaction and someone else's token.
+ */
+const stemFor = (scope: string, fingerprint: string): string =>
+  `linkpay.vas.${scope}.${fingerprint}`;
+
+/**
+ * Where a row written before the account scope existed reserved its key. Never
+ * minted afresh — only read off an old row, so an upgrade can still resume, and
+ * still release, a purchase the build before it left in the air.
+ */
+const legacyStem = (fingerprint: string): string => `linkpay.vas.${fingerprint}`;
+
+/**
+ * The idempotency slot for ONE ATTEMPT at one intended purchase — feed it to
+ * `reserveIdempotencyKey` from `./linkpay`.
+ *
+ * The fingerprint alone is not the slot, and that is the whole point. Retrying
+ * the top-up that timed out and topping the same line up again on Friday
+ * produce byte-identical intents, so a fingerprint-only slot hands the second
+ * one the first one's spent key — and a gateway doing its job answers with the
+ * first one's transaction: an already-redeemed token presented as a new
+ * purchase. The attempt number is what separates them. `planPurchase` below is
+ * the only thing allowed to move it on, and it only does so once it has been
+ * told the previous attempt can no longer be resumed.
+ */
+const slotFor = (stem: string, attempt: number): string => `${stem}.${attempt}`;
+
+/**
+ * The slot a row's key lives in. Derived from the stem the row CARRIES, never
+ * from the current account's stem: whoever ends an operation has to release the
+ * slot it actually reserved.
+ */
+const slotOf = (row: PurchaseAttempt): string => slotFor(row.stem, row.attempt);
+
+/** The slot a fresh attempt at `intent` would reserve, for this account. */
+export async function purchaseSlot(intent: PurchaseIntent, attempt = 0): Promise<string> {
+  return slotFor(stemFor(await currentScope(), purchaseFingerprint(intent)), attempt);
+}
+
+/* ------------------------------------------------ in-flight purchase record */
+
+/**
+ * What is remembered about a purchase between "we sent it" and "we know what
+ * became of it".
+ *
+ * Deliberately thin on the person, in the same line as `PendingWithdrawal` in
+ * `./linkpay`: `fingerprint` is the one-way hash of the intent and never the
+ * phone or meter number it was built from, and a `serviceToken` has no business
+ * anywhere near a record that outlives the screen.
+ */
+interface PurchaseAttempt {
+  fingerprint: string;
+  /**
+   * The keychain stem this row's key is reserved under, carried on the row for
+   * the same reason `PendingWithdrawal.slot` is in `./linkpay`: whoever ends
+   * the operation must release the slot it ACTUALLY reserved, not whichever one
+   * the account in front of them happens to derive today.
+   */
+  stem: string;
+  /** Which attempt at that intent this is. Only ever moves forward. */
+  attempt: number;
+  /** The transaction the gateway named, once it has named one. */
+  transactionId: string | null;
+  /** Epoch ms, so the screen can say WHICH purchase it is resuming. */
+  startedAt: number;
+}
+
+const isWeb = Platform.OS === "web";
+
+const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainService: "paradigm.gateway",
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
+/**
+ * One record per account, not one per handset.
+ *
+ * A row names an operation, and an operation belongs to whoever placed it. A
+ * device-global record lets the next person to sign in on this phone resume —
+ * and be shown the reference, the receipt and the electricity token of — a
+ * purchase that is not theirs. The scope is a one-way hash of the user id, so
+ * the account is not spelled out in a keychain key either.
+ */
+const ATTEMPTS_KEY = "paradigm.linkpay.vas_attempts";
+
+const attemptsKeyFor = (scope: string): string => `${ATTEMPTS_KEY}.${scope}`;
+
+/**
+ * Short one-way name for the signed-in account.
+ *
+ * `anon` when there is no session to ask — nothing under `/v1/linkpay/*` will
+ * answer without one, so no purchase can be recorded under it in practice.
+ */
+async function currentScope(): Promise<string> {
+  const stored = await loadSession();
+  const userId = stored?.userId;
+  return typeof userId === "string" && userId !== "" ? fnv1a64(userId) : "anon";
+}
+
+/**
+ * How many RESOLVED rows are worth keeping. A resolved row is only a cursor —
+ * "the next attempt at this thing is number N" — so the oldest of them falling
+ * off costs a keychain entry, not a purchase.
+ *
+ * Unresolved rows are deliberately NOT subject to it. That exemption is the
+ * whole safety of this list: an unresolved row is the only thing standing
+ * between a still-reserved key and the next purchase of the same thing. Evict
+ * one and the key stays in the keychain with nothing pointing at it, so the
+ * next identical purchase — a genuinely new one — asks for slot `.0`, is handed
+ * the spent key, and is answered with the old transaction and the old token.
+ * The abandoned purchase is also precisely the row a plain "drop the oldest"
+ * would choose, because an abandoned purchase is by construction never
+ * re-planned.
+ */
+const ATTEMPT_LIMIT = 8;
+
+/**
+ * A row that no longer names anything the gateway could still be holding for
+ * us: the attempt counter has moved on, there is no transaction to follow and
+ * no clock running — exactly what `advanceAttempt` leaves behind after the key
+ * has been released. Anything else, including a POST that was never named, is
+ * unresolved and must survive.
+ */
+const isResolved = (row: PurchaseAttempt): boolean =>
+  row.transactionId === null && row.startedAt === 0;
+
+/** The rows, and the account they were read for. */
+interface AttemptRecord {
+  scope: string;
+  rows: PurchaseAttempt[];
+}
+
+let attemptMemory: AttemptRecord | null = null;
+
+function readAttempt(value: unknown): PurchaseAttempt | null {
+  const row = asRaw(value);
+  const fingerprint = typeof row.fingerprint === "string" ? row.fingerprint : null;
+  const attempt =
+    typeof row.attempt === "number" && Number.isInteger(row.attempt) && row.attempt >= 0
+      ? row.attempt
+      : null;
+  if (!fingerprint || attempt === null) return null;
+  return {
+    fingerprint,
+    stem: typeof row.stem === "string" && row.stem !== "" ? row.stem : legacyStem(fingerprint),
+    attempt,
+    transactionId:
+      typeof row.transactionId === "string" && row.transactionId !== ""
+        ? row.transactionId
+        : null,
+    startedAt:
+      typeof row.startedAt === "number" && Number.isFinite(row.startedAt) ? row.startedAt : 0,
   };
+}
 
-  return `linkpay.vas.${fnv(0x811c9dc5, 0x01000193)}${fnv(0x243f6a88, 0x01000193)}`;
+/**
+ * The rows, or null when the store could not be read at all.
+ *
+ * The distinction is the whole safety of this record. `[]` is a fact — nothing
+ * is in the air — and a keychain that merely refused to answer must never be
+ * allowed to say it. Nothing is cached on failure either: caching would make
+ * one bad read the answer for the rest of the launch.
+ */
+async function readAttempts(): Promise<AttemptRecord | null> {
+  const scope = await currentScope();
+  // A different account is a different record. Dropping the mirror rather than
+  // reading through it is what stops the person who signs in next on this
+  // handset from being handed the purchase the person before them left in the
+  // air — and its token.
+  if (attemptMemory && attemptMemory.scope !== scope) attemptMemory = null;
+  if (attemptMemory) return attemptMemory;
+  if (isWeb) {
+    attemptMemory = { scope, rows: [] };
+    return attemptMemory;
+  }
+  try {
+    const raw = await SecureStore.getItemAsync(attemptsKeyFor(scope), STORE_OPTIONS);
+    const rows = raw === null ? await adoptUnscopedAttempts(scope) : parseAttempts(raw);
+    attemptMemory = { scope, rows };
+    return attemptMemory;
+  } catch {
+    return null;
+  }
+}
+
+function parseAttempts(raw: string): PurchaseAttempt[] {
+  const parsed: unknown = JSON.parse(raw);
+  return Array.isArray(parsed)
+    ? parsed.map(readAttempt).filter((row): row is PurchaseAttempt => row !== null)
+    : [];
+}
+
+/**
+ * Take over the rows the build before the account scope existed left behind.
+ *
+ * Without this, scoping the record silently orphans every purchase that was in
+ * the air across the upgrade: the row disappears, its key stays in the keychain
+ * with nothing pointing at it, and the next tap on Pay for that same thing
+ * mints a second key and buys it again. Losing the rows is the double charge;
+ * moving them is not.
+ *
+ * It happens once — the unscoped entry is deleted as it is adopted, so a second
+ * account on the same handset cannot inherit the same rows. The first account
+ * to open Bills after the upgrade is the one that claims them, which is a guess
+ * where nothing else is available; it is a safe one because the rows carry no
+ * detail of their own (a fingerprint is one-way, and there is no token or
+ * destination in them) and the only lookup they enable is one the gateway
+ * authorises against the bearer of whoever is asking.
+ */
+async function adoptUnscopedAttempts(scope: string): Promise<PurchaseAttempt[]> {
+  let rows: PurchaseAttempt[];
+  try {
+    const legacy = await SecureStore.getItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
+    if (legacy === null) return [];
+    rows = parseAttempts(legacy);
+  } catch {
+    // Unreadable, so nothing is deleted and the next launch tries again. The
+    // scoped read that got us here already answered "nothing recorded", which
+    // is the safe answer: it re-sends a key rather than minting one.
+    return [];
+  }
+  try {
+    // Written under the new key BEFORE the old one goes, so a crash in between
+    // costs a stale duplicate rather than the rows themselves.
+    await SecureStore.setItemAsync(
+      attemptsKeyFor(scope),
+      JSON.stringify(rows),
+      STORE_OPTIONS,
+    );
+    await SecureStore.deleteItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
+  } catch {
+    // The rows are in memory for this launch either way.
+  }
+  return rows;
+}
+
+/**
+ * The planning view, where an unreadable store may safely read as "nothing
+ * recorded": that answer re-sends the SAME key rather than minting a second
+ * one, and a replayed request costs a wasted round trip where a second key
+ * costs a second purchase.
+ *
+ * Never write back what this returns — use `readAttempts` for that.
+ */
+async function loadAttempts(): Promise<AttemptRecord> {
+  return (await readAttempts()) ?? { scope: await currentScope(), rows: [] };
+}
+
+/**
+ * Bring the list back under the ceiling without letting an eviction resurrect a
+ * key.
+ *
+ * Only resolved rows may go, oldest first. Every slot a dropped row has ever
+ * used is released as it goes — each was already released when its attempt
+ * closed, but a keychain delete that failed silently would leave a spent key
+ * sitting exactly where the next purchase of that thing will ask for one once
+ * the row is gone.
+ *
+ * The releases happen BEFORE the shorter list is persisted, on purpose. A crash
+ * in between leaves a row naming a slot with no key, which the next attempt
+ * simply refills; the other order would leave a key with no row, which is the
+ * one the next purchase spends by mistake.
+ */
+async function boundAttempts(rows: PurchaseAttempt[]): Promise<PurchaseAttempt[]> {
+  if (rows.length <= ATTEMPT_LIMIT) return rows;
+
+  let over = rows.length - ATTEMPT_LIMIT;
+  const kept: PurchaseAttempt[] = [];
+  const dropped: PurchaseAttempt[] = [];
+  for (const row of rows) {
+    if (over > 0 && isResolved(row)) {
+      dropped.push(row);
+      over -= 1;
+      continue;
+    }
+    kept.push(row);
+  }
+
+  for (const row of dropped) {
+    for (let attempt = row.attempt; attempt >= 0; attempt -= 1) {
+      await releaseIdempotencyKey(slotFor(row.stem, attempt));
+    }
+  }
+
+  // `kept` may still be over the ceiling when unresolved rows alone exceed it.
+  // The ceiling yields: a keychain holding nine rows is a smaller problem than
+  // a purchase answered with an earlier one's transaction.
+  return kept;
+}
+
+async function saveAttempts(scope: string, rows: PurchaseAttempt[]): Promise<void> {
+  const bounded = await boundAttempts(rows);
+  attemptMemory = { scope, rows: bounded };
+  if (isWeb) return;
+  try {
+    await SecureStore.setItemAsync(
+      attemptsKeyFor(scope),
+      JSON.stringify(bounded),
+      STORE_OPTIONS,
+    );
+  } catch {
+    // The memory copy still holds for this launch.
+  }
+}
+
+async function rememberAttempt(next: PurchaseAttempt): Promise<void> {
+  const record = await readAttempts();
+  // Unreadable: this one purchase goes out without a record, which is exactly
+  // the behaviour this module had before the record existed. Writing anyway
+  // would persist a list that was never loaded — trading one unresolvable
+  // purchase for every other one in flight, each of whose key the next
+  // identical purchase would then reuse.
+  if (!record) return;
+  const previous = record.rows.find((row) => row.fingerprint === next.fingerprint) ?? null;
+  // Re-sending the SAME attempt keeps the clock it started on, so "you placed
+  // this at 08:10" stays true across every retry of it.
+  const startedAt =
+    previous && previous.attempt === next.attempt && previous.startedAt > 0
+      ? previous.startedAt
+      : next.startedAt;
+  await saveAttempts(record.scope, [
+    ...record.rows.filter((row) => row.fingerprint !== next.fingerprint),
+    { ...next, startedAt },
+  ]);
+}
+
+/**
+ * Forget what this module holds in memory for the account that was signed in.
+ *
+ * Call it on sign-out. The persisted rows are deliberately left where they are:
+ * they are namespaced per account, so the next person to sign in cannot read
+ * them, and the account they belong to still needs them to resume — or retire —
+ * whatever it left in the air. What must not survive is the process-wide mirror
+ * and the discovered catalogue, neither of which is namespaced at all.
+ */
+export function clearVasState(): void {
+  attemptMemory = null;
+  clearCatalogCache();
+}
+
+/** What the next tap on Pay actually means. */
+export type PurchasePlan =
+  | {
+      /** Post it, under this key. */
+      action: "send";
+      slot: string;
+      idempotencyKey: string;
+    }
+  | {
+      /**
+       * An earlier attempt at this exact purchase is still in the air. Follow
+       * that one. Do not place a second.
+       */
+      action: "resume";
+      slot: string;
+      transaction: VasTransaction;
+      /** Epoch ms the resumed attempt was placed, or 0 if that was not kept. */
+      startedAt: number;
+    };
+
+/**
+ * Decide, once, what the next tap on Pay actually means.
+ *
+ * The question a purchase screen cannot answer on its own is whether an
+ * identical intent is a RETRY of something already sent or a SECOND purchase of
+ * the same thing. This answers it with a fact instead of a guess: if the last
+ * attempt at this intent got as far as being named a transaction, ask the
+ * gateway what became of it.
+ *
+ *   - still moving — resume it, and send nothing
+ *   - finished     — that attempt is closed, so this is a new operation and it
+ *                    gets a slot, and therefore a key, of its own
+ *   - gone         — the gateway has no such transaction and has had long
+ *                    enough to mean it, so the attempt naming it can never be
+ *                    resumed and is retired the same way a finished one is
+ *   - never named  — the POST timed out, crashed or was killed; that is the
+ *                    case the key exists for, so it is re-sent unchanged
+ *
+ * Throws whatever else the lookup throws — a session expiry, an entitlement
+ * refusal, a dead connection. None of those mean "the earlier purchase is
+ * finished", and inventing an answer to that question is how somebody pays
+ * twice.
+ */
+export async function planPurchase(
+  intent: PurchaseIntent,
+  options: { signal?: AbortSignal } = {},
+): Promise<PurchasePlan> {
+  const fingerprint = purchaseFingerprint(intent);
+  const record = await loadAttempts();
+  const prior = record.rows.find((row) => row.fingerprint === fingerprint) ?? null;
+  // A row keeps the stem it was written under; only a fingerprint with no
+  // history at all starts under this account's.
+  const stem = prior?.stem ?? stemFor(record.scope, fingerprint);
+
+  if (prior?.transactionId) {
+    let snapshot: VasTransaction | null;
+    try {
+      snapshot = await getTransaction(prior.transactionId, {
+        currency: intent.amount.currency,
+        signal: options.signal,
+      });
+    } catch (error) {
+      if (!isGoneForGood(error, prior.startedAt)) throw error;
+      // The gateway does not have this transaction and has had long enough for
+      // that to be an answer rather than a lag. Nothing can resume an attempt
+      // whose transaction does not exist, so leaving the row in place would
+      // wedge this purchase for good: every later tap would ask the same
+      // question and get the same 404, with nothing ever sent.
+      snapshot = null;
+    }
+
+    if (snapshot && !isTerminalTransfer(snapshot.status)) {
+      return {
+        action: "resume",
+        slot: slotOf(prior),
+        transaction: snapshot,
+        startedAt: prior.startedAt,
+      };
+    }
+    // Terminal in either direction — delivered, failed, reversed — or gone for
+    // good. It will not change its mind, so it can no longer be resumed and its
+    // key has done its job. Releasing it AND moving the attempt on means a
+    // keychain that silently refuses the delete still cannot leak a spent key
+    // into the next purchase: the retired slot is simply never asked for again.
+    await releaseIdempotencyKey(slotOf(prior));
+    return sendPlan(stem, fingerprint, prior.attempt + 1);
+  }
+
+  return sendPlan(stem, fingerprint, prior?.attempt ?? 0);
+}
+
+/**
+ * Long enough after a purchase was recorded that a 404 for it is an answer
+ * rather than a lag.
+ *
+ * A read side that trails the write side answers 404 for a purchase that was
+ * very much accepted — `pollTransaction` tolerates three of them for exactly
+ * that reason — and retiring on one of those would mint a second key for a
+ * purchase already in the air, which is the double-charge this whole record
+ * exists to prevent.
+ */
+const RESOLVE_GRACE_MS = 5 * 60 * 1000;
+
+/**
+ * "There is no such transaction", said definitely.
+ *
+ * Only a 404 qualifies. A 5xx, a timeout or a dropped connection say nothing
+ * about whether the earlier purchase happened, and a 403 says something about
+ * the account rather than the transaction; all of them must keep throwing.
+ */
+function isGoneForGood(error: unknown, startedAt: number): boolean {
+  if (!ApiError.is(error) || error.statusCode !== 404) return false;
+  // A row with no clock cannot be inside any window — and it is not something
+  // this build writes, so reading it as old retires a corrupt row instead of
+  // wedging the purchase it names forever.
+  if (startedAt <= 0) return true;
+  return Date.now() - startedAt >= RESOLVE_GRACE_MS;
+}
+
+async function sendPlan(
+  stem: string,
+  fingerprint: string,
+  attempt: number,
+): Promise<PurchasePlan> {
+  const slot = slotFor(stem, attempt);
+  // The record goes down BEFORE the key is reserved and long before the POST.
+  // A record with no key behind it costs nothing; a key with no record behind
+  // it is the one that gets spent by a purchase it was never minted for.
+  await rememberAttempt({
+    fingerprint,
+    stem,
+    attempt,
+    transactionId: null,
+    startedAt: Date.now(),
+  });
+  return { action: "send", slot, idempotencyKey: await reserveIdempotencyKey(slot, "vas") };
+}
+
+/**
+ * The gateway named a transaction for the attempt in `slot`.
+ *
+ * This one fact is what later tells "resume what is already in the air" apart
+ * from "place a new one". Without it, a purchase the user walks away from has
+ * nothing left that could ever resolve it.
+ */
+export async function notePurchaseAccepted(
+  slot: string,
+  transactionId: string | null,
+): Promise<void> {
+  if (!transactionId) return;
+  const record = await readAttempts();
+  // Nothing to update onto, and nothing safe to invent. The attempt keeps its
+  // recorded id of null, so the next tap re-sends the same key and the gateway
+  // answers with this same transaction — a replay, not a second purchase.
+  if (!record) return;
+  await saveAttempts(
+    record.scope,
+    record.rows.map((row) => (slotOf(row) === slot ? { ...row, transactionId } : row)),
+  );
+}
+
+/**
+ * Move the fingerprint in `slot` on to a fresh attempt and let its key go.
+ *
+ * The counter moves FIRST, so that even if the key delete fails, the next
+ * purchase of the same thing asks for a slot that has never held a key. The
+ * release then happens whether or not the record could be written: leaving a
+ * spent key behind because a keychain read failed is how the next purchase gets
+ * answered with this one's transaction.
+ *
+ * Private, because the only question that matters is WHEN this is allowed to be
+ * called; the two exported callers below each answer it in their own terms.
+ */
+async function advanceAttempt(slot: string): Promise<void> {
+  const record = await readAttempts();
+  if (record) {
+    await saveAttempts(
+      record.scope,
+      record.rows.map((row) =>
+        slotOf(row) === slot
+          ? { ...row, attempt: row.attempt + 1, transactionId: null, startedAt: 0 }
+          : row,
+      ),
+    );
+  }
+  await releaseIdempotencyKey(slot);
+}
+
+/**
+ * The attempt in `slot` has reached a state it will not come back from.
+ *
+ * Call it on a terminal status and on nothing else — not on a timeout, which is
+ * not an outcome, and not because a screen was closed.
+ */
+export async function closePurchaseAttempt(slot: string): Promise<void> {
+  await advanceAttempt(slot);
+}
+
+/**
+ * The person paying has looked at an unfinished earlier purchase and asked for
+ * another one anyway.
+ *
+ * This is what an attempt counter is FOR: a deliberately repeated identical
+ * purchase is a DIFFERENT operation, not a retry, so it must get a key of its
+ * own rather than be answered with the earlier one's transaction. Without this
+ * door, a purchase that never reaches a terminal status — genuinely stuck, or
+ * carrying a status this build has never heard of — leaves that fingerprint
+ * unbuyable for good, because every later tap on Pay resumes it instead.
+ *
+ * The earlier attempt is given up here, not resolved: this releases its key and
+ * stops following it, which is only ever right when a person has said in so
+ * many words that they want a second purchase. It must never be reached by an
+ * error handler, a timeout, or a screen being closed — every one of those is a
+ * case where the SAME key has to be re-used.
+ */
+export async function beginSeparatePurchase(slot: string): Promise<void> {
+  await advanceAttempt(slot);
 }
 
 /**

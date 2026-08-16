@@ -17,8 +17,10 @@ import {
   Spinner,
 } from "../components/ui";
 import { useLinkpayAccount } from "../hooks/useLinkpay";
+import { isEntitlementRefusal } from "../lib/gateway/entitlement";
 import {
   PROVISION_SLOT,
+  accountStatusLabel,
   describeLinkpayFailure,
   isAccountUsable,
   provisionAccount,
@@ -26,9 +28,9 @@ import {
   reserveIdempotencyKey,
 } from "../lib/gateway/linkpay";
 import {
+  ApiError,
   NetworkError,
   SessionExpiredError,
-  isEntitlementError,
 } from "../lib/gateway/types";
 import { C, F } from "../theme/tokens";
 
@@ -58,6 +60,39 @@ const CURRENCY = "NGN";
 const BVN_LENGTH = 11;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * 4xx codes that leave THIS provisioning attempt resumable, so its key has to
+ * survive them:
+ *
+ * - `401` — unauthenticated, so the gateway did not read the body. The session
+ *   layer is already retrying behind us; the operation itself is untouched.
+ * - `403` — entitlement. The same details work the moment the subscription is
+ *   live, and that is a payment away, not a correction.
+ * - `408` / `429` — "ask again", and asking again must carry the same key or it
+ *   is a second customer at the provider.
+ * - `409` — the gateway already holds this key under a different body. Whether
+ *   THAT body opened an account is not knowable from here, so the key is not
+ *   ours to drop without looking.
+ */
+const RESUMABLE_4XX = new Set([401, 403, 408, 409, 429]);
+
+/**
+ * A refusal the gateway will repeat forever: it read the body, said no, and
+ * created nothing behind the key.
+ *
+ * 5xx and network failures are deliberately absent — those are ambiguous about
+ * whether the account was opened, and ambiguity replays the key rather than
+ * minting a new one.
+ */
+function isTerminalRefusal(error: unknown): boolean {
+  return (
+    ApiError.is(error) &&
+    error.statusCode >= 400 &&
+    error.statusCode < 500 &&
+    !RESUMABLE_4XX.has(error.statusCode)
+  );
+}
 
 /**
  * Nigerian mobile numbers, in the two shapes people actually type. The value is
@@ -192,7 +227,15 @@ export default function KycScreen({
   onNeedsSubscription?: () => void;
   onNeedsSignIn?: () => void;
 }) {
-  const { phase, account, error: accountError, reload } = useLinkpayAccount();
+  const {
+    phase,
+    account,
+    error: accountError,
+    // "The account has been asked about and has not answered yet." Both
+    // controls on this screen that can drop an idempotency key wait for it.
+    refreshing: rereading,
+    reload,
+  } = useLinkpayAccount();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -204,8 +247,46 @@ export default function KycScreen({
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  /** The user chose to correct a refused submission — show the form again. */
-  const [editing, setEditing] = useState(false);
+  /**
+   * The user is correcting details the bank turned down — swap the
+   * PROVISION_FAILED panel for the form.
+   *
+   * It belongs to that one panel and to nothing else. A flag that outlived it
+   * would suppress whatever screen the account's REAL state had earned — the
+   * "with the bank" panel most of all — and drop the person onto the form
+   * instead, which is a request to open a second account.
+   */
+  const [correcting, setCorrecting] = useState(false);
+  /**
+   * A 409: the gateway holds this key under details other than the ones just
+   * sent. Only the user can say whether to start the operation over, so the
+   * screen offers it rather than dropping the key on its own.
+   */
+  const [conflicted, setConflicted] = useState(false);
+
+  // `correcting` is scoped to the panel that sets it, in code and not just in
+  // intent: the moment the account reads as anything else — the bank picked it
+  // up, it opened, it vanished — the panel it was hiding is gone and the flag
+  // goes with it. Cleared on the phase change rather than on the next submit,
+  // because there may not be a next submit.
+  useEffect(() => {
+    if (phase !== "provision_failed") setCorrecting(false);
+    // And the 409 offer is withdrawn the moment the gateway names an account:
+    // the key belongs to that account now, so "clear it and send these details
+    // as a new one" is no longer a thing to offer anybody. PROVISION_FAILED is
+    // the exception the offer was written for — that account is finished with
+    // the key. A transient `loading` is deliberately not in this list: it says
+    // nothing about the account, and taking the escape hatch away over it would
+    // be a worse answer than leaving it up.
+    if (
+      phase === "ready" ||
+      phase === "provisioning" ||
+      phase === "disabled" ||
+      phase === "unknown_status"
+    ) {
+      setConflicted(false);
+    }
+  }, [phase]);
 
   const told = useRef(false);
   useEffect(() => {
@@ -230,10 +311,15 @@ export default function KycScreen({
 
   const submit = async () => {
     setTouched(true);
-    if (!complete || submitting) return;
+    // A re-read that has been asked for and not answered is the one state in
+    // which this form must not send: every path that drops the key asks the
+    // gateway what it actually holds, and sending before that answer lands is
+    // how a fresh key meets an account nobody has looked at.
+    if (!complete || submitting || rereading) return;
 
     setSubmitting(true);
     setSubmitError(null);
+    setConflicted(false);
 
     try {
       // Reserved once and reused on every retry of THIS account. The client
@@ -256,7 +342,7 @@ export default function KycScreen({
 
       // Done with it. Nothing downstream needs the number.
       setBvn("");
-      setEditing(false);
+      setCorrecting(false);
 
       if (isAccountUsable(next.status)) {
         // Terminal success — the key has done its job and must not be reused.
@@ -267,7 +353,8 @@ export default function KycScreen({
       reload();
     } catch (err) {
       if (SessionExpiredError.is(err)) return;
-      if (isEntitlementError(err)) {
+      // Any 403 on this route is the entitlement guard, whatever the body says.
+      if (isEntitlementRefusal(err)) {
         onNeedsSubscription?.();
         return;
       }
@@ -280,19 +367,62 @@ export default function KycScreen({
         reload();
         return;
       }
+
+      if (isTerminalRefusal(err)) {
+        // The gateway read these details and refused them, so there is no
+        // half-open account behind the key and nothing left for it to name.
+        // The correction the user is about to type is a different operation and
+        // needs its own key: keeping this one would meet the corrected details
+        // with a 409 and leave them clearing it by hand on the screen that has
+        // just told them their details were wrong.
+        await releaseIdempotencyKey(PROVISION_SLOT);
+        // And re-read before the next tap can mint a key: if the refusal was
+        // wrong about having created nothing, this screen turns into the
+        // account panel and the form is never offered a second time. That is a
+        // precondition, not a hope — `reload` marks the re-read outstanding
+        // synchronously and the submit button is held until it answers, so the
+        // next tap genuinely cannot land inside the round trip.
+        reload();
+      } else if (ApiError.is(err) && err.statusCode === 409) {
+        // The gateway already has this key under a different shape. That older
+        // body may have opened an account — re-read before believing otherwise,
+        // and let the user be the one to start it over.
+        setConflicted(true);
+        reload();
+      }
       setSubmitError(describeLinkpayFailure(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  /** Correct refused details: drop the spent key so the fix is a new attempt. */
-  const editAfterFailure = async () => {
-    // PROVISION_FAILED is terminal for that key — replaying it would replay the
-    // refusal. This is the one place a key is legitimately dropped and reminted.
+  /**
+   * Drop the key the gateway is holding so the next tap is a NEW attempt.
+   *
+   * Both callers are an explicit decision, taken in front of a screen that has
+   * said what is being dropped, and — this is the part that makes the drop
+   * safe — both are held closed while a re-read is outstanding. The account the
+   * screen is looking at is therefore one the gateway has just described, not
+   * the one it described before the request that went wrong.
+   */
+  const startOver = async () => {
     await releaseIdempotencyKey(PROVISION_SLOT);
     setSubmitError(null);
-    setEditing(true);
+    setConflicted(false);
+  };
+
+  /**
+   * Correct details the bank turned down.
+   *
+   * PROVISION_FAILED is terminal for that key — replaying it would replay the
+   * refusal — and this is the one control that opens the form over a panel, so
+   * it is the one place `correcting` is set. The 409 escape hatch does NOT set
+   * it: that control lives on the form already, and a flag raised from there
+   * would follow the user into a phase that has its own screen to show.
+   */
+  const correctRefusedDetails = async () => {
+    await startOver();
+    setCorrecting(true);
   };
 
   const header = (title: string, sub: string) => (
@@ -388,7 +518,10 @@ export default function KycScreen({
     );
   }
 
-  if (phase === "provisioning" && !editing) {
+  // No `correcting` escape here on purpose: while the bank is actively working
+  // on the account there is nothing for a correction form to correct, and the
+  // one thing a form could do from this state is ask for a second account.
+  if (phase === "provisioning") {
     return (
       <Screen>
         {header("Naira account", "WITH THE BANK")}
@@ -432,7 +565,7 @@ export default function KycScreen({
     );
   }
 
-  if (phase === "provision_failed" && !editing) {
+  if (phase === "provision_failed" && !correcting) {
     return (
       <Screen>
         {header("Naira account", "TURNED DOWN")}
@@ -453,7 +586,14 @@ export default function KycScreen({
           </Body>
         </View>
         <View style={{ marginTop: 22 }}>
-          <MetallicButton label="Edit details and try again" onPress={() => void editAfterFailure()} />
+          <MetallicButton
+            label="Edit details and try again"
+            // Held while the account is being re-read: this control drops the
+            // key, and the answer in flight may be the one that says the bank
+            // has picked the account up after all.
+            disabled={rereading}
+            onPress={() => void correctRefusedDetails()}
+          />
         </View>
       </Screen>
     );
@@ -467,6 +607,25 @@ export default function KycScreen({
           This account has been switched off. Support can say why and turn it back on — opening a
           second one is not the fix, so this form is closed.
         </Body>
+      </Screen>
+    );
+  }
+
+  // An account the gateway has but this build cannot read. It is the same
+  // "you already have one" as `disabled`, and the same answer: the form stays
+  // closed. Falling through to it would ask a person who demonstrably holds an
+  // account for their BVN again — the exact misreading `unknown_status` was
+  // added to prevent.
+  if (phase === "unknown_status") {
+    return (
+      <Screen>
+        {header("Naira account", "STATUS NOT RECOGNISED")}
+        <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
+          {`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}. You already have an account, and this version of Paradigm does not recognise the state it is in — so this form stays closed. Opening a second one is not the fix.`}
+        </Body>
+        <View style={{ marginTop: 20 }}>
+          <MetallicButton label="Check again" onPress={reload} />
+        </View>
       </Screen>
     );
   }
@@ -514,6 +673,29 @@ export default function KycScreen({
             {submitError}
           </Body>
         </Pressable>
+      ) : null}
+
+      {/* The way out of a key the gateway holds under other details. It is a
+          button rather than something the catch block does quietly, because
+          the reload above may yet show that the earlier request opened an
+          account, and dropping the key before that lands is how one person ends
+          up with two. So the button is inert until that reload has answered —
+          the sentence above is the precondition, and `rereading` is what makes
+          it one. It stands on its own copy so dismissing the red panel does not
+          take the escape hatch with it. */}
+      {conflicted ? (
+        <View style={{ marginTop: 14 }}>
+          <Body size={11.5} color={C.dim} style={{ marginBottom: 10, lineHeight: 17 }}>
+            {rereading
+              ? "Paradigm is checking what that first request actually did before offering to clear it."
+              : "Paradigm is still holding the first version of this request. Clear it and your next tap sends these details as a new one."}
+          </Body>
+          <GhostButton
+            label="Start it again"
+            disabled={rereading}
+            onPress={() => void startOver()}
+          />
+        </View>
       ) : null}
 
       <Field
@@ -583,14 +765,20 @@ export default function KycScreen({
         <MetallicButton
           label="Open my account"
           loading={submitting}
-          disabled={touched && !complete}
+          // Disabled, not `loading`: nothing of the user's is being sent while
+          // the account is re-read, and a spinner on this button would say one
+          // is. It stays inert until the answer lands, which is what makes
+          // "re-read before the next tap can mint a key" true rather than
+          // merely intended.
+          disabled={rereading || (touched && !complete)}
           onPress={() => void submit()}
         />
       </View>
 
       <Body size={11} color={C.dim} style={{ marginTop: 16, textAlign: "center", lineHeight: 16.5 }}>
-        Tapping this once is enough. If it times out, Paradigm re-asks about the same request rather
-        than sending a second one.
+        {rereading
+          ? "Checking with Paradigm whether an account has already been opened for you — one moment."
+          : "Tapping this once is enough. If it times out, Paradigm re-asks about the same request rather than sending a second one."}
       </Body>
     </Screen>
   );

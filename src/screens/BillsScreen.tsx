@@ -145,6 +145,7 @@ export default function BillsScreen({
   error,
   onRetry,
   block = null,
+  onDismissBlock,
   onNeedsSubscription,
   products,
   productsLoading,
@@ -160,6 +161,14 @@ export default function BillsScreen({
   error: string | null;
   onRetry?: () => void;
   block?: BillsBlock;
+  /**
+   * Step back to the biller list. Passed only when this refusal arrived on a
+   * single response while the catalogue was already up — a card that replaces
+   * the whole screen and offers nothing but "See plans" is a dead end, and the
+   * route knows the difference between that and an account the entitlement gate
+   * itself has ruled on.
+   */
+  onDismissBlock?: () => void;
   onNeedsSubscription?: () => void;
   products: VasProduct[];
   productsLoading: boolean;
@@ -269,7 +278,15 @@ export default function BillsScreen({
     onSubmit({
       category,
       provider,
-      product: usingCustom ? null : product,
+      // `product`, not `usingCustom ? null : product`. The two questions look
+      // alike and are not: "who names the amount" is not "what is being
+      // bought". A bouquet the feed quoted no price for made the first answer
+      // "the person" and the old ternary let that erase the second, sending
+      // ₦10,500 to a TV biller with no plan attached and a confirm screen that
+      // never named what was being bought. The memo above already yields null
+      // for the custom tile, for no selection and for an empty plan list, which
+      // are the only cases where there is genuinely no product.
+      product,
       amount,
       destinationDisplay: normalizeDestination(category.destination, destination),
       destinationWire: wireDestination(category.destination, destination, country),
@@ -300,6 +317,17 @@ export default function BillsScreen({
             onPress={onNeedsSubscription}
             height={48}
           />
+          {onDismissBlock ? (
+            <>
+              <View style={{ height: 10 }} />
+              <GhostButton
+                label="Back to billers"
+                onPress={onDismissBlock}
+                height={44}
+                style={{ paddingHorizontal: 22 }}
+              />
+            </>
+          ) : null}
         </Card>
       </Screen>
     );
@@ -388,7 +416,12 @@ export default function BillsScreen({
   /* ------------------------------------------------------------- compose */
 
   return (
-    <Screen top={top} bottom={56}>
+    // Two fields on number-pad and decimal-pad keyboards, neither of which has
+    // a dismiss key on iOS, and every control the person needs next — the
+    // biller chips, the plan rows, Review — sits under them. Without
+    // "handled" the first tap on any of those is eaten dismissing the
+    // keyboard, which on a payment form reads as a button that does not work.
+    <Screen top={top} bottom={56} keyboardShouldPersistTaps="handled">
       <View style={{ marginTop: 22, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Label>{category.serviceType.toUpperCase()}</Label>

@@ -33,8 +33,10 @@ function MailMark({ size = 19, color = C.text }: { size?: number; color?: string
 }
 
 /**
- * The three ways in, in the order they matter to this audience. KingsChat is
- * the differentiator, so it takes the metal tier; the rest are quiet.
+ * The three ways in, all on the surface. This screen exists to ask exactly one
+ * question — which identity — so every answer to it is visible without a
+ * disclosure step. KingsChat takes the metal tier because it is the
+ * differentiator for this audience; the other two are quiet.
  *
  * Apple is not here on purpose. Decane's `AuthMethod` is google | email |
  * kingschat — Apple would need an external provider registered in the
@@ -128,53 +130,38 @@ export default function SignInScreen({
           step(0),
         ]}
       >
-        <ParadigmMark height={22} color={C.text} />
+        <ParadigmMark height={26} color={C.text} />
         <Text
           style={{
-            fontFamily: F.bodySemibold,
-            fontSize: 13,
-            letterSpacing: 5,
+            fontFamily: F.display,
+            fontSize: 27,
+            letterSpacing: -0.4,
             color: C.text,
           }}
         >
-          PARADIGM
+          Paradigm
         </Text>
       </Animated.View>
 
+      {/* The headline carries the screen on its own — set large, left, and in
+          one colour. An accent on the third line turns a statement into a
+          slogan, and this audience reads the restraint as the confidence. */}
       <View style={{ flex: 1, justifyContent: "center" }}>
         <Animated.View style={step(1)}>
-          {["One Platform.", "Every Strategy.", "No Compromise."].map(
-            (line, i) => (
-              <Text
-                key={line}
-                style={{
-                  fontFamily: F.displayBold,
-                  fontSize: 34,
-                  lineHeight: 43,
-                  letterSpacing: -0.3,
-                  // The last line carries the screen's only accent.
-                  color: i === 2 ? C.brand : C.text,
-                }}
-              >
-                {line}
-              </Text>
-            ),
-          )}
-        </Animated.View>
-
-        {/* The line that removes the hunt for a sign-up link. */}
-        <Animated.View style={[{ marginTop: 20 }, step(2)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 15,
-              lineHeight: 23,
-              color: C.sub,
-            }}
-          >
-            New or returning, it&apos;s the same door. Your wallet is created
-            the first time you sign in, and restored every time after.
-          </Text>
+          {["One Platform.", "Every Strategy.", "No Compromise."].map((line) => (
+            <Text
+              key={line}
+              style={{
+                fontFamily: F.displayBold,
+                fontSize: 44,
+                lineHeight: 53,
+                letterSpacing: -1,
+                color: C.text,
+              }}
+            >
+              {line}
+            </Text>
+          ))}
         </Animated.View>
       </View>
 
@@ -184,7 +171,7 @@ export default function SignInScreen({
         return (
           <Animated.View
             key={m.id}
-            style={[{ marginTop: i === 0 ? 0 : 12 }, step(i + 3)]}
+            style={[{ marginTop: i === 0 ? 0 : 12 }, step(i + 2)]}
           >
             <Pill
               label={m.label}
@@ -198,7 +185,7 @@ export default function SignInScreen({
                 )
               }
               onPress={() => onSignIn?.(m.id)}
-              loading={pending === m.id || m.id === "kingschat"}
+              loading={pending === m.id}
               disabled={busy && pending !== m.id}
             />
           </Animated.View>

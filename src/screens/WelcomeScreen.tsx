@@ -8,7 +8,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
@@ -32,27 +31,37 @@ const HERO_BIAS = 0.055;
  */
 function Bloom({ size }: { size: number }) {
   return (
-    <Svg
-      pointerEvents="none"
-      width={size}
-      height={size}
-      style={{ position: "absolute" }}
-    >
-      <Defs>
-        <RadialGradient id="welcome-bloom" cx="50%" cy="50%" rx="50%" ry="50%">
-          <Stop offset="0" stopColor={C.amber} stopOpacity={0.16} />
-          <Stop offset="0.5" stopColor={C.amber} stopOpacity={0.05} />
-          <Stop offset="1" stopColor={C.amber} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Ellipse
-        cx={size / 2}
-        cy={size / 2}
-        rx={size / 2}
-        ry={size / 2}
-        fill="url(#welcome-bloom)"
-      />
-    </Svg>
+    // <Svg
+    //   pointerEvents="none"
+    //   width={size}
+    //   height={size}
+    //   style={{ position: "absolute" }}
+    // >
+    //   <Defs>
+    //     <RadialGradient id="welcome-bloom" cx="50%" cy="50%" rx="50%" ry="50%">
+    //       <Stop offset="0" stopColor={C.amber} stopOpacity={0.16} />
+    //       <Stop offset="0.5" stopColor={C.amber} stopOpacity={0.05} />
+    //       <Stop offset="1" stopColor={C.amber} stopOpacity={0} />
+    //     </RadialGradient>
+    //   </Defs>
+    //   <Ellipse
+    //     cx={size / 2}
+    //     cy={size / 2}
+    //     rx={size / 2}
+    //     ry={size / 2}
+    //     fill="url(#welcome-bloom)"
+    //   />
+    // </Svg>
+    <Image
+      source={require("../../assets/images/star_behind.png")}
+      contentFit="cover"
+      style={{
+        width: size * 2,
+        height: size * 2,
+        position: "absolute",
+        top: 0,
+      }}
+    />
   );
 }
 
@@ -70,12 +79,16 @@ function Bloom({ size }: { size: number }) {
  * fifty times must not hold them: everything is on screen inside a second, and
  * the CTA is live from the first frame.
  */
-export default function WelcomeScreen({ onLogin }: { onLogin?: () => void }) {
+export default function WelcomeScreen({
+  onLogin,
+}: {
+  /** Into the method surface — KingsChat, Google, email. */
+  onLogin?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
   const heroW = Math.min(width * 0.54, 230);
-  const bloom = heroW * 2.6;
 
   const mark = useRef(new Animated.Value(0)).current;
   // One driver for the whole stack below the mark; each line reads a different
@@ -129,8 +142,29 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: () => void }) {
         paddingTop: insets.top,
         paddingHorizontal: 26,
         paddingBottom: Math.max(insets.bottom, 26) + 8,
+        position: "relative",
       }}
     >
+      {/* Bloom sits behind everything — first sibling, so it is below the whole
+          stack in z-order.
+
+          The wrapper is not decoration: pinned left/right/top with no height,
+          Yoga sizes this to the artwork's intrinsic ratio, which is ~850pt tall
+          on an 874pt screen — it lies directly over the CTA. `pointerEvents` on
+          expo-image is not reliably forwarded to its native view, so the image
+          swallowed every tap on "Get started" and the button looked dead. A
+          plain View honours it, so the rays stay decorative. */}
+      <View
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+      >
+        <Image
+          source={require("../../assets/images/star_behind.png")}
+          contentFit="contain"
+          style={{ width: "100%", aspectRatio: 660 / 1395 }}
+        />
+      </View>
+
       {/* The mark holds the upper two thirds alone — the composition is one
           object in light, then the words, then the way in. */}
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -149,7 +183,6 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: () => void }) {
             ],
           }}
         >
-          <Bloom size={bloom} />
           <Image
             source={HERO}
             contentFit="contain"
@@ -161,58 +194,32 @@ export default function WelcomeScreen({ onLogin }: { onLogin?: () => void }) {
             accessibilityLabel="Paradigm"
           />
         </Animated.View>
+
+        {/* Sentence case, large and tight, directly under the mark. It lives
+            INSIDE the centred block on purpose: parked outside it, the flex
+            space opened up between the mark and the name and the lockup came
+            apart down the middle of the screen. */}
+        <Animated.View style={[{ marginTop: -4 }, step(0)]}>
+          <Text
+            style={{
+              fontFamily: F.display,
+              fontSize: 46,
+              lineHeight: 54,
+              letterSpacing: -0.6,
+              color: C.text,
+              textAlign: "center",
+            }}
+          >
+            Paradigm
+          </Text>
+        </Animated.View>
       </View>
 
-      <Animated.View style={step(0)}>
-        <Text
-          style={{
-            fontFamily: F.display,
-            fontSize: 26,
-            letterSpacing: 9,
-            // Tracking adds its space after the last letter, which walks
-            // centered type half a step left. Push it back.
-            marginLeft: 4.5,
-            color: C.text,
-            textAlign: "center",
-          }}
-        >
-          PARADIGM
-        </Text>
-      </Animated.View>
-
-      <Animated.View style={[{ marginTop: 18 }, step(1)]}>
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 16,
-            lineHeight: 25,
-            color: C.sub,
-            textAlign: "center",
-          }}
-        >
-          Markets, capital and payments {"—"} in one account.
-        </Text>
-      </Animated.View>
-
-      <Animated.View style={[{ marginTop: 46 }, step(2)]}>
+      {/* One action. The pitch does not ask the user to choose anything — the
+          methods live on the next screen, which is the screen whose whole job
+          is that choice. */}
+      <Animated.View style={step(1)}>
         <MetalButton label="Get started" onPress={onLogin} />
-      </Animated.View>
-
-      {/* The returning member's answer. It is a sentence rather than a second
-          button because there is no second destination — the same door creates
-          a wallet or restores one. */}
-      <Animated.View style={[{ marginTop: 18 }, step(3)]}>
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 12.5,
-            lineHeight: 18,
-            color: C.dim,
-            textAlign: "center",
-          }}
-        >
-          New or returning {"—"} you start in the same place.
-        </Text>
       </Animated.View>
     </View>
   );

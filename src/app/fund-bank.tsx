@@ -1,15 +1,14 @@
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useToast } from "@/components/Toast";
 import FundBankScreen from "@/screens/FundBankScreen";
 import { C } from "@/theme/tokens";
+import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // Bank-transfer funding: the user's real provisioned account, then the
 // provider's own DETECTED → CREDITED narration. Deposits are provider-initiated
 // — nothing here asks for an amount, because nothing on the rail wants one.
 export default function FundBank() {
-  const toast = useToast();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
@@ -17,9 +16,10 @@ export default function FundBank() {
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/home")}
         onProvision={() => router.push("/kyc")}
-        onNeedsSubscription={() =>
-          toast.info("Subscription required", "Naira deposits need an active subscription.")
-        }
+        // The gateway refused on entitlement, and the contract's rule is
+        // "403 ACTIVE_SUBSCRIPTION_REQUIRED -> subscription screen". A toast
+        // explained the refusal and left the member nowhere to go.
+        onNeedsSubscription={() => router.push(SUBSCRIPTION_ROUTE)}
         onNeedsSignIn={() => router.push("/signin")}
       />
     </SafeAreaView>

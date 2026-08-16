@@ -136,7 +136,7 @@ export default function BuyScreen({
                   borderRadius: 38,
                   backgroundColor: C.brandGlow,
                   borderWidth: 1,
-                  borderColor: "rgba(131,190,96,0.35)",
+                  borderColor: "rgba(227,182,47,0.35)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}

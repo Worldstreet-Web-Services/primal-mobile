@@ -460,7 +460,7 @@ export default function FundBankScreen({
             borderRadius: 31,
             backgroundColor: C.upBg,
             borderWidth: 1,
-            borderColor: "rgba(124,231,176,0.35)",
+            borderColor: "rgba(240,199,90,0.35)",
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -594,7 +594,7 @@ export default function FundBankScreen({
               paddingBottom: 14,
               backgroundColor: C.brandGlow,
               borderBottomWidth: 1,
-              borderBottomColor: "rgba(131,190,96,0.28)",
+              borderBottomColor: "rgba(227,182,47,0.28)",
             }}
           >
             <Label style={{ color: C.brandSoft }}>Your naira account</Label>

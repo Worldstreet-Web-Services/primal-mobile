@@ -304,7 +304,7 @@ function MethodPlate({
                   style={{
                     borderRadius: 99,
                     borderWidth: 1,
-                    borderColor: "rgba(131,190,96,0.4)",
+                    borderColor: "rgba(227,182,47,0.4)",
                     backgroundColor: C.brandGlow,
                     paddingHorizontal: 7,
                     paddingVertical: 2,
@@ -847,7 +847,7 @@ export default function FundScreen({
                   marginTop: 12,
                   backgroundColor: C.brandGlow,
                   borderWidth: 1,
-                  borderColor: "rgba(131,190,96,0.35)",
+                  borderColor: "rgba(227,182,47,0.35)",
                   borderRadius: 16,
                   padding: 14,
                 }}
@@ -861,7 +861,7 @@ export default function FundScreen({
                     marginTop: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
-                    borderTopColor: "rgba(131,190,96,0.2)",
+                    borderTopColor: "rgba(227,182,47,0.2)",
                   }}
                 >
                   <Body size={11.5} color={C.dim} style={{ lineHeight: 17 }}>

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
 import { NavHeader } from "@/components/home";
-import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import {
   AbortedError,
@@ -14,7 +13,7 @@ import {
   NetworkError,
   SessionExpiredError,
 } from "@/lib/gateway";
-import { SIGN_IN_ROUTE } from "@/lib/routes";
+import { SIGN_IN_ROUTE, SUBSCRIPTION_ROUTE } from "@/lib/routes";
 import {
   beginSeparatePurchase,
   closePurchaseAttempt,
@@ -46,8 +45,7 @@ import { C } from "@/theme/tokens";
  * **403 is not 401.** Every route under `/v1/linkpay/*` needs a live token AND
  * an active entitlement. A 401 the client could not refresh arrives as
  * `SessionExpiredError` and means sign in; a 403 means the person is signed in
- * perfectly well and has not paid, and goes to the subscription screen — which
- * belongs to another workstream, so all this does is call the callback.
+ * perfectly well and has not paid, and goes to the subscription screen.
  *
  * **One key per purchase ATTEMPT.** `planPurchase` decides, before anything is
  * sent, whether this tap is a retry of a purchase already in the air (resume it,
@@ -99,7 +97,6 @@ const intentOf = (d: BillDraft): PurchaseIntent => ({
 
 export default function Bills() {
   const { primal, status, linkPrimal, refreshEntitlement } = useAuth();
-  const toast = useToast();
   const [headerHeight, setHeaderHeight] = useState(0);
 
   /* --------------------------------------------------------- the catalogue */
@@ -503,18 +500,13 @@ export default function Bills() {
   }, [block, dismissWirePaywall]);
 
   /**
-   * Checkout is another lane's and has no route yet, so `SUBSCRIPTION_ROUTE`
-   * from `@/lib/routes` points at a file that does not exist. Say it out loud
-   * rather than pushing at nothing — the screen already explains the state
-   * behind this, and this matches what `src/app/fiat.tsx` does for the same
-   * gap.
-   *
-   * When `src/app/subscribe.tsx` lands, this whole body becomes
-   * `router.push(SUBSCRIPTION_ROUTE)`.
+   * The gateway refused on entitlement. The contract's rule is "403
+   * ACTIVE_SUBSCRIPTION_REQUIRED -> subscription screen", so this goes to the
+   * paywall rather than narrating the refusal and leaving the member nowhere.
    */
   const needsSubscription = useCallback(() => {
-    toast.info("Subscription required", "Bills need an active Paradigm plan.");
-  }, [toast]);
+    router.push(SUBSCRIPTION_ROUTE);
+  }, []);
 
   const retryCheckout = useCallback(() => {
     setCheckoutError(null);

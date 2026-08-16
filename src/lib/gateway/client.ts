@@ -389,7 +389,21 @@ async function performRefresh(): Promise<string> {
   } catch (error) {
     // A rejected token is unrecoverable and the session must go. A network
     // failure is not the token's fault — keep it and let the next call retry.
-    if (ApiError.is(error) && error.statusCode >= 400 && error.statusCode < 500) {
+    //
+    // 429 and 408 sit inside the 4xx range but are NOT verdicts on the token:
+    // the gateway rate-limits per IP, so a member behind carrier NAT or a shared
+    // office address can trip it through no fault of their own, and a timeout
+    // says nothing at all. Wiping the keychain on either silently signs a paying
+    // member out with no way back but a fresh SIWE signature — the exact
+    // auth/entitlement collapse the contract forbids. They fall through to the
+    // rethrow below, which keeps both tokens for the next attempt.
+    const dead =
+      ApiError.is(error) &&
+      error.statusCode >= 400 &&
+      error.statusCode < 500 &&
+      error.statusCode !== 429 &&
+      error.statusCode !== 408;
+    if (dead) {
       await session.clear();
       throw new SessionExpiredError("Primal session could not be renewed.", error);
     }

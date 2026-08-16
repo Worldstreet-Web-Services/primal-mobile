@@ -16,18 +16,24 @@ export const C = {
   dim: "#6A7078",
   silver: "#C7CCD1",
   accent: "#d4d4d8", // Ark silver accent
-  up: "#7ce7b0", // gain / money-in (semantic, from wsws-frontend)
-  upBg: "rgba(124,231,176,0.12)",
+  // Gain / money-in. Warm rather than green: no green anywhere by instruction
+  // (2026-08-16), so the up/down pair is gold against rose instead of the
+  // conventional green against red. Kept lighter than `brand` so a credit in a
+  // list is never mistaken for a brand action sitting in the same row.
+  up: "#F0C75A",
+  upBg: "rgba(240,199,90,0.12)",
   down: "#f6a5a5",
-  // Liveness: markets open, a round in play, a stream running. Saturated so it
-  // reads as a signal light rather than a gain figure — never used for money.
-  live: "#4ADE80",
+  // Liveness: markets open, a round in play, a stream running. A pale gold-white
+  // so it reads as a lit signal rather than a figure — distinct from `amber`
+  // (pending, more orange) and from `brand`. Never used for money.
+  live: "#FFE9A3",
   amber: "#F5B83D",
   // Marks the current instant on a chart surface — the live price tag, the
-  // selected range. Deliberately not the brand green: it has to read *against*
-  // candles that are already green, so it can never be a money semantic.
-  highlight: "#D9F24B",
-  highlightInk: "#12180A",
+  // selected range. Was a chartreuse, which is still a green; now a bright gold
+  // a step brighter than `brand`, so it reads as "this one, now" against the
+  // brand rather than as a second accent.
+  highlight: "#FFD75E",
+  highlightInk: "#1A1304",
   ink: "#0a0a0a",
   /** Sheets sit *below* the ground, so a modal reads as depth rather than lift. */
   sheet: "#1A1A1A",
@@ -53,17 +59,19 @@ export const C = {
   /** Ink on metal — near-black, so the sheen stays the brightest thing on it. */
   metalInk: "#0B0C0E",
 
-  // Brand leaf green, #83BE60 (2026-08-14, superseding gold). Named by role,
-  // not hue, so the next rebrand is a value change and nothing else.
-  // `brand` is the action color; `brandSoft` is the muted surface cousin the
-  // chrome sits on — never mix the two roles, and never use either for
-  // money semantics (that's `up`/`down`, which stay green/red by convention).
-  brand: "#83BE60",
-  brandInk: "#0A1405",
-  brandSoft: "#74AC55",
-  brandGrad: ["#96CF72", "#5F9440"] as [string, string],
-  brandSoftInk: "#081103",
-  brandGlow: "rgba(131,190,96,0.14)",
+  // Brand gold, 2026-08-16 — sampled off the mark itself (its lit face reads
+  // #EDC104, rolling to #B58001 in shadow) and pulled back a little so it holds
+  // as UI rather than as artwork. There is NO green anywhere in this palette by
+  // instruction: the mark is gold, the actions are metal, and the ground is
+  // charcoal. Named by role, not hue, so the next change is a value and nothing
+  // else. `brand` is the action colour; `brandSoft` is the muted surface cousin
+  // the chrome sits on — never mix the two roles.
+  brand: "#E3B62F",
+  brandInk: "#1A1304",
+  brandSoft: "#C79C28",
+  brandGrad: ["#F2CE5C", "#B8891F"] as [string, string],
+  brandSoftInk: "#150F03",
+  brandGlow: "rgba(227,182,47,0.14)",
 
   // Elevation steps above the canvas. Both moved up with the ground — on
   // #232323 the old values read as holes punched in the screen.

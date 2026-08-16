@@ -1,23 +1,23 @@
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useToast } from "@/components/Toast";
 import SendScreen from "@/screens/SendScreen";
 import { C } from "@/theme/tokens";
+import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // Naira payout: bank → account number → the name the bank returned → amount.
 // The screen writes the draft; the confirm route reads it.
 export default function Send() {
-  const toast = useToast();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <SendScreen
         onBack={() => router.back()}
         onContinue={() => router.push("/send-confirm")}
-        onNeedsSubscription={() =>
-          toast.info("Subscription required", "Naira payouts need an active subscription.")
-        }
+        // The gateway refused on entitlement, and the contract's rule is
+        // "403 ACTIVE_SUBSCRIPTION_REQUIRED -> subscription screen". A toast
+        // explained the refusal and left the member nowhere to go.
+        onNeedsSubscription={() => router.push(SUBSCRIPTION_ROUTE)}
       />
     </SafeAreaView>
   );

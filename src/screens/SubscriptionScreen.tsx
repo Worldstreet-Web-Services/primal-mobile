@@ -1,64 +1,108 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { Image, type ImageSource } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ParadigmLoader, ParadigmMark } from "@/components/ParadigmMark";
 import {
   Body,
-  Card,
-  Display,
   GhostButton,
   Label,
-  MetallicButton,
+  MetalButton,
   Mono,
   PulseDot,
-  Screen,
-  SectionRule,
-  Spinner,
+  QuietButton,
 } from "@/components/ui";
-import { formatMoney } from "@/lib/gateway/money";
+import { decimalsFor, formatMoney, toBigInt } from "@/lib/gateway/money";
 import * as subs from "@/lib/gateway/subscription";
 import { formatCountdown, toDate } from "@/lib/gateway/time";
 import {
   SessionExpiredError,
+  isEntitled,
+  type Money,
   type PrimalAppState,
   type Subscription,
 } from "@/lib/gateway/types";
 import { C, F } from "@/theme/tokens";
 
 /**
- * The membership screen — paywall and management on one surface.
+ * The paywall — and, for someone who already pays, the membership page.
  *
- * This is where a 403 ACTIVE_SUBSCRIPTION_REQUIRED lands. It wears two faces,
- * chosen by the app state the GATEWAY handed us, never by anything decided here:
+ * It wears exactly two faces, and which one is decided by the app state the
+ * GATEWAY handed us, never by anything settled here:
  *
- * - Not entitled → the price, what the money buys, and one primary action.
- * - Entitled     → status, when it renews, and how to stop it.
+ * - Entitled → what they hold, when the period ends, and how to stop it. No
+ *   price, no carousel, no CTA. Selling a subscription to the person already
+ *   holding it is the single worst thing this screen could do.
+ * - Not entitled → the pitch, the price, and one primary action.
  *
- * The one thing it must never do is create a second checkout. A payment already
- * in flight is picked up (`resumeCheckout`), not replaced, and the primary
- * action goes through `startCheckout`, which reuses the persisted idempotency
- * key rather than minting a fresh one.
+ * The second rule is the one the integration doc is explicit about: this screen
+ * NEVER creates a checkout. It probes for one that already exists (`resumeCheckout`
+ * creates nothing) and hands off through `onCheckout`. A member with a payment
+ * already in flight is offered that payment back, not a second one — a second
+ * deposit address is a second thousand dollars.
  */
 
-/** What membership opens. Written against what the app actually ships. */
-const INCLUDED: { title: string; detail: string }[] = [
+/* ------------------------------------------------------------------ pitch */
+
+interface Benefit {
+  key: string;
+  title: string;
+  art: ImageSource;
+}
+
+/**
+ * The carousel's contents — DATA, so the shelf renders exactly as many cards as
+ * there is artwork for.
+ *
+ * A card with no image is a black rectangle with a caption, which on a paywall
+ * reads as a broken app rather than as a benefit. So an entry only lands here
+ * once its art is on disk beside these two; the dots count themselves off this
+ * list, and nothing else needs touching.
+ */
+const BENEFITS: readonly Benefit[] = [
   {
-    title: "A Nigerian account in your name",
-    detail: "Naira in from any bank or app, out to any account.",
+    key: "top-traders",
+    title: "Access to top traders",
+    art: require("@/assets/images/top_traders.png") as ImageSource,
   },
   {
-    title: "Airtime, data and bills",
-    detail: "Paid straight from your balance, no top-up dance.",
-  },
-  {
-    title: "Crypto rails",
-    detail: "Buy, hold and move stablecoins beside your naira.",
-  },
-  {
-    title: "One membership, everything on",
-    detail: "No per-transfer subscription, no tiering.",
+    key: "kash-engine",
+    title: "Kash Engine",
+    art: require("@/assets/images/kash_engine.png") as ImageSource,
   },
 ];
+
+/**
+ * The design's card is 300×330 and the artwork was exported to match (293×311,
+ * 293×327). On a phone that is ~76% of the viewport, which is what puts the next
+ * card's edge on screen — the peek IS the affordance that says "these scroll".
+ * Capped rather than fixed so a narrow device shrinks the card instead of
+ * pushing the peek off the right edge entirely.
+ */
+const CARD_MAX_W = 300;
+const CARD_RATIO = 330 / 300;
+const CARD_GAP = 14;
+const CARD_RADIUS = 18;
+/** Below this the artwork stops being a card and starts being a thumbnail. */
+const CARD_MIN_H = 236;
+/** Dots plus their breathing room — reserved so they never fall off the page. */
+const DOTS_BLOCK = 34;
+
+/** Page gutter. Matches SignInScreen, because the lockup has to sit identically. */
+const GUTTER = 26;
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -74,18 +118,194 @@ function formatDay(value: unknown): string | null {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-function Tick() {
+/**
+ * The price, set the way the design sets it: `$1,000`, not `$1,000.00`.
+ *
+ * The cents are dropped only when there genuinely are none. A plan that ever
+ * bills $999.50 prints in full — rounding a price down on the screen that sells
+ * it is the kind of "tidy" that becomes a complaint.
+ */
+function priceText(m: Money): string {
+  const decimals = decimalsFor(m.currency);
+  if (decimals !== null && decimals > 0) {
+    try {
+      if (toBigInt(m.amountMinor) % 10n ** BigInt(decimals) === 0n) {
+        return formatMoney(m, { fractionDigits: 0 });
+      }
+    } catch {
+      // Not an integer minor-unit string. Fall through to the safe formatter,
+      // which labels the raw value rather than inventing a figure.
+    }
+  }
+  return formatMoney(m);
+}
+
+/* -------------------------------------------------------------- fragments */
+
+/** The lockup. Same mark, size, face and tracking as SignInScreen — one brand
+ *  signature across the auth-scale surfaces, not two that nearly match. */
+function Lockup() {
   return (
-    <Svg width={13} height={13} viewBox="0 0 24 24">
-      <Path
-        d="M4.5 12.5 9.5 17.5 19.5 6.5"
-        stroke={C.brand}
-        strokeWidth={2.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <ParadigmMark height={26} color={C.text} />
+      <Text
+        style={{
+          fontFamily: F.display,
+          fontSize: 27,
+          letterSpacing: -0.4,
+          color: C.text,
+        }}
+      >
+        Paradigm
+      </Text>
+    </View>
+  );
+}
+
+function BenefitCard({
+  benefit,
+  width,
+  height,
+}: {
+  benefit: Benefit;
+  width: number;
+  height: number;
+}) {
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: CARD_RADIUS,
+        overflow: "hidden",
+        backgroundColor: C.sheet,
+      }}
+      accessible
+      accessibilityLabel={benefit.title}
+    >
+      {/* The artwork is a cut-out on transparency, so the card has to supply its
+          own ground. Warmed rather than neutral: gold sitting on plain charcoal
+          goes muddy, gold on a warmed black keeps its lit edge. */}
+      <LinearGradient
+        colors={["#3A3222", "#151412"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
       />
-    </Svg>
+      <Image
+        source={benefit.art}
+        contentFit="cover"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Scrim, not a caption bar. The title sits ON the image, and the only
+          thing between them is enough falloff to keep it readable. */}
+      <LinearGradient
+        colors={["rgba(10,10,10,0)", "rgba(10,10,10,0.88)"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: Math.round(height * 0.46),
+        }}
+      />
+      <Body
+        semibold
+        size={15}
+        numberOfLines={2}
+        style={{ position: "absolute", left: 16, right: 16, bottom: 15 }}
+      >
+        {benefit.title}
+      </Body>
+    </View>
+  );
+}
+
+/** Page position. The active dot elongates rather than brightening, so the
+ *  shelf's position is legible at a glance instead of by comparing two greys. */
+function Dots({ count, active }: { count: number; active: number }) {
+  if (count < 2) return null;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        marginTop: 18,
+      }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <View
+          key={i}
+          style={{
+            width: i === active ? 20 : 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: i === active ? C.brand : C.borderStrong,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * One line of state above the pitch — a payment in flight, a lapsed period, an
+ * entitlement still propagating.
+ *
+ * Deliberately a strip and not a card: the design's headline is the subject of
+ * this screen, and a panel above it would demote the thing the user came to
+ * read. Nothing renders at all when there is nothing true to say.
+ */
+function StatusStrip({
+  tone,
+  live = true,
+  children,
+  onPress,
+}: {
+  tone: "brand" | "amber" | "dim";
+  /** Pulse the dot. Only for something actually in motion — a lapsed period is
+   *  a settled fact, and animating it says the app is still working on it. */
+  live?: boolean;
+  children: React.ReactNode;
+  onPress?: () => void;
+}) {
+  const ink = tone === "brand" ? C.brand : tone === "amber" ? C.amber : C.sub;
+  const body = (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 9,
+        backgroundColor: C.card,
+        borderWidth: 1,
+        borderColor: C.hairline,
+        borderRadius: 14,
+        paddingVertical: 11,
+        paddingHorizontal: 13,
+      }}
+    >
+      {live ? (
+        <PulseDot color={ink} />
+      ) : (
+        <View
+          style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ink }}
+        />
+      )}
+      <Body size={12.5} color={C.silver} style={{ flex: 1, lineHeight: 18 }}>
+        {children}
+      </Body>
+    </View>
+  );
+
+  if (!onPress) return body;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button">
+      {body}
+    </Pressable>
   );
 }
 
@@ -102,7 +322,6 @@ function Notice({
       accessibilityRole="button"
       accessibilityLabel="Dismiss"
       style={{
-        marginTop: 16,
         backgroundColor: "rgba(246,165,165,0.1)",
         borderWidth: 1,
         borderColor: "rgba(246,165,165,0.35)",
@@ -125,36 +344,51 @@ function Notice({
   );
 }
 
+/* ----------------------------------------------------------------- screen */
+
 export interface SubscriptionScreenProps {
   /** Backend-derived. Which face this screen wears, and nothing local. */
   state: PrimalAppState;
-  /** Refund destination if the payment route fails — the user's own wallet. */
-  walletAddress: string | null;
-  /** Hand off to the checkout route with the subscription that owns the payment. */
-  onOpenCheckout: (subscriptionId: string) => void;
+  /**
+   * Hand off to the crypto checkout.
+   *
+   * `subscriptionId` is the checkout this device already has open, or `null` for
+   * a first purchase. This screen never creates one: the checkout surface owns
+   * the idempotency key, the origin asset and the refund address, and two places
+   * calling `startCheckout` is exactly how one membership becomes two.
+   */
+  onCheckout: (subscriptionId: string | null) => void;
   onBack?: () => void;
   /** The session died mid-flight; the route sends them to sign in. */
   onSignIn?: () => void;
-  /** Re-probe entitlement after a cancellation changes it. */
+  /** Re-probe entitlement after a cancellation (or a sync) changes it. */
   onEntitlementChanged?: () => void | Promise<void>;
 }
 
 export default function SubscriptionScreen({
   state,
-  walletAddress,
-  onOpenCheckout,
+  onCheckout,
   onBack,
   onSignIn,
   onEntitlementChanged,
 }: SubscriptionScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<subs.FailureNotice | null>(null);
   const [membership, setMembership] = useState<Subscription | null>(null);
   const [pending, setPending] = useState<subs.Checkout | null>(null);
   const [confirmImmediate, setConfirmImmediate] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [rechecking, setRechecking] = useState(false);
+  const [page, setPage] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  // Measured, because the headline is the one block whose height cannot be
+  // predicted — it wraps to three lines or four depending on the device, and
+  // the shelf has to live in whatever is left.
+  const [viewportH, setViewportH] = useState(0);
+  const [shelfY, setShelfY] = useState(0);
 
   const alive = useRef(true);
   useEffect(() => {
@@ -164,7 +398,7 @@ export default function SubscriptionScreen({
     };
   }, []);
 
-  const entitled = state === "active" || state === "cancel_at_period_end";
+  const entitled = isEntitled(state);
 
   const handleSessionLoss = useCallback(
     (error: unknown): boolean => {
@@ -175,7 +409,7 @@ export default function SubscriptionScreen({
     [onSignIn],
   );
 
-  // Pick up whatever this device already has, without creating anything. A
+  // Pick up whatever this device already has, WITHOUT creating anything. A
   // half-finished payment must reappear here, or the user starts a second one.
   useEffect(() => {
     const controller = new AbortController();
@@ -190,8 +424,9 @@ export default function SubscriptionScreen({
           setPending(subs.isPayablePayment(status) ? existing : null);
         }
       } catch (error) {
-        // A failed probe is not an error the user has to read: the primary
-        // action performs the same lookup and reports properly if it fails.
+        // A failed probe is not an error the user has to read — the screen still
+        // works, it just cannot name their renewal date. Only a dead session is
+        // worth acting on, and that is a routing decision.
         if (alive.current) handleSessionLoss(error);
       } finally {
         if (alive.current) setLoading(false);
@@ -201,34 +436,50 @@ export default function SubscriptionScreen({
     return () => controller.abort();
   }, [handleSessionLoss]);
 
-  // One clock, only while a payment window is actually counting down.
+  // One clock, running only while a payment window is actually counting down.
   useEffect(() => {
     if (!pending?.payment?.expiresAt) return;
     const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, [pending]);
 
-  const start = useCallback(async () => {
-    if (busy || !walletAddress) return;
-    setBusy(true);
-    setNotice(null);
-    try {
-      const checkout = await subs.startCheckout({
-        originChainId: subs.DEFAULT_ORIGIN_CHAIN_ID,
-        originAsset: subs.defaultOriginAsset().address,
-        refundTo: walletAddress,
-      });
-      if (!alive.current) return;
-      setMembership(checkout.subscription);
-      onOpenCheckout(checkout.subscription.id);
-    } catch (error) {
-      if (!alive.current) return;
-      if (handleSessionLoss(error)) return;
-      setNotice(subs.describeFailure(error));
-    } finally {
-      if (alive.current) setBusy(false);
-    }
-  }, [busy, walletAddress, onOpenCheckout, handleSessionLoss]);
+  // The page arrives composed rather than assembled: one driver, sliced per
+  // block, so the lockup settles before the headline and the headline before
+  // the shelf. Same curve and stagger as SignInScreen.
+  const intro = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) return;
+    Animated.timing(intro, {
+      toValue: 1,
+      duration: 760,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [intro, loading]);
+
+  const step = useCallback(
+    (i: number) => {
+      const start = i * 0.12;
+      const range = [start, Math.min(start + 0.5, 1)];
+      return {
+        opacity: intro.interpolate({
+          inputRange: range,
+          outputRange: [0, 1],
+          extrapolate: "clamp" as const,
+        }),
+        transform: [
+          {
+            translateY: intro.interpolate({
+              inputRange: range,
+              outputRange: [16, 0],
+              extrapolate: "clamp" as const,
+            }),
+          },
+        ],
+      };
+    },
+    [intro],
+  );
 
   const cancel = useCallback(
     async (atPeriodEnd: boolean) => {
@@ -253,18 +504,72 @@ export default function SubscriptionScreen({
     [cancelling, membership, onEntitlementChanged, handleSessionLoss],
   );
 
-  const price = formatMoney(subs.priceOf(membership));
+  const recheck = useCallback(async () => {
+    if (rechecking) return;
+    setRechecking(true);
+    try {
+      await onEntitlementChanged?.();
+    } finally {
+      if (alive.current) setRechecking(false);
+    }
+  }, [rechecking, onEntitlementChanged]);
+
+  const price = priceText(subs.priceOf(membership));
+
+  // 76% of the viewport, capped at the design's 300. The cap is what holds the
+  // artwork at its exported size on a normal phone; the fraction is what keeps
+  // the next card peeking on a narrow one instead of pushing it off the edge.
+  const baseW = Math.min(CARD_MAX_W, Math.round(width * 0.76));
+  // Then fit that to the room the headline actually left. At the design size the
+  // shelf's foot lands a few points past the fold on a 6.1" phone, which puts
+  // the dots — the only thing saying how many cards there are — out of sight.
+  // Shrinking the card by those few points is a far smaller lie than hiding the
+  // pagination, and the ratio is held either way so the artwork never distorts.
+  const room = viewportH > 0 && shelfY > 0 ? viewportH - shelfY - DOTS_BLOCK : 0;
+  const cardH =
+    room > 0
+      ? Math.max(CARD_MIN_H, Math.min(Math.round(baseW * CARD_RATIO), room))
+      : Math.round(baseW * CARD_RATIO);
+  const cardW = Math.min(baseW, Math.round(cardH / CARD_RATIO));
+  const stride = cardW + CARD_GAP;
+
+  const onShelfScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (stride <= 0) return;
+      const raw = Math.round(event.nativeEvent.contentOffset.x / stride);
+      const next = Math.max(0, Math.min(BENEFITS.length - 1, raw));
+      setPage((current) => (current === next ? current : next));
+    },
+    [stride],
+  );
+
+  const frame = useMemo(
+    () => ({
+      flex: 1,
+      backgroundColor: C.canvas,
+      paddingTop: insets.top + 14,
+      paddingBottom: Math.max(insets.bottom, 24) + 6,
+    }),
+    [insets.top, insets.bottom],
+  );
 
   /* ------------------------------------------------------------- loading */
 
+  // The same frame, so nothing jumps when the probe answers: the lockup is
+  // already in its final place and only the body below it fills in.
   if (loading) {
     return (
-      <Screen center>
-        <Spinner size="large" />
-        <Body size={12.5} color={C.dim} style={{ marginTop: 16 }}>
-          Checking your membership
-        </Body>
-      </Screen>
+      <View style={frame}>
+        <View style={{ paddingHorizontal: GUTTER }}>
+          <Lockup />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ParadigmLoader height={38} color={C.brand} />
+          <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
+            Checking your membership
+          </Body>
+        </View>
+      </View>
     );
   }
 
@@ -278,21 +583,24 @@ export default function SubscriptionScreen({
       membership?.cancelAtPeriodEnd === true;
 
     return (
-      <Screen top={12}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Display size={22}>Membership</Display>
-          <View style={{ flex: 1 }} />
-          {onBack ? (
-            <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button">
-              <Body size={12.5} color={C.dim}>
-                Close
-              </Body>
-            </Pressable>
-          ) : null}
-        </View>
+      <View style={frame}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: GUTTER, paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Lockup />
+            <View style={{ flex: 1 }} />
+            {onBack ? (
+              <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
+                <Body size={13} color={C.sub}>
+                  Close
+                </Body>
+              </Pressable>
+            ) : null}
+          </View>
 
-        <Card style={{ marginTop: 18, padding: 20 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 34 }}>
             <View
               style={{
                 width: 7,
@@ -308,260 +616,261 @@ export default function SubscriptionScreen({
             </Mono>
           </View>
 
-          <Display size={30} style={{ marginTop: 12 }}>
-            {price}
-          </Display>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6 }}>
-            per {subs.MEMBERSHIP_PERIOD}
-            {renews ? (ending ? ` · access ends ${renews}` : ` · renews ${renews}`) : ""}
-          </Body>
-        </Card>
+          <Text
+            style={{
+              fontFamily: F.displayBold,
+              fontSize: 34,
+              lineHeight: 41,
+              letterSpacing: -0.8,
+              color: C.text,
+              marginTop: 12,
+            }}
+          >
+            {ending ? "Your membership is ending" : "You have Paradigm"}
+          </Text>
 
-        {ending ? (
-          <Body size={12.5} color={C.sub} style={{ marginTop: 18, lineHeight: 19 }}>
-            Your membership is set to end{renews ? ` on ${renews}` : " at the end of this period"}.
-            Everything keeps working until then.
+          <Body size={15} color={C.sub} style={{ marginTop: 12, lineHeight: 23 }}>
+            {renews
+              ? ending
+                ? `Everything keeps working until ${renews}. Nothing will be charged after that.`
+                : `Renews ${renews} at ${price} per ${subs.MEMBERSHIP_PERIOD}.`
+              : `Billed ${price} per ${subs.MEMBERSHIP_PERIOD}.`}
           </Body>
-        ) : membership ? (
-          <>
-            <SectionRule space={22} />
-            {confirmImmediate ? (
-              <View
-                style={{
-                  backgroundColor: "rgba(246,165,165,0.08)",
-                  borderWidth: 1,
-                  borderColor: "rgba(246,165,165,0.3)",
-                  borderRadius: 20,
-                  padding: 18,
-                }}
-              >
-                <Body size={14} semibold color={C.down}>
-                  End access now?
-                </Body>
-                <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
-                  Your account, transfers and bill payments stop the moment this
-                  goes through — not at the end of the month you have paid for.
-                  There is no refund for the remaining days.
-                </Body>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-                  <GhostButton
-                    label="Keep membership"
-                    onPress={() => setConfirmImmediate(false)}
-                    style={{ flex: 1 }}
-                    disabled={cancelling}
-                  />
-                  <GhostButton
-                    label="End access now"
-                    onPress={() => void cancel(false)}
-                    loading={cancelling}
-                    style={{ flex: 1, borderColor: "rgba(246,165,165,0.45)" }}
-                  />
-                </View>
-              </View>
-            ) : (
-              <>
-                <Label>Ending it</Label>
-                <Body size={12.5} color={C.sub} style={{ marginTop: 8, lineHeight: 19 }}>
-                  Stopping at the end of the period keeps everything working
-                  until{renews ? ` ${renews}` : " it runs out"}. Ending now is immediate.
-                </Body>
-                <View style={{ marginTop: 16, gap: 10 }}>
-                  <GhostButton
-                    label="Stop renewing"
-                    onPress={() => void cancel(true)}
-                    loading={cancelling}
-                  />
-                  <Pressable
-                    onPress={() => setConfirmImmediate(true)}
-                    accessibilityRole="button"
-                    style={{ alignItems: "center", paddingVertical: 10 }}
+
+          {membership ? (
+            ending ? null : (
+              <View style={{ marginTop: 34 }}>
+                {confirmImmediate ? (
+                  <View
+                    style={{
+                      backgroundColor: "rgba(246,165,165,0.08)",
+                      borderWidth: 1,
+                      borderColor: "rgba(246,165,165,0.3)",
+                      borderRadius: 20,
+                      padding: 18,
+                    }}
                   >
-                    <Body size={12} color={C.dim}>
-                      End access immediately
+                    <Body size={14} semibold color={C.down}>
+                      End access now?
                     </Body>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </>
-        ) : (
-          <Body size={12} color={C.dim} style={{ marginTop: 18, lineHeight: 18 }}>
-            Renewal details are not available on this device. Sign in on the
-            device that started the membership to manage it.
-          </Body>
-        )}
+                    <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
+                      Your account, transfers and bill payments stop the moment
+                      this goes through — not at the end of the month you have
+                      paid for. There is no refund for the remaining days.
+                    </Body>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                      <GhostButton
+                        label="Keep membership"
+                        onPress={() => setConfirmImmediate(false)}
+                        style={{ flex: 1 }}
+                        disabled={cancelling}
+                      />
+                      <GhostButton
+                        label="End access now"
+                        onPress={() => void cancel(false)}
+                        loading={cancelling}
+                        style={{ flex: 1, borderColor: "rgba(246,165,165,0.45)" }}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Label>Ending it</Label>
+                    <Body size={13} color={C.sub} style={{ marginTop: 10, lineHeight: 20 }}>
+                      Stopping at the end of the period keeps everything working
+                      until{renews ? ` ${renews}` : " it runs out"}. Ending now
+                      is immediate.
+                    </Body>
+                    <View style={{ marginTop: 18, gap: 10 }}>
+                      <QuietButton
+                        label="Stop renewing"
+                        onPress={() => void cancel(true)}
+                        loading={cancelling}
+                      />
+                      <Pressable
+                        onPress={() => setConfirmImmediate(true)}
+                        accessibilityRole="button"
+                        style={{ alignItems: "center", paddingVertical: 12 }}
+                      >
+                        <Body size={12.5} color={C.dim}>
+                          End access immediately
+                        </Body>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
+              </View>
+            )
+          ) : (
+            <Body size={12.5} color={C.dim} style={{ marginTop: 26, lineHeight: 19 }}>
+              Renewal details are not available on this device. Sign in on the
+              device that started the membership to manage it.
+            </Body>
+          )}
 
-        {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
-      </Screen>
+          {notice ? (
+            <View style={{ marginTop: 20 }}>
+              <Notice notice={notice} onDismiss={() => setNotice(null)} />
+            </View>
+          ) : null}
+        </ScrollView>
+      </View>
     );
   }
 
-  /* ------------------------------------------------------------- paywall */
+  /* -------------------------------------------------------------- paywall */
 
-  const expiredBefore = state === "expired";
-  const waiting = state === "entitlement_syncing";
   const pendingExpiry = pending?.payment?.expiresAt;
   // `formatCountdown` reads the clock itself, so `now` is the dependency that
   // makes it recompute — it is the tick, not an input.
   const pendingCountdown = pendingExpiry ? formatCountdown(pendingExpiry) : null;
   void now;
 
+  const syncing = state === "entitlement_syncing";
+  // `payment_pending` is the gateway's word for it; `pending` is this device's
+  // evidence of the same thing. Either is reason enough to offer the payment
+  // back rather than sell a second one.
+  const resumable = pending !== null || state === "payment_pending";
+
   return (
-    <Screen top={12}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Label>Paradigm</Label>
-        <View style={{ flex: 1 }} />
-        {onBack ? (
-          <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button">
-            <Body size={12.5} color={C.dim}>
-              Close
-            </Body>
-          </Pressable>
-        ) : null}
-      </View>
-
-      <Display size={30} style={{ marginTop: 16 }}>
-        {expiredBefore ? "Your membership has ended" : "Membership"}
-      </Display>
-      <Body size={13} color={C.sub} style={{ marginTop: 8, lineHeight: 19 }}>
-        {expiredBefore
-          ? "Start it again to bring your account, transfers and rails back."
-          : "One membership opens the whole app — the account, the rails and the crypto side."}
-      </Body>
-
-      {waiting ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 9,
-            marginTop: 16,
-            backgroundColor: C.card,
-            borderWidth: 1,
-            borderColor: C.border,
-            borderRadius: 14,
-            padding: 13,
-          }}
-        >
-          <PulseDot />
-          <Body size={12} color={C.silver} style={{ flex: 1, lineHeight: 17 }}>
-            Your payment is confirmed. Primal is still enabling the account —
-            this usually takes under a minute.
-          </Body>
-        </View>
-      ) : null}
-
-      {/* A payment already in flight. Nothing on this screen may start a second
-          one while this is live. */}
-      {pending ? (
-        <Pressable
-          onPress={() => onOpenCheckout(pending.subscription.id)}
-          accessibilityRole="button"
-          accessibilityLabel="Open the payment in progress"
-          style={{
-            marginTop: 18,
-            backgroundColor: C.brandGlow,
-            borderWidth: 1,
-            borderColor: "rgba(131,190,96,0.35)",
-            borderRadius: 18,
-            padding: 16,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <PulseDot color={C.brand} />
-            <Mono size={10} color={C.brandSoft} style={{ letterSpacing: 1.4 }}>
-              PAYMENT IN PROGRESS
-            </Mono>
-          </View>
-          <Body size={13} color={C.text} style={{ marginTop: 8, lineHeight: 18 }}>
-            You have a checkout open on this device
-            {pendingCountdown ? ` — it expires in ${pendingCountdown}` : ""}.
-          </Body>
-          <Body size={12} semibold color={C.brand} style={{ marginTop: 10 }}>
-            Open it
-          </Body>
-        </Pressable>
-      ) : null}
-
-      <View
-        style={{
-          marginTop: 22,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.border,
-          borderRadius: 22,
-          padding: 20,
-        }}
+    <View style={frame}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+        onLayout={(event) => setViewportH(event.nativeEvent.layout.height)}
       >
-        <Label>Price</Label>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 10 }}>
-          <Display size={40}>{price}</Display>
-          <Body size={13} color={C.sub} style={{ paddingBottom: 6 }}>
-            / {subs.MEMBERSHIP_PERIOD}
+        <Animated.View
+          style={[
+            {
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: GUTTER,
+            },
+            step(0),
+          ]}
+        >
+          <Lockup />
+          <View style={{ flex: 1 }} />
+          {onBack ? (
+            <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
+              <Body size={13} color={C.sub}>
+                Close
+              </Body>
+            </Pressable>
+          ) : null}
+        </Animated.View>
+
+        {syncing || resumable || state === "expired" ? (
+          <Animated.View
+            style={[{ paddingHorizontal: GUTTER, marginTop: 22 }, step(1)]}
+          >
+            {syncing ? (
+              <StatusStrip tone="amber">
+                Your payment is confirmed. Primal is still enabling the account —
+                this usually takes under a minute.
+              </StatusStrip>
+            ) : resumable ? (
+              <StatusStrip
+                tone="brand"
+                onPress={() => onCheckout(pending?.subscription.id ?? null)}
+              >
+                You have a payment open on this device
+                {pendingCountdown ? ` — it closes in ${pendingCountdown}` : ""}.
+              </StatusStrip>
+            ) : (
+              <StatusStrip tone="dim" live={false}>
+                Your membership has ended. Starting it again brings the account,
+                the rails and the crypto side straight back.
+              </StatusStrip>
+            )}
+          </Animated.View>
+        ) : null}
+
+        <Animated.View
+          style={[{ paddingHorizontal: GUTTER, marginTop: 26 }, step(2)]}
+        >
+          <Text
+            style={{
+              fontFamily: F.displayBold,
+              // The headline is the screen. It steps down on narrow devices
+              // rather than wrapping to five lines and pushing the shelf under
+              // the fold.
+              fontSize: width < 380 ? 33 : 38,
+              lineHeight: width < 380 ? 40 : 46,
+              letterSpacing: -1,
+              color: C.text,
+            }}
+          >
+            Get exclusive benefits with Paradigm subscription
+          </Text>
+
+          <Body size={15} color={C.sub} style={{ marginTop: 14, lineHeight: 23 }}>
+            Get exclusive benefits with Paradigm Subscription{" "}
+            <Text style={{ fontFamily: F.bodySemibold, color: C.text }}>
+              {price}
+            </Text>{" "}
+            per {subs.MEMBERSHIP_PERIOD}.
           </Body>
-        </View>
-        <Mono size={10} color={C.dim} style={{ marginTop: 10, letterSpacing: 1.2 }}>
-          PAID IN USDC ON {subs
-            .networkFor(subs.DEFAULT_ORIGIN_CHAIN_ID)!
-            .name.toUpperCase()}
-        </Mono>
-      </View>
+        </Animated.View>
 
-      <View style={{ marginTop: 24, gap: 16 }}>
-        {INCLUDED.map((item) => (
-          <View key={item.title} style={{ flexDirection: "row", gap: 12 }}>
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 11,
-                backgroundColor: C.brandGlow,
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 1,
-              }}
-            >
-              <Tick />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Body size={13.5} semibold>
-                {item.title}
-              </Body>
-              <Body size={12} color={C.dim} style={{ marginTop: 3, lineHeight: 17 }}>
-                {item.detail}
-              </Body>
-            </View>
-          </View>
-        ))}
-      </View>
+        <Animated.View style={[{ marginTop: 34 }, step(3)]}>
+          <Label style={{ paddingHorizontal: GUTTER }}>Premium Benefits</Label>
+        </Animated.View>
 
-      {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+        {/* Its own block, and the same slice of the stagger, so the label and the
+            shelf still arrive together — split only so this wrapper's `y` is the
+            shelf's own offset in the page, which is what sizes the cards. */}
+        <Animated.View
+          style={[{ marginTop: 16 }, step(3)]}
+          onLayout={(event) => setShelfY(event.nativeEvent.layout.y)}
+        >
+          {/* Full-bleed shelf: the gutter lives in the content inset, not on the
+              ScrollView, so a card can scroll past the page margin instead of
+              being clipped at it. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={stride}
+            snapToAlignment="start"
+            onScroll={onShelfScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={{ paddingHorizontal: GUTTER, gap: CARD_GAP }}
+          >
+            {BENEFITS.map((benefit) => (
+              <BenefitCard
+                key={benefit.key}
+                benefit={benefit}
+                width={cardW}
+                height={cardH}
+              />
+            ))}
+          </ScrollView>
 
-      <View style={{ marginTop: 28 }}>
-        {pending ? (
-          <MetallicButton
-            label="Open your payment"
-            onPress={() => onOpenCheckout(pending.subscription.id)}
+          <Dots count={BENEFITS.length} active={page} />
+        </Animated.View>
+      </ScrollView>
+
+      {/* No `Notice` here on purpose: nothing this face can do produces a
+          gateway failure. It creates no checkout and cancels nothing — the two
+          calls that can fail both live on the entitled face, and a slot for an
+          error that cannot happen is a slot that eventually shows the wrong one. */}
+      <Animated.View style={[{ paddingHorizontal: GUTTER }, step(4)]}>
+        {syncing ? (
+          // Nothing to buy: the money has landed and the account is being
+          // switched on. The only honest action is to ask again.
+          <QuietButton
+            label="Check again"
+            onPress={() => void recheck()}
+            loading={rechecking}
           />
         ) : (
-          <MetallicButton
-            label={busy ? "Preparing checkout…" : "Start membership"}
-            onPress={() => void start()}
-            loading={busy}
-            disabled={!walletAddress}
+          <MetalButton
+            label={resumable ? "Resume your payment" : "Get it now"}
+            onPress={() => onCheckout(pending?.subscription.id ?? null)}
           />
         )}
-      </View>
-
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ marginTop: 14, textAlign: "center", lineHeight: 17 }}
-      >
-        {walletAddress
-          ? `Billed monthly. Cancel any time — you keep the period you have paid for. A failed route refunds to ${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}.`
-          : "Unlock your wallet to start a membership — a payment needs somewhere to refund to if the route fails."}
-      </Body>
-    </Screen>
+      </Animated.View>
+    </View>
   );
 }

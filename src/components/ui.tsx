@@ -463,6 +463,36 @@ export function MetallicButton({
  */
 export const AUTH_PILL_HEIGHT = 58;
 
+/**
+ * The bevel, lifted from Ark's button spec so the two apps share one object.
+ *
+ * `ring` is drawn as the OUTER gradient and shows only through `border` points
+ * of padding — it is the rim, not a backdrop. Both gradients run top-to-bottom;
+ * the rim's bright-to-dark fall is what reads as a machined edge, and running it
+ * on any other axis loses the effect. Values are Ark's, kept exact rather than
+ * re-derived from our palette: the ask was the same button, and a silver rim is
+ * the same silver on any ground.
+ */
+const BEVEL = {
+  border: 4,
+  axis: { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },
+  metal: {
+    ring: ["#D4D4D8", "#3C3C3C"] as [string, string],
+    fill: ["#B1B6BA", "#C9CACC"] as [string, string],
+    text: "#3C3C3C",
+  },
+  metalOff: {
+    ring: ["#9EA2A6", "#4A4A4A"] as [string, string],
+    fill: ["#A9ADB1", "#B8B9BB"] as [string, string],
+    text: "#6B6E71",
+  },
+  quiet: {
+    ring: ["#0F0F0F", "#3C3C3C"] as [string, string],
+    fill: ["#1C1C1C", "#3C3C3C"] as [string, string],
+    text: "#DCDCDC",
+  },
+} as const;
+
 type PillProps = {
   label: string;
   onPress?: () => void;
@@ -484,133 +514,111 @@ type PillProps = {
  * radius, one press curve, so a stack of them reads as a single system with one
  * loud member rather than as three unrelated buttons.
  */
+/**
+ * Ark's beveled pill, ported to Paradigm.
+ *
+ * Structure is Ark's spec verbatim (its `src/components/common/Button.tsx`,
+ * dated 2026-07-31) because the client asked for the same button: TWO stacked
+ * VERTICAL gradients, where the outer one is not a background but the 4pt ring
+ * itself, and the inner fill sits on top of it. That is what makes the rim read
+ * as a machined bevel — a bright top edge falling to dark at the base — rather
+ * than as a border drawn around a fill. A single diagonal gradient cannot
+ * produce it, which is why this replaced the brushed `MetalFill` treatment.
+ *
+ * `MetalButton` is the silver tier, `QuietButton` the dark one. Same component
+ * on purpose: one height, one radius, one press curve, so a stack of them reads
+ * as one system with a single loud member.
+ */
 function AuthPill({
   tone,
   label,
   onPress,
   icon,
   height = AUTH_PILL_HEIGHT,
-  radius = PILL,
-  size = 16,
   loading = false,
   disabled = false,
   style,
 }: PillProps & { tone: "metal" | "quiet" }) {
   const metal = tone === "metal";
   const inert = loading || disabled;
-  const ink = metal ? C.metalInk : C.text;
-
-  // 0 at rest, 1 under the finger. One driver runs both the dip and the scrim,
-  // so the two halves of the press can never fall out of step.
-  const press = useRef(new Animated.Value(0)).current;
-  const to = (value: number) =>
-    Animated.spring(press, {
-      toValue: value,
-      useNativeDriver: true,
-      speed: 45,
-      bounciness: 0,
-    }).start();
+  const skin = metal
+    ? disabled
+      ? BEVEL.metalOff
+      : BEVEL.metal
+    : BEVEL.quiet;
+  const radius = height / 2;
 
   return (
     <Pressable
       onPress={inert ? undefined : onPress}
-      onPressIn={inert ? undefined : () => to(1)}
-      onPressOut={inert ? undefined : () => to(0)}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: loading }}
-      style={[
-        // The lift lives out here: the face below clips itself to the pill, and
-        // a clipping layer casts no shadow on iOS.
-        metal
-          ? {
-              shadowColor: C.ink,
-              shadowOpacity: 0.38,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: 10 },
-              elevation: 8,
-            }
-          : null,
+      style={({ pressed }) => [
+        {
+          // Ark dims the silver tier when disabled and deliberately does NOT dim
+          // the dark one — a secondary that is dark at rest reads as broken
+          // rather than as unavailable when it fades.
+          opacity: disabled && metal ? 0.5 : pressed && !inert ? 0.85 : 1,
+        },
         style,
       ]}
     >
-      <Animated.View
-        style={{
-          height,
-          borderRadius: radius,
-          overflow: "hidden",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-          // The metal face is drawn by `MetalFill`, so this layer stays bare;
-          // the quiet tier is a raised fill under a hairline.
-          backgroundColor: metal ? undefined : C.raised,
-          borderWidth: metal ? 0 : 1,
-          borderColor: C.border,
-          // Dim only the untouched siblings; whatever is loading stays lit.
-          opacity: disabled && !loading ? 0.42 : 1,
-          transform: [
-            {
-              scale: press.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0.98],
-              }),
-            },
-          ],
-        }}
+      <LinearGradient
+        colors={skin.ring}
+        start={BEVEL.axis.start}
+        end={BEVEL.axis.end}
+        style={{ borderRadius: radius, padding: BEVEL.border }}
       >
-        {metal ? <MetalFill radius={radius} /> : null}
-
-        {loading ? (
-          // The mark falling into place rather than a platform spinner. This
-          // wait is ours — a provider round-trip, sometimes key generation —
-          // and long enough that a system spinner reads as a stall.
-          <ParadigmLoader height={22} color={ink} />
-        ) : (
-          <>
-            {icon}
-            <Text
-              style={{ fontFamily: F.bodySemibold, fontSize: size, color: ink }}
-            >
-              {label}
-            </Text>
-          </>
-        )}
-
-        {/* Pressed scrim. Metal darkens under the finger, the dark tier lifts —
-            each moves away from its own resting value, which is what makes one
-            press curve work for both. */}
-        <Animated.View
-          pointerEvents="none"
+        <LinearGradient
+          colors={skin.fill}
+          start={BEVEL.axis.start}
+          end={BEVEL.axis.end}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: metal ? C.ink : C.text,
-            opacity: press.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, metal ? 0.12 : 0.07],
-            }),
+            height: height - BEVEL.border * 2,
+            borderRadius: radius - BEVEL.border,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            paddingHorizontal: 24,
           }}
-        />
-      </Animated.View>
+        >
+          {loading ? (
+            // The mark falling into place rather than a platform spinner. This
+            // wait is ours — a provider round-trip, sometimes key generation —
+            // and long enough that a system spinner reads as a stall.
+            <ParadigmLoader height={22} color={skin.text} />
+          ) : (
+            <>
+              {icon}
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: F.display,
+                  fontSize: 16,
+                  lineHeight: 22,
+                  // Ark's spec is -0.7% of the size.
+                  letterSpacing: -0.112,
+                  color: skin.text,
+                }}
+              >
+                {label}
+              </Text>
+            </>
+          )}
+        </LinearGradient>
+      </LinearGradient>
     </Pressable>
   );
 }
 
-/**
- * Primary auth action: a brushed-metal pill with dark ink. Built on `MetalFill`
- * and `METAL_ANGLE`, so it is lit from the same source as every other metal
- * surface in the app.
- */
+/** Primary auth action: the silver bevel. */
 export function MetalButton(props: PillProps) {
   return <AuthPill tone="metal" {...props} />;
 }
 
-/** Secondary auth action: the same pill, dark, hairlined, light ink. */
+/** Secondary auth action: the same bevel, dark. */
 export function QuietButton(props: PillProps) {
   return <AuthPill tone="quiet" {...props} />;
 }

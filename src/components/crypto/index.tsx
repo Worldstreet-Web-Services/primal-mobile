@@ -31,7 +31,7 @@ export function AssetDisc({
         borderRadius: size / 2,
         backgroundColor: stable ? C.upBg : C.inset,
         borderWidth: 1,
-        borderColor: stable ? "rgba(124,231,176,0.3)" : C.hairline,
+        borderColor: stable ? "rgba(240,199,90,0.3)" : C.hairline,
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",

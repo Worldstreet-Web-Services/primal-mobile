@@ -15,6 +15,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -23,6 +24,17 @@ import * as biometrics from "@/lib/auth/biometrics";
 import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
 import * as storage from "@/lib/auth/storage";
+import * as wire from "@/lib/auth/wire";
+import * as gatewayAuth from "@/lib/gateway/auth";
+import * as entitlement from "@/lib/gateway/entitlement";
+import * as gatewaySession from "@/lib/gateway/session";
+import {
+  ApiError,
+  NetworkError,
+  SessionExpiredError,
+  type MeResponse,
+  type PrimalAppState,
+} from "@/lib/gateway/types";
 
 /**
  * `loading`    — restoring the SDK session on launch; nothing decided yet.
@@ -51,6 +63,58 @@ interface AuthState {
   creatingWallet: boolean;
 }
 
+/**
+ * The Primal gateway session — a SECOND layer, stacked on the Decane one.
+ *
+ * Decane owns the wallet; the gateway owns entitlement, LinkPay and money. A
+ * user can hold a perfectly good wallet and no gateway session (first launch
+ * after install, or a lapsed refresh token), so the two are tracked apart and
+ * the gateway one is (re)established by signing a SIWE challenge with the
+ * wallet that already exists.
+ */
+interface PrimalState {
+  /** Where the app should route. Backend-derived; never guessed locally. */
+  state: PrimalAppState;
+  identity: MeResponse | null;
+  /** SIWE or an entitlement probe is in flight. */
+  syncing: boolean;
+  /**
+   * Why the last attempt failed, when it failed for a reason the user can act
+   * on (usually "you are offline"). Not an auth failure — those move `state`.
+   */
+  error: string | null;
+}
+
+const IDLE_PRIMAL: PrimalState = {
+  state: "unknown",
+  identity: null,
+  syncing: false,
+  error: null,
+};
+
+/**
+ * User-facing copy for a gateway failure that is not an auth decision.
+ *
+ * Gateway messages are written for operators — "User Management service is
+ * unavailable" is a real 503 body from api.tsion.io — so 5xx is replaced
+ * wholesale. 4xx text is passed through: those are things like a rejected
+ * signature, where the specific reason is the useful part.
+ */
+function describeGatewayFailure(error: unknown): string {
+  if (NetworkError.is(error)) {
+    return error.timedOut
+      ? "Primal took too long to answer. Try again."
+      : "Could not reach Primal. Check your connection.";
+  }
+  if (ApiError.is(error)) {
+    return error.statusCode >= 500
+      ? "Primal is temporarily unavailable. Try again shortly."
+      : error.message;
+  }
+  if (decane.isCancellation(error)) return "Signature cancelled.";
+  return decane.describeAuthError(error).description;
+}
+
 interface AuthApi extends AuthState {
   /**
    * The signed-in wallet's addresses, straight from Decane. Null until a
@@ -68,6 +132,15 @@ interface AuthApi extends AuthState {
   enableBiometrics: () => Promise<biometrics.BiometricOutcome>;
   skipBiometrics: () => Promise<void>;
   capability: biometrics.BiometricCapability | null;
+
+  /** Gateway layer. Route on `primal.state`, not on `status`, for anything
+   *  that costs money or touches LinkPay. */
+  primal: PrimalState;
+  /** Re-ask the gateway what this session may do. Call after a payment lands,
+   *  on foreground, and on a pull-to-refresh — it is a single cheap GET. */
+  refreshEntitlement: () => Promise<void>;
+  /** Retry the SIWE handshake after a network failure. */
+  linkPrimal: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthApi | null>(null);
@@ -88,6 +161,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [capability, setCapability] =
     useState<biometrics.BiometricCapability | null>(null);
+  const [primal, setPrimal] = useState<PrimalState>(IDLE_PRIMAL);
+
+  /**
+   * The in-flight gateway sync. Held in a ref, not state, so the effect below
+   * can fire on both `session` and `status` changes (a restored session arrives
+   * LOCKED and unlocks later) without ever starting a second SIWE handshake —
+   * which would raise a second biometric prompt and burn a second challenge.
+   */
+  const primalSync = useRef<Promise<void> | null>(null);
 
   // Launch: let the SDK restore its own session, then decide where the user
   // belongs before the first frame commits to a route.
@@ -147,6 +229,143 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispose?.();
     };
   }, []);
+
+  // Couple the wallet to the signing seams — the vault rails (plays, claims)
+  // and the crypto rails (withdrawals) both read through them. Keyed on the
+  // session so it covers restore, sign-in and sign-out in one place; without a
+  // session the seams stay on their refusing stubs.
+  // Status is a dependency, not just the session: a restored session arrives
+  // LOCKED, and the wallet only hands out addresses once it is unlocked — so
+  // this has to run again on the transition into `ready`.
+  useEffect(() => {
+    if (!state.session) {
+      wire.unwireWallets();
+      return;
+    }
+    wire.wireWallets(state.session.addresses);
+    void wire.primeAddresses();
+  }, [state.session, state.status]);
+
+  /**
+   * Establish the gateway session for a wallet that already exists, then ask
+   * the gateway what it may do.
+   *
+   * Order matters. `bootstrap()` is tried first so a returning user is not made
+   * to sign anything — the stored pair, one serialized refresh behind it, is
+   * usually enough. Only when the gateway has genuinely refused does this reach
+   * for the wallet and burn a challenge.
+   */
+  const runPrimalSync = useCallback(async (walletAddress: string) => {
+    setPrimal((p) => ({ ...p, syncing: true, error: null }));
+
+    try {
+      let identity = (await gatewayAuth.bootstrap()).identity;
+
+      if (!identity) {
+        await gatewayAuth.signInWithWallet(walletAddress, decane.signMessage);
+        identity = await gatewayAuth.me();
+      }
+
+      const snapshot = await entitlement.probeEntitlement();
+      setPrimal({
+        state: snapshot.state,
+        identity,
+        syncing: false,
+        error: null,
+      });
+    } catch (error) {
+      setPrimal((p) => ({
+        ...p,
+        // A dead session is a routing decision; everything else is a message.
+        // Notably NOT a downgrade to `authenticated_unpaid` — a request that
+        // never arrived says nothing about whether this user has paid.
+        state: SessionExpiredError.is(error) ? "session_expired" : p.state,
+        identity: SessionExpiredError.is(error) ? null : p.identity,
+        syncing: false,
+        error: SessionExpiredError.is(error) ? null : describeGatewayFailure(error),
+      }));
+    }
+  }, []);
+
+  // Link the wallet to the gateway once one exists AND is unlocked. Signing is
+  // what forces the second condition: on the passkey and enclave tiers it
+  // raises a biometric prompt, which behind the lock screen would be a prompt
+  // the user cannot explain.
+  useEffect(() => {
+    const address = state.session?.addresses.evm;
+
+    if (!state.session || !address) {
+      // `loading` has not decided anything yet — only a settled sign-out is
+      // anonymous, and clearing on `loading` would flash the sign-in route.
+      if (state.status === "signedOut") setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
+      return;
+    }
+
+    if (state.status !== "ready" && state.status !== "onboarding") return;
+
+    // Web and credential-less builds have no real wallet to sign with; the
+    // gateway layer stays inert rather than failing a handshake on "0xMOCK".
+    if (decane.usingMockAuth) {
+      setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
+      return;
+    }
+
+    if (primalSync.current) return;
+    const run = runPrimalSync(address).finally(() => {
+      primalSync.current = null;
+    });
+    primalSync.current = run;
+  }, [state.session, state.status, runPrimalSync]);
+
+  // The client clears storage when a refresh is refused outright. That can
+  // happen mid-request, far from here, so react to the store rather than
+  // waiting for the next screen to discover it.
+  useEffect(
+    () =>
+      gatewaySession.subscribe((next) => {
+        if (next === null) {
+          setPrimal((p) =>
+            p.identity
+              ? { state: "session_expired", identity: null, syncing: false, error: null }
+              : p,
+          );
+        }
+      }),
+    [],
+  );
+
+  /**
+   * Re-ask the gateway. One cheap GET — call it on foreground, after a payment
+   * lands, and while `payment_pending`/`entitlement_syncing` are on screen.
+   */
+  const refreshEntitlement = useCallback(async () => {
+    if (!(await gatewaySession.hasSession())) return;
+    setPrimal((p) => ({ ...p, syncing: true }));
+    try {
+      const snapshot = await entitlement.probeEntitlement();
+      setPrimal((p) => ({ ...p, state: snapshot.state, syncing: false, error: null }));
+    } catch (error) {
+      setPrimal((p) => ({
+        ...p,
+        state: SessionExpiredError.is(error) ? "session_expired" : p.state,
+        identity: SessionExpiredError.is(error) ? null : p.identity,
+        syncing: false,
+        error: SessionExpiredError.is(error) ? null : describeGatewayFailure(error),
+      }));
+    }
+  }, []);
+
+  /** Retry the handshake after a failure the user has since fixed. */
+  const linkPrimal = useCallback(async () => {
+    const address = state.session?.addresses.evm;
+    if (!address || decane.usingMockAuth) return;
+    if (primalSync.current) return primalSync.current;
+    const run = runPrimalSync(address).finally(() => {
+      primalSync.current = null;
+    });
+    primalSync.current = run;
+    return run;
+  }, [state.session, runPrimalSync]);
 
   const adopt = useCallback(async (session: DecaneSession) => {
     setAccessToken(session.accessToken);
@@ -210,9 +429,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // independent — a failure in one must not leave the user half signed out,
     // which is why `decane.signOut` swallows its own errors.
     setAccessToken(null);
+    // Revoke the Primal refresh session before the wallet goes: once Decane is
+    // disconnected there is no signer left to prove ownership, and a live
+    // refresh token left on the server outlives the sign-out that was meant to
+    // end it. `logout` clears local storage whatever the network does.
+    await gatewayAuth.logout();
+    await entitlement.forgetSubscriptionId();
     await decane.signOut();
     await storage.clearAll();
 
+    primalSync.current = null;
+    setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
     setState({
       status: "signedOut",
       step: "pin",
@@ -284,6 +511,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unlockWithBiometrics,
       enableBiometrics,
       skipBiometrics,
+      primal,
+      refreshEntitlement,
+      linkPrimal,
     }),
     [
       state,
@@ -297,6 +527,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unlockWithBiometrics,
       enableBiometrics,
       skipBiometrics,
+      primal,
+      refreshEntitlement,
+      linkPrimal,
     ],
   );
 

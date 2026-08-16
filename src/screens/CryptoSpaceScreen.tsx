@@ -61,14 +61,19 @@ export default function CryptoSpaceScreen({
   top?: number;
 }) {
   const [autoConvert, setAutoConvert] = useState(true);
-  const { holdings, totalUsd, loading } = useCryptoPortfolio();
+  const { holdings, totalUsd, loading, error } = useCryptoPortfolio();
 
-  // Live rows when the store has them; otherwise the mock figures stand in,
-  // tagged so canned numbers are never mistaken for money.
-  const live = holdings.length > 0;
+  // Live rows whenever the store answered, INCLUDING an answer of "nothing" —
+  // a funded wallet and an empty one are both real. Only a failed read (the
+  // store's own error flag: no addresses, or every chain unreachable) falls
+  // back to the tagged mock figures. Keying this off `holdings.length` instead
+  // made a brand-new wallet look permanently offline.
+  const live = !error;
   // Nothing to show yet and the chains are still answering — the figures are
   // skeletons rather than a stand-in total that would only be corrected later.
-  const pending = loading && !live;
+  // Skeletons only while there is genuinely nothing to draw yet — `live` is
+  // true from the first frame now, so it can't gate this any more.
+  const pending = loading && holdings.length === 0 && !error;
   const rows: Row[] = live
     ? holdings.map((h) => ({
         key: `${h.network}:${h.symbol}`,
@@ -168,6 +173,20 @@ export default function CryptoSpaceScreen({
         <View style={{ marginTop: 2 }}>
           {pending ? (
             <RowSkeletonList rows={3} />
+          ) : rows.length === 0 ? (
+            // A real, empty wallet — say so rather than leaving a void.
+            <View style={{ paddingVertical: 26, alignItems: "center" }}>
+              <Body size={13} color={C.sub}>
+                No assets yet
+              </Body>
+              <Body
+                size={11.5}
+                color={C.dim}
+                style={{ marginTop: 5, textAlign: "center" }}
+              >
+                Deposit or buy, and it lands here.
+              </Body>
+            </View>
           ) : (
             rows.map((h, i) => (
               <InstrumentRow

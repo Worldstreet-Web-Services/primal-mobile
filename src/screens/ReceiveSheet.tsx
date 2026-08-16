@@ -300,18 +300,25 @@ export default function ReceiveSheet({
                   gap: 7,
                 }}
               >
-                <Text style={{ color: C.up, fontSize: 12 }}>↓</Text>
-                <Body size={11.5} color={C.up} semibold>
-                  Converts to naira on arrival
+                <Text style={{ color: C.silver, fontSize: 12 }}>◇</Text>
+                <Body size={11.5} color={C.silver} semibold>
+                  Arrives as crypto, in your custody
                 </Body>
               </View>
+              {/* This is the DECANE WALLET address, not an auto-convert
+                  deposit address. Those are minted per user/chain by the
+                  provider (PRD §F4 — Liquifia static addresses, the same
+                  shape as Ark's ensureStaticAddress) and are what the
+                  optimistic fill credits against. Until primal-be serves
+                  them, promising naira here would be a lie: anything sent
+                  to this address stays crypto. */}
               <Body
                 size={11}
                 color={C.dim}
                 style={{ textAlign: "center", marginTop: 8, lineHeight: 17 }}
               >
-                Credited the moment conversion clears, ahead of settlement. A
-                failed conversion refunds on-chain and shows in Activity.
+                Auto-convert to naira arrives with your deposit address —
+                for now this is your wallet, and what lands stays crypto.
               </Body>
             </View>
           </View>

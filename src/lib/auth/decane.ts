@@ -246,6 +246,26 @@ export async function unlock(): Promise<void> {
 }
 
 /**
+ * Sign a plain message with the wallet's EVM key.
+ *
+ * The Primal gateway's SIWE handshake is the only caller: it hands back a
+ * challenge string that must be signed **byte for byte as issued**, so nothing
+ * here trims, re-wraps or normalises it — a message that has been touched
+ * recovers to a different address and the gateway rejects it without saying so.
+ *
+ * Requires an unlocked wallet. On the passkey and enclave tiers this raises a
+ * biometric prompt, which is why the caller waits for the app to leave `locked`
+ * before asking.
+ */
+export async function signMessage(
+  message: string,
+  chain: Chain = "evm:8453",
+): Promise<string> {
+  const decane = await getClient();
+  return decane.signMessage({ chain, message });
+}
+
+/**
  * Ends the Decane session and drops our client.
  *
  * Only disconnects a client that already exists — going through `getClient()`

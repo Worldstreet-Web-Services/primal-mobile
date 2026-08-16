@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View } from "react-native";
-import { Image } from "expo-image";
+import { Logo } from "../components/Logo";
 import { C } from "../theme/tokens";
 import {
   MetallicButton,
@@ -71,11 +71,10 @@ export default function UnlockScreen({
             elevation: 8,
           }}
         >
-          <Image
-            source={require("@/assets/images/logo.png")}
-            style={{ width: 96, height: 96, borderRadius: 26 }}
-            contentFit="cover"
-          />
+          {/* Sized by height only — `Logo` derives the width from the
+              artwork's own ratio, so the mark can't be cropped or stretched.
+              A square box with contentFit="cover" cut its head and foot off. */}
+          <Logo height={104} />
         </View>
         <Display size={36} style={{ letterSpacing: 0.5 }}>
           Paradigm

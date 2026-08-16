@@ -52,6 +52,8 @@ export const stubSigner: VaultSigner = {
  * swap mid-session takes effect on the very next action. */
 export let vaultSigner: VaultSigner = stubSigner;
 
-export function setVaultSigner(signer: VaultSigner): void {
-  vaultSigner = signer;
+/** Pass null on sign-out to fall back to the refusing stub — a stale signer
+ *  outliving its session is a play charged to a wallet nobody is holding. */
+export function setVaultSigner(signer: VaultSigner | null): void {
+  vaultSigner = signer ?? stubSigner;
 }

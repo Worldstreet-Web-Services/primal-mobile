@@ -1,24 +1,33 @@
+import { Image } from "expo-image";
 import React, { useState } from "react";
-import { View, Text, Pressable } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, Text, View } from "react-native";
+
+import { CopyMark, useCopy } from "../components/CopyAction";
 import { C, F } from "../theme/tokens";
 import {
-  Screen,
   BackHeader,
+  Body,
   Card,
+  Display,
   Label,
   Mono,
-  Body,
-  Display,
+  OutlineButton,
+  PressableScale,
+  Screen,
+  SectionRule,
 } from "../components/ui";
 import { user } from "../data/mock";
 
-/** Truncate for display only — never for anything a user might copy and send to. */
+/**
+ * Truncate for display only — never for anything a user might copy and send to.
+ * Both ends are kept deliberately long: an address poisoner's lookalike differs
+ * in the middle, so a stubby head-and-tail is what makes one look legitimate.
+ */
 function short(address: string | undefined, lead: number): string | null {
   if (!address) return null;
-  return address.length <= lead + 6
+  return address.length <= lead + 8
     ? address
-    : `${address.slice(0, lead)}…${address.slice(-4)}`;
+    : `${address.slice(0, lead)}…${address.slice(-6)}`;
 }
 
 const securityRows = [
@@ -28,9 +37,91 @@ const securityRows = [
   { title: "Spend limits", sub: "₦500,000 / day · self-imposed" },
 ];
 
-// Design 3f: profile — identity card, account details, security rows, freeze switch.
+/** One labelled value with its own copy affordance. */
+function DetailRow({
+  label,
+  value,
+  sub,
+  mono = true,
+  copyKey,
+  copyValue,
+  copied,
+  onCopy,
+  last = false,
+}: {
+  label: string;
+  value: string | null;
+  /** Secondary line under the value — the bank, the network. Keeps the
+   *  value itself on ONE line, which is what stops a long pairing wrapping. */
+  sub?: string;
+  mono?: boolean;
+  copyKey?: string;
+  copyValue?: string;
+  copied?: boolean;
+  onCopy?: (key: string, value: string) => void;
+  last?: boolean;
+}) {
+  const body = (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 13,
+        gap: 12,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: C.hairline,
+      }}
+    >
+      <Body size={12} color={C.sub}>
+        {label}
+      </Body>
+      <View style={{ flex: 1, alignItems: "flex-end" }}>
+        {value ? (
+          <>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              style={{
+                fontFamily: mono ? F.mono : F.body,
+                fontSize: 12.5,
+                color: C.text,
+              }}
+            >
+              {value}
+            </Text>
+            {sub ? (
+              <Body size={10.5} color={C.dim} style={{ marginTop: 3 }}>
+                {sub}
+              </Body>
+            ) : null}
+          </>
+        ) : (
+          <Body size={12} color={C.dim}>
+            Not created yet
+          </Body>
+        )}
+      </View>
+      {value && copyKey ? <CopyMark copied={!!copied} /> : null}
+    </View>
+  );
+
+  if (!value || !copyKey || !copyValue) return body;
+  return (
+    <Pressable
+      onPress={() => onCopy?.(copyKey, copyValue)}
+      accessibilityRole="button"
+      accessibilityLabel={`Copy ${label}`}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+// Design 3f: profile — identity, the details worth copying, security, sign out.
 export default function ProfileScreen({
   onBack,
+  top = 0,
   bottom = 40,
   onSignOut,
   signingOut = false,
@@ -38,6 +129,8 @@ export default function ProfileScreen({
 }: {
   /** Omit on a tab root — without it the header drops its back chevron. */
   onBack?: () => void;
+  /** Head space — the route passes the safe-area inset; nothing floats here. */
+  top?: number;
   /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
   onSignOut?: () => void;
@@ -45,11 +138,15 @@ export default function ProfileScreen({
   /** Real Decane wallet addresses. Absent until a session exists. */
   addresses?: { evm?: string; solana?: string; tron?: string } | null;
 }) {
-  const evmShort = short(addresses?.evm, 6);
-  const solShort = short(addresses?.solana, 4);
+  const evmShort = short(addresses?.evm, 10);
+  const solShort = short(addresses?.solana, 8);
   const [frozen, setFrozen] = useState(false);
+  const { copied, copy } = useCopy();
+
+  const onCopy = (key: string, value: string) => void copy(key, value);
+
   return (
-    <Screen bottom={bottom}>
+    <Screen top={top} bottom={bottom}>
       {onBack ? (
         <BackHeader title="Profile" onBack={onBack} />
       ) : (
@@ -57,123 +154,113 @@ export default function ProfileScreen({
           Profile
         </Display>
       )}
-      <Card style={{ marginTop: 14 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 13 }}>
-          <LinearGradient
-            colors={C.metal}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 25,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontFamily: F.display, fontSize: 19, color: C.ink }}>
-              {user.initial}
-            </Text>
-          </LinearGradient>
-          <View>
-            <Body size={15.5} semibold>
-              {user.name}
-            </Body>
-            <Body size={11.5} color={C.dim} style={{ marginTop: 2 }}>
-              {user.tag} · via KingsChat · joined Aug 2026
-            </Body>
-          </View>
-        </View>
+
+      {/* Identity: the person, then how they got here. The avatar carries the
+          brand ring so it reads as the same object as the home header's. */}
+      <View
+        style={{
+          alignItems: "center",
+          paddingTop: 22,
+          paddingBottom: 4,
+        }}
+      >
         <View
           style={{
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.1)",
-            marginTop: 14,
-            marginBottom: 4,
-          }}
-        />
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingVertical: 9,
+            width: 84,
+            height: 84,
+            borderRadius: 44,
+            borderWidth: 1.5,
+            borderColor: C.brandSoft,
+            padding: 3,
           }}
         >
-          <Body size={12} color={C.sub}>
-            Account number
-          </Body>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Mono size={12} color={C.text}>
-              {user.va} · Rubies
-            </Mono>
+          <Image
+            source={require("@/assets/images/avatar.png")}
+            style={{ width: "100%", height: "100%", borderRadius: 40 }}
+            contentFit="cover"
+          />
+        </View>
+        <Display size={22} style={{ marginTop: 14 }}>
+          {user.name}
+        </Display>
+        <Mono size={11} color={C.dim} style={{ marginTop: 6, letterSpacing: 1 }}>
+          {user.tag.toUpperCase()} · VIA KINGSCHAT
+        </Mono>
+      </View>
+
+      <SectionRule space={22} />
+
+      <Label>Account</Label>
+      <Card style={{ marginTop: 10, paddingVertical: 2, paddingHorizontal: 16 }}>
+        <DetailRow
+          label="Account number"
+          value={user.va}
+          sub={user.bank}
+          copyKey="va"
+          copyValue={user.va.replace(/ /g, "")}
+          copied={copied === "va"}
+          onCopy={onCopy}
+        />
+        <DetailRow
+          label="EVM wallet"
+          value={evmShort}
+          copyKey="evm"
+          copyValue={addresses?.evm}
+          copied={copied === "evm"}
+          onCopy={onCopy}
+        />
+        <DetailRow
+          label="Solana wallet"
+          value={solShort}
+          copyKey="sol"
+          copyValue={addresses?.solana}
+          copied={copied === "sol"}
+          onCopy={onCopy}
+          last
+        />
+      </Card>
+      <Body size={10.5} color={C.dim} style={{ marginTop: 8, lineHeight: 16 }}>
+        Tap any row to copy it in full. Check the whole address before you send
+        to it.
+      </Body>
+
+      <Label style={{ marginTop: 26 }}>Security</Label>
+      <Card style={{ marginTop: 10, paddingVertical: 2, paddingHorizontal: 16 }}>
+        {securityRows.map((r) => (
+          <PressableScale key={r.title} scale={0.99}>
             <View
               style={{
-                backgroundColor: "rgba(255,255,255,0.08)",
-                borderRadius: 6,
-                paddingHorizontal: 7,
-                paddingVertical: 3,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingVertical: 13,
+                borderBottomWidth: 1,
+                borderBottomColor: C.hairline,
               }}
             >
-              <Body size={10} color={C.accent} semibold>
-                Copy
+              <View style={{ flex: 1 }}>
+                <Body size={13.5} semibold>
+                  {r.title}
+                </Body>
+                <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
+                  {r.sub}
+                </Body>
+              </View>
+              <Body size={15} color={C.dim}>
+                ›
               </Body>
             </View>
-          </View>
-        </View>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingVertical: 9,
-          }}
-        >
-          <Body size={12} color={C.sub}>
-            Wallets
-          </Body>
-          {evmShort && solShort ? (
-            <Mono size={12}>
-              {evmShort} · {solShort}
-            </Mono>
-          ) : (
-            <Body size={12} color={C.dim}>
-              Not created yet
-            </Body>
-          )}
-        </View>
-      </Card>
-      <Label style={{ marginTop: 18 }}>Security</Label>
-      <Card style={{ marginTop: 8, paddingVertical: 2, paddingHorizontal: 16 }}>
-        {securityRows.map((r) => (
-          <View
-            key={r.title}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 13,
-              borderBottomWidth: 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Body size={13.5} semibold>
-                {r.title}
-              </Body>
-              <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
-                {r.sub}
-              </Body>
-            </View>
-            <Body size={15} color={C.dim}>
-              ›
-            </Body>
-          </View>
+          </PressableScale>
         ))}
+
+        {/* The panic switch. Amber, not brand — this is a warning state the
+            user has chosen, not an action we are promoting. */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
-            paddingVertical: 13,
+            paddingVertical: 14,
           }}
         >
           <View style={{ flex: 1 }}>
@@ -181,18 +268,26 @@ export default function ProfileScreen({
               Freeze money-out
             </Body>
             <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
-              Panic switch — blocks every money-out route instantly
+              {frozen
+                ? "On — every money-out route is blocked"
+                : "Panic switch — blocks every money-out route instantly"}
             </Body>
           </View>
           <Pressable
             onPress={() => setFrozen(!frozen)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: frozen }}
+            accessibilityLabel="Freeze money-out"
             style={{
-              width: 44,
-              height: 26,
-              borderRadius: 14,
-              backgroundColor: frozen ? C.amber : "rgba(255,255,255,0.2)",
+              width: 46,
+              height: 28,
+              borderRadius: 15,
+              backgroundColor: frozen ? C.amber : "rgba(255,255,255,0.16)",
+              borderWidth: 1,
+              borderColor: frozen ? C.amber : C.hairline,
               padding: 2,
               alignItems: frozen ? "flex-end" : "flex-start",
+              justifyContent: "center",
             }}
           >
             <View
@@ -200,29 +295,34 @@ export default function ProfileScreen({
                 width: 22,
                 height: 22,
                 borderRadius: 11,
-                backgroundColor: C.text,
+                backgroundColor: frozen ? C.ink : C.text,
               }}
             />
           </Pressable>
         </View>
       </Card>
-      <Pressable
-        onPress={onSignOut}
-        disabled={signingOut}
-        style={{ paddingVertical: 8, opacity: signingOut ? 0.5 : 1 }}
-      >
-        <Body
-          size={13}
+
+      <View style={{ marginTop: 28 }}>
+        <OutlineButton
+          label={signingOut ? "Signing out…" : "Sign out"}
           color={C.down}
-          style={{
-            textAlign: "center",
-            marginTop: 16,
-            fontFamily: F.bodyMedium,
-          }}
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </Body>
-      </Pressable>
+          height={50}
+          onPress={signingOut ? undefined : onSignOut}
+        />
+      </View>
+
+      <Text
+        style={{
+          fontFamily: F.mono,
+          fontSize: 9.5,
+          letterSpacing: 1.2,
+          color: C.dim,
+          textAlign: "center",
+          marginTop: 18,
+        }}
+      >
+        PARADIGM · KEYS SPLIT THREE WAYS
+      </Text>
     </Screen>
   );
 }

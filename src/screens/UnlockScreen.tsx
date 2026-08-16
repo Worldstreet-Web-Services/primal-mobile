@@ -9,6 +9,7 @@ import {
   Display,
   PinDots,
   Keypad,
+  Spinner,
 } from "../components/ui";
 
 // Design 3e: app unlock — metallic brand block, Face ID / passkey, PIN fallback.
@@ -94,13 +95,33 @@ export default function UnlockScreen({
           loading={checking}
         />
       ) : null}
-      <Label style={{ textAlign: "center", marginTop: 20 }}>
-        {biometricsAvailable ? "Or enter your PIN" : "Enter your PIN"}
-      </Label>
+      {/* Unlocking is genuinely slow — the enclave opens the wallet and the
+          session is re-established — so the wait gets its own state rather
+          than a frozen keypad that reads as a dropped tap. */}
+      {checking ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 9,
+            marginTop: 20,
+          }}
+        >
+          <Spinner color={C.brandSoft} />
+          <Label style={{ textAlign: "center" }}>Unlocking…</Label>
+        </View>
+      ) : (
+        <Label style={{ textAlign: "center", marginTop: 20 }}>
+          {biometricsAvailable ? "Or enter your PIN" : "Enter your PIN"}
+        </Label>
+      )}
       <View style={{ marginTop: 14 }}>
         <PinDots filled={pin.length} />
       </View>
-      <View style={{ marginTop: 22 }}>
+      {/* Dimmed, not unmounted: the keypad keeps its place so the screen does
+          not jump, and `handleKey` already ignores presses while checking. */}
+      <View style={{ marginTop: 22, opacity: checking ? 0.35 : 1 }}>
         <Keypad onKey={handleKey} />
       </View>
       <Body

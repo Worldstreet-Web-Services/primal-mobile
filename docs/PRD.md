@@ -41,36 +41,35 @@ Every Primal user gets, at onboarding:
 
 ## 3. Feature specifications
 
-### F1 — Authentication (Decane Kit + KingsChat) · **PHASE 1, BUILD NOW**
+### F1 — Authentication (Decane + SIWE) · **BUILT**
 
-Auth root switched from Privy to **Decane Kit** (decision 2026-08-13) — the driver is **KingsChat sign-in**.
+Two layers, and the distinction matters: **Decane owns the wallet, the gateway owns the session.**
 
-**How KingsChat comes in.** Decane's built-in `authMethods` are only `"google" | "email"` — KingsChat is not built-in. It arrives through Decane **custom auth**: register a JWT issuer (its `iss`, an `https://` JWKS URL, RS256 or ES256, identity claim defaulting to `sub`) in the Decane dashboard, and the SDK exchanges that issuer's tokens for Decane sessions, rendering the extra login button automatically via `customAuth: { label, getToken }`. So we build a small **KingsChat bridge issuer**:
+**Layer 1 — Decane (`decane-connect-kit-expo` 0.1.x, native).** Sign in with **KingsChat**, Google or email; the SDK mints a non-custodial wallet whose key is Shamir-split three ways (device / Decane key server / recovery) and signs inside a TEE, unlocked by passkey or PIN. It exposes `addresses: { evm, solana, tron }` plus `signMessage` / `sendTransaction` / `signAuthorization` (EIP-7702) / `signSolanaTransaction`. No server ever signs for the user. It is native-only, so the app runs as a **dev build, not Expo Go**.
 
-1. User taps "Continue with KingsChat" → KingsChat OAuth (their `kingschat-web-sdk` flow).
-2. Our bridge verifies the KingsChat access token against KingsChat's API and mints a short-lived **ES256 JWT** (`iss` = our bridge, `sub` = KingsChat user id) with a published JWKS.
-3. Decane's `getToken` returns that JWT → Decane session + social wallet, same as any login.
+**Layer 2 — Primal session (SIWE against `https://api.tsion.io`).** A wallet is not a session: `POST /v1/auth/challenge` → sign the **exact** message with the Decane EVM key → `POST /v1/auth/verify` → a short-lived access token plus a rotating refresh token. Refresh tokens rotate on every use, so the pair is replaced atomically and only ever one refresh is in flight. `GET /v1/auth/me` validates a restored session — a locally decoded JWT proves nothing.
 
-Google and email stay available as Decane's built-ins on the same screen.
+**Onboarding after auth:** profile → PIN → passkey → done. The transaction PIN and biometric app-lock are Paradigm's own gate; Decane has no opinion about them.
 
-**Wallets.** The Decane social wallet exposes `addresses: { evm, solana }` with `signMessage` / `sendTransaction` / `signSolanaTransaction`; unlock is passkey-first with PIN fallback (`promptPin`), and `requireAssertionPerSignature` can force a fresh passkey assertion per signature (60s TTL, TEE-verified) for high-value flows. No server ever signs on the user's behalf.
+**Known gap:** `EXPO_PUBLIC_DECANE_RP_ID` is unset, so the passkey tier is off and wallets sit on the secure-enclave tier. Setting it (plus iOS associated domains) turns passkeys on.
 
-**Backend session.** Client sends the Decane access token; backend verifies with **`decane-node`** (ES256; static verification key recommended — offline, no network call — or JWKS with auto-rotation), checks `project_id` against our app id, keys the user row off the stable `uid`, then issues our own short-lived JWT (LinkPay's token/middleware model). `decane-node` is explicitly the `@privy-io/node` drop-in, returning Privy-compatible `linkedAccounts`, which keeps the migration mechanical. Note: verification is stateless (signature + expiry + project only) — gate sensitive routes on a fresh backend check for immediate sign-out.
+### F1b — Membership & entitlement · **REQUIRED BEFORE ANY MONEY FEATURE**
 
-**⚠ Mobile-platform constraint (must resolve in Phase 1).** `decane-connect-kit` (2.5.0) is a **React 18 web SDK** — sessions in `localStorage`, device key-share in IndexedDB, WebAuthn passkeys. There is **no React Native/Expo package today**. Two viable integrations for our Expo app, in preference order:
-1. **Hosted auth surface**: a minimal web page of ours runs Decane Kit (+ the KingsChat bridge); the app opens it with `expo-auth-session` / `expo-web-browser`, receives the Decane access token by deep link, and uses it against our backend. Wallet *signing* flows likewise run in that surface (in-app browser or WebView bridge) since the device share lives in its storage.
-2. **Ask Decane for RN support / roadmap** — track as a dependency; adopt natively if it lands.
+Access costs **USD 1,000 per calendar month**, and it is enforced server-side: every `/v1/linkpay/*` route needs a valid token **and** an active entitlement. Authentication and entitlement are separate decisions — a signed-in user with no subscription is a normal, expected state.
 
-Onboarding after auth is unchanged: profile → PIN → passkey → done (LinkPay's `onboardingStep` machine).
+- **Checkout** (`POST /v1/subscriptions`) returns a **one-time deposit address** from Dextopus with a grossed-up `originAmount` and an expiry. Never the treasury address; never a shared address.
+- **Confirmation is the backend's** (`GET /v1/subscriptions/{id}/payment` → `AWAITING_TRANSFER` → `PROCESSING` → `SETTLED`). A wallet transaction hash is not proof; the UI must never unlock itself on one.
+- **Entitlement propagates asynchronously** after `SETTLED`, so a protected call can still 403 for a moment. That window gets its own state ("Payment confirmed. Enabling your account.") and a bounded retry — never a second checkout.
+- **A 403 `ACTIVE_SUBSCRIPTION_REQUIRED` routes to the paywall, never to sign-in.** Expired entitlement is not expired authentication.
+- **Renewal is explicit** — there is no automatic recurring debit. New month, new checkout, new idempotency key.
 
-**Packages:** `decane-connect-kit` 2.5.x (web auth surface), `decane-node` 1.1.x (backend), `kingschat-web-sdk` 0.1.x + our bridge issuer (KingsChat OAuth → ES256 JWT + JWKS).
+### F2 — Account number per user · **VIA GATEWAY**
 
-### F2 — Account number per user · **PHASE 1, BUILD NOW**
-
-- On onboarding completion (or first deposit intent), the backend provisions a **virtual account**: ensure provider customer (keyed by our userId as `customer_reference`) → create VA with a **stable per-user idempotency key** (`va<userId>v<version>`) so retries and concurrent calls can never mint duplicates → persist `vaId`, `vaAccountNumber`, `vaBankName` on the user.
-- The version suffix in the idempotency key is the provider-migration escape hatch (LinkPay is on v2 after the 2026-07 Rubies migration); `previousVirtualAccounts` keeps retired numbers resolving to the user forever, because old numbers stay printed on invoices and saved in payers' banking apps.
-- Surface: Receive screen shows account number + bank + copy button and a QR; @tag handles (3–15 chars, unique, cooldown-locked after rename) for in-app P2P.
-
+- The account is provisioned through `POST /v1/linkpay/accounts` with KYC (name, phone, email, BVN, country, currency) and an **idempotency key that must survive retries** — the same key for the same attempt, a new key only for a genuinely new one. Statuses `PENDING_KYC` / `CUSTOMER_CREATED` are resumable, not terminal; `PROVISION_FAILED` carries a reason.
+- **BVN is never logged, persisted, or sent to analytics** — form state only, long enough to submit.
+- Read back with `GET /v1/linkpay/account`; balance from `GET /v1/linkpay/balance`. Money is integer **minor units as strings** (₦100.00 arrives as `"10000"`) — BigInt only, never float.
+- Surface: Receive screen shows account number + bank + copy and a real scannable QR; @tag handles for in-app P2P remain a Paradigm-side concept.
+- *(The idempotent-VA and retired-number lessons from LinkPay's own backend now live behind the gateway; the app no longer provisions accounts itself.)*
 ### F3 — Fiat account: deposit, withdrawal, cross-border
 
 - **Deposit**: bank transfer to the VA → provider webhook credits the ledger; push notification on arrival.

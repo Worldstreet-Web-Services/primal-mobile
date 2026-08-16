@@ -89,7 +89,6 @@ interface NormalizedRequest {
   path: string;
   url: string;
   bodyText: string | null;
-  auth: boolean;
   timeoutMs: number;
   signal: AbortSignal | undefined;
   replayable: boolean;
@@ -379,7 +378,6 @@ async function performRefresh(): Promise<string> {
         path: "/v1/auth/refresh",
         url: buildUrl("/v1/auth/refresh"),
         bodyText: JSON.stringify({ refreshToken: stored.refreshToken }),
-        auth: false,
         timeoutMs: DEFAULT_MUTATION_TIMEOUT_MS,
         signal: undefined,
         replayable: false,
@@ -427,7 +425,6 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     path: options.path,
     url: buildUrl(options.path, options.query),
     bodyText,
-    auth: useAuth,
     timeoutMs:
       options.timeoutMs ?? (isRead ? DEFAULT_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS),
     signal: options.signal,

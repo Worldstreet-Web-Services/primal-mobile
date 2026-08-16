@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -12,6 +13,7 @@ import { C } from "@/theme/tokens";
 export default function Profile() {
   const { signOut, addresses } = useAuth();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const [signingOut, setSigningOut] = useState(false);
 
   const onSignOut = async () => {
@@ -29,6 +31,8 @@ export default function Profile() {
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <ProfileScreen
+        top={insets.top + 8}
+        onBack={() => router.back()}
         onSignOut={onSignOut}
         signingOut={signingOut}
         addresses={addresses}

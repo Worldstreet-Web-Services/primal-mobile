@@ -43,10 +43,18 @@ export default function Checkout() {
       <Stack.Screen
         options={{
           presentation: "transparentModal",
+          // The scrim fades; the panel's own rise is animated inside the sheet.
+          // A stack transition here would slide the scrim too, which reads as a
+          // page swap rather than a drawer.
           animation: "fade",
           // The root stack paints C.canvas; the sheet needs the paywall behind
           // it to show through its own scrim.
           contentStyle: { backgroundColor: "transparent" },
+          // NOTE: this route is the deep-link / relaunch-mid-payment entry only.
+          // The native stack tears the previous screen down once a modal is on
+          // top, so nothing shows through the transparency here — which is why
+          // the normal path mounts this same sheet as a drawer inside
+          // `/subscribe` instead of pushing at this route.
         }}
       />
       <CheckoutSheet

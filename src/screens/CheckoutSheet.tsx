@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CopyMark, useCopy } from "@/components/CopyAction";
@@ -572,6 +579,21 @@ export default function CheckoutSheet({
     () => expiryMs !== null && millisUntil(expiryMs) === 0,
     [expiryMs, tick],
   );
+
+  // 0 below the fold, 1 seated. Started on mount and never restarted — the
+  // sheet rises once, and re-running it on a state change would make the panel
+  // jump every time the payment status moved.
+  const rise = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.timing(rise, {
+      toValue: 1,
+      duration: 340,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [rise]);
 
   const price = formatMoney(subs.priceOf(subscription));
   // One shape whichever side it comes from — "1,000.00 USDC". `formatMoney`
@@ -1250,7 +1272,7 @@ export default function CheckoutSheet({
         >
           {body}
         </ScrollView>
-      </View>
+      </Animated.View>
     </View>
   );
 }

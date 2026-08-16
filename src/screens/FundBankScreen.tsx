@@ -396,7 +396,7 @@ export default function FundBankScreen({
               body={
                 watching
                   ? "Paradigm is waiting for your subscription transfer to land. Your account number appears here once it does — nothing needs paying twice."
-                  : "Paradigm is waiting for your subscription transfer to land, and has stopped re-checking on its own. Nothing needs paying twice."
+                  : "Paradigm is waiting for your subscription transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing needs paying twice."
               }
               action="Check now"
               onAction={reload}
@@ -409,7 +409,7 @@ export default function FundBankScreen({
               body={
                 watching
                   ? "Your payment is in and the gateway is still opening the naira side. It usually takes a moment, and nothing needs paying again."
-                  : "Your payment is in and the gateway has not opened the naira side yet. Paradigm has stopped re-checking on its own — nothing needs paying again."
+                  : "Your payment is in and the gateway has not opened the naira side yet. It is taking longer than usual — check whenever you want the latest. Nothing needs paying again."
               }
               action="Check now"
               onAction={reload}

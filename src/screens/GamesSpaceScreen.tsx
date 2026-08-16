@@ -145,16 +145,15 @@ function Stat({
       {v === null ? (
         <Pulse width="70%" height={14} radius={5} style={{ marginTop: 7 }} />
       ) : (
-        <Text
-          style={{
-            fontFamily: F.monoSemibold,
-            fontSize: 16,
-            marginTop: 6,
-            color: amber ? C.amber : C.text,
-          }}
+        // `Mono`, not a bare Text: the clock redraws every second and tabular
+        // numerals are what stop it shifting width as its digits change.
+        <Mono
+          size={16}
+          color={amber ? C.amber : C.text}
+          style={{ marginTop: 6, fontFamily: F.monoSemibold }}
         >
           {v}
-        </Text>
+        </Mono>
       )}
     </View>
   );
@@ -434,16 +433,13 @@ export default function GamesSpaceScreen({
             <Mono size={9.5} color={C.up} style={{ letterSpacing: 1.8, opacity: 0.75 }}>
               YOUR WINNINGS
             </Mono>
-            <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 20,
-                color: C.up,
-                marginTop: 5,
-              }}
+            <Mono
+              size={20}
+              color={C.up}
+              style={{ marginTop: 5, fontFamily: F.monoSemibold }}
             >
               {unit > 0 ? pendingMoney.formattedUsd : `${pendingMoney.amount} ETH`}
-            </Text>
+            </Mono>
             <Body size={11} color={C.dim} style={{ marginTop: 4 }}>
               A payout that couldn&apos;t reach you. Claim to collect it.
             </Body>

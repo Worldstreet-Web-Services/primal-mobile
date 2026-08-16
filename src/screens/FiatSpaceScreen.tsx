@@ -297,11 +297,11 @@ export default function FiatSpaceScreen({
             body={
               watching
                 ? "Paradigm has your subscription and is waiting for the transfer to land. Nothing here needs paying twice — this screen is re-checking."
-                : "Paradigm has your subscription and is waiting for the transfer to land. It has stopped re-checking on its own — check whenever you want the latest."
+                : "Paradigm has your subscription and is waiting for the transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing here needs paying twice."
             }
             action="Check now"
             onAction={reload}
-            secondary="See the payment"
+            secondary="See your payment"
             onSecondary={onNeedsSubscription}
           />
         ) : (
@@ -312,7 +312,7 @@ export default function FiatSpaceScreen({
             body={
               watching
                 ? "Your payment is in. Paradigm is waiting for the gateway to open the naira side, which usually takes a moment. Nothing needs paying again — this screen is re-checking."
-                : "Your payment is in and the gateway has not opened the naira side yet. Paradigm has stopped re-checking on its own — check whenever you want the latest. Nothing needs paying again."
+                : "Your payment is in and the gateway has not opened the naira side yet. It is taking longer than usual — check whenever you want the latest. Nothing needs paying again."
             }
             action="Check now"
             onAction={reload}

@@ -31,27 +31,6 @@ const HERO_BIAS = 0.055;
  */
 function Bloom({ size }: { size: number }) {
   return (
-    // <Svg
-    //   pointerEvents="none"
-    //   width={size}
-    //   height={size}
-    //   style={{ position: "absolute" }}
-    // >
-    //   <Defs>
-    //     <RadialGradient id="welcome-bloom" cx="50%" cy="50%" rx="50%" ry="50%">
-    //       <Stop offset="0" stopColor={C.amber} stopOpacity={0.16} />
-    //       <Stop offset="0.5" stopColor={C.amber} stopOpacity={0.05} />
-    //       <Stop offset="1" stopColor={C.amber} stopOpacity={0} />
-    //     </RadialGradient>
-    //   </Defs>
-    //   <Ellipse
-    //     cx={size / 2}
-    //     cy={size / 2}
-    //     rx={size / 2}
-    //     ry={size / 2}
-    //     fill="url(#welcome-bloom)"
-    //   />
-    // </Svg>
     <Image
       source={require("../../assets/images/star_behind.png")}
       contentFit="cover"

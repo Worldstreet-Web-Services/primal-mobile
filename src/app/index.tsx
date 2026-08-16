@@ -6,6 +6,7 @@ import { BrandLoading } from "@/components/BrandLoading";
 import { Splash } from "@/components/Splash";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { isEntitled } from "@/lib/gateway/types";
+import { announceDevMode, skipPaywall } from "@/lib/devMode";
 import { SIGN_IN_ROUTE, SUBSCRIPTION_ROUTE } from "@/lib/routes";
 import { C } from "@/theme/tokens";
 
@@ -70,7 +71,13 @@ export default function Index() {
   // — the client gate is convenience, the backend gate is the security control,
   // and the contract is explicit that it must stay that way.
   if (primal.state !== "unknown" && !isEntitled(primal.state)) {
-    return <Redirect href={SUBSCRIPTION_ROUTE} />;
+    // Dev builds may walk past this (EXPO_PUBLIC_DEV_SKIP_PAYWALL) so the
+    // wallet-side surfaces stay testable while the paid path is being proven.
+    // It only moves this redirect — the gateway still refuses every LinkPay
+    // request, so nothing behind the gate becomes usable, and `announceDevMode`
+    // says so in the log rather than letting the 403s read as broken code.
+    announceDevMode();
+    if (!skipPaywall) return <Redirect href={SUBSCRIPTION_ROUTE} />;
   }
 
   if (status === "onboarding") {

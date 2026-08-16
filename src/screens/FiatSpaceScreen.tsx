@@ -225,6 +225,8 @@ export default function FiatSpaceScreen({
     phase,
     account,
     error,
+    activation,
+    watching,
     reload,
     balance,
     balanceError,
@@ -236,6 +238,11 @@ export default function FiatSpaceScreen({
 
   // The paywall is the route's call, not this screen's — but it has to be told
   // once, and exactly once, or a re-render turns into a navigation loop.
+  //
+  // `unentitled` and nothing else. A payment that is still in flight, or an
+  // entitlement the backend has not finished switching on, is `activating`
+  // now: it renders the panel below and re-probes, because pushing a member
+  // who has just paid to the paywall is how they end up paying twice.
   const told = useRef(false);
   useEffect(() => {
     if (phase !== "unentitled") {
@@ -277,6 +284,38 @@ export default function FiatSpaceScreen({
             body="Naira deposits, transfers and your account number are part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing."
             action="See the plan"
             onAction={onNeedsSubscription}
+          />
+        );
+      case "activating":
+        // Two different waits, and the difference is whose money has moved.
+        // Neither is a paywall, and neither offers to charge again.
+        return activation === "payment" ? (
+          <StatePanel
+            tone="warn"
+            pending={watching}
+            title="Your payment is still on its way"
+            body={
+              watching
+                ? "Paradigm has your subscription and is waiting for the transfer to land. Nothing here needs paying twice — this screen is re-checking."
+                : "Paradigm has your subscription and is waiting for the transfer to land. It has stopped re-checking on its own — check whenever you want the latest."
+            }
+            action="Check now"
+            onAction={reload}
+            secondary="See the payment"
+            onSecondary={onNeedsSubscription}
+          />
+        ) : (
+          <StatePanel
+            tone="warn"
+            pending={watching}
+            title="Switching your membership on"
+            body={
+              watching
+                ? "Your payment is in. Paradigm is waiting for the gateway to open the naira side, which usually takes a moment. Nothing needs paying again — this screen is re-checking."
+                : "Your payment is in and the gateway has not opened the naira side yet. Paradigm has stopped re-checking on its own — check whenever you want the latest. Nothing needs paying again."
+            }
+            action="Check now"
+            onAction={reload}
           />
         );
       case "no_account":

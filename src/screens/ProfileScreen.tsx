@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { CopyMark, useCopy } from "../components/CopyAction";
+import { useLinkpayAccount, type AccountPhase } from "../hooks/useLinkpay";
+import { accountStatusLabel } from "../lib/gateway/linkpay";
+import type { AccountStatus } from "../lib/gateway/types";
 import { C, F } from "../theme/tokens";
 import {
   BackHeader,
@@ -30,6 +33,45 @@ function short(address: string | undefined, lead: number): string | null {
     : `${address.slice(0, lead)}…${address.slice(-6)}`;
 }
 
+/**
+ * Why the account row has no fallback digits.
+ *
+ * This card used to print `user.va` / `user.bank` from `src/data/mock` — an
+ * invented NUBAN at a bank the member has no account with — as a tap-to-copy
+ * row sitting directly above two REAL Decane wallet addresses, drawn in the
+ * same type, with the same copy mark. Nothing on screen distinguished the true
+ * rows from the fabricated one, which is what makes it worse than a lone lie:
+ * the real addresses lent it their credibility. It reads from the gateway now,
+ * and says which way it is missing when it is missing.
+ */
+function accountRowEmpty(
+  phase: AccountPhase,
+  status: AccountStatus | undefined,
+): string {
+  switch (phase) {
+    case "loading":
+      return "Loading…";
+    case "signed_out":
+      return "Sign in to see it";
+    case "unentitled":
+      return "With a subscription";
+    case "no_account":
+      return "Not created yet";
+    case "provisioning":
+      return "Being opened";
+    case "provision_failed":
+      return "Could not be opened";
+    case "disabled":
+      return "Disabled";
+    case "unknown_status":
+      return accountStatusLabel(status ?? "UNKNOWN");
+    case "error":
+      return "Couldn't load it";
+    default:
+      return "Not available";
+  }
+}
+
 const securityRows = [
   { title: "Transaction PIN", sub: "Required for money-out" },
   { title: "Passkeys", sub: "2 devices · TEE-backed signing" },
@@ -47,6 +89,7 @@ function DetailRow({
   copyValue,
   copied,
   onCopy,
+  empty = "Not created yet",
   last = false,
 }: {
   label: string;
@@ -59,6 +102,10 @@ function DetailRow({
   copyValue?: string;
   copied?: boolean;
   onCopy?: (key: string, value: string) => void;
+  /** Stands in for the value when there isn't one. "Not created yet" is right
+   *  for a wallet, and wrong for a row that is loading, refused or broken —
+   *  each of those is a different fact and the row is where it gets stated. */
+  empty?: string;
   last?: boolean;
 }) {
   const body = (
@@ -98,7 +145,7 @@ function DetailRow({
           </>
         ) : (
           <Body size={12} color={C.dim}>
-            Not created yet
+            {empty}
           </Body>
         )}
       </View>
@@ -142,6 +189,12 @@ export default function ProfileScreen({
   const solShort = short(addresses?.solana, 8);
   const [frozen, setFrozen] = useState(false);
   const { copied, copy } = useCopy();
+
+  // The same hook the fiat surface reads. A number is shown only on `ready`,
+  // and only if one actually came back — never assembled from anything local.
+  const { phase: bankPhase, account } = useLinkpayAccount();
+  const accountNumber =
+    bankPhase === "ready" ? (account?.accountNumber ?? null) : null;
 
   const onCopy = (key: string, value: string) => void copy(key, value);
 
@@ -194,12 +247,13 @@ export default function ProfileScreen({
       <Card style={{ marginTop: 10, paddingVertical: 2, paddingHorizontal: 16 }}>
         <DetailRow
           label="Account number"
-          value={user.va}
-          sub={user.bank}
+          value={accountNumber}
+          sub={accountNumber ? (account?.bankName ?? undefined) : undefined}
           copyKey="va"
-          copyValue={user.va.replace(/ /g, "")}
+          copyValue={accountNumber?.replace(/\s/g, "")}
           copied={copied === "va"}
           onCopy={onCopy}
+          empty={accountRowEmpty(bankPhase, account?.status)}
         />
         <DetailRow
           label="EVM wallet"

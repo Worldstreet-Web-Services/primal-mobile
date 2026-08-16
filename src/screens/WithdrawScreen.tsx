@@ -138,8 +138,15 @@ const FALLBACK_ASSETS: WithdrawAsset[] = [
   },
 ];
 
-const TX_HASH = "0x3f9a…c21b";
-const FEE_NOTE = "Fee ≈ $0.12 · sponsored";
+/**
+ * No fee figure exists to show yet.
+ *
+ * The wallet seam prices gas when it builds the transaction, and nothing in the
+ * app can ask it beforehand — so the chip states the timing instead of a
+ * number. The "≈ $0.12 · sponsored" that used to sit here was invented, on the
+ * one screen where a user budgets against the figure before committing.
+ */
+const FEE_NOTE = "Network fee quoted when you sign";
 
 const shorten = (addr: string) => addr.slice(0, 6) + "…" + addr.slice(-4);
 
@@ -175,6 +182,10 @@ export default function WithdrawScreen({
   // A refresh landing mid-flow may shrink the list; never index past it.
   const asset = assets[Math.min(assetIndex, assets.length - 1)];
   const amount = formatRaw(raw, asset.decimals);
+  // Nothing keyed yet. The digits on screen are scaffolding, not a value, and
+  // everything downstream of this — colour, the line under the figure, the
+  // button — has to say so rather than leave an empty field looking filled.
+  const noAmount = raw === "";
   const usd = (
     (parseInt(raw || "0", 10) / 10 ** asset.decimals) *
     asset.rate
@@ -278,9 +289,14 @@ export default function WithdrawScreen({
               <Mono size={13.5} color={C.text} style={{ marginTop: 14 }}>
                 {amount} {asset.sym} → {destination}
               </Mono>
-              <Mono size={12} color={C.dim} style={{ marginTop: 8 }}>
-                {txRef ? shorten(txRef) : TX_HASH}
-              </Mono>
+              {/* The chain's own reference, or nothing. The "0x3f9a…c21b" that
+                  stood in here was a hash of no transaction — something a user
+                  would paste into an explorer and be told does not exist. */}
+              {txRef ? (
+                <Mono size={12} color={C.dim} style={{ marginTop: 8 }}>
+                  {shorten(txRef)}
+                </Mono>
+              ) : null}
               <View style={{ marginTop: 18 }}>
                 <MetaChip label={`Signed in the enclave · ${asset.network}`} />
               </View>
@@ -390,15 +406,27 @@ export default function WithdrawScreen({
           <View
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
           >
-            <Display size={40} color={raw === "" ? C.dim : C.text}>
+            <Display size={40} color={noAmount ? C.placeholder : C.text}>
               {amount}{" "}
-              <Display size={22} color={C.dim}>
+              <Display
+                size={22}
+                color={noAmount ? C.placeholder : C.figureTail}
+              >
                 {asset.sym}
               </Display>
             </Display>
-            <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
-              ≈ ${usd} USD
-            </Mono>
+            {noAmount ? (
+              // The sentence carries the meaning, so the ghost digits above are
+              // allowed to be decoration. Without it the placeholder would be
+              // text nobody could read.
+              <Body size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+                Enter an amount to withdraw
+              </Body>
+            ) : (
+              <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+                ≈ ${usd} USD
+              </Mono>
+            )}
             <View style={{ marginTop: 14 }}>
               <MetaChip label={FEE_NOTE} />
             </View>
@@ -439,12 +467,17 @@ export default function WithdrawScreen({
             </View>
             <Keypad onKey={handleKey} />
             <View style={{ marginTop: 16 }}>
-              <MetallicButton
-                label="Review withdrawal"
-                onPress={() => {
-                  if (raw !== "") setStep("confirm");
-                }}
-              />
+              {/* A live-looking metal button that silently no-ops on an empty
+                  field is the same lie the placeholder colour was telling.
+                  Mirrors BuyScreen: the control states what is missing. */}
+              {noAmount ? (
+                <GhostButton label="Enter an amount" height={52} />
+              ) : (
+                <MetallicButton
+                  label="Review withdrawal"
+                  onPress={() => setStep("confirm")}
+                />
+              )}
             </View>
           </View>
         </>
@@ -463,7 +496,7 @@ export default function WithdrawScreen({
               <Label>Withdrawing</Label>
               <Display size={44} style={{ marginTop: 10 }}>
                 {amount}{" "}
-                <Display size={24} color={C.dim}>
+                <Display size={24} color={C.figureTail}>
                   {asset.sym}
                 </Display>
               </Display>
@@ -485,8 +518,8 @@ export default function WithdrawScreen({
               />
               <QuoteRow
                 label="Network fee"
-                value="≈ $0.12"
-                tail="· sponsored"
+                value="—"
+                tail="· quoted when you sign"
                 last
               />
             </QuoteCard>

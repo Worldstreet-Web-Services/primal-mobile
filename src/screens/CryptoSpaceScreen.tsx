@@ -119,7 +119,7 @@ export default function CryptoSpaceScreen({
             <>
               <Display size={46} style={{ marginTop: 8 }}>
                 ${Number(whole).toLocaleString("en-US")}
-                <Display size={26} color={C.dim}>
+                <Display size={26} color={C.figureTail}>
                   .{cents}
                 </Display>
               </Display>

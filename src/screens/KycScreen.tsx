@@ -231,6 +231,9 @@ export default function KycScreen({
     phase,
     account,
     error: accountError,
+    // Which wait an `activating` phase is. The two read very differently to
+    // the person waiting, and only one of them has had money leave.
+    activation,
     // "The account has been asked about and has not answered yet." Both
     // controls on this screen that can drop an idempotency key wait for it.
     refreshing: rereading,
@@ -291,6 +294,8 @@ export default function KycScreen({
     }
   }, [phase]);
 
+  // `unentitled` only. `activating` is a wait with its own panel below — a
+  // member whose USD 1,000 is mid-flight must never be handed the paywall.
   const told = useRef(false);
   useEffect(() => {
     if (phase !== "unentitled") {
@@ -472,6 +477,51 @@ export default function KycScreen({
         </Body>
         <View style={{ marginTop: 20 }}>
           <MetallicButton label="See the plan" onPress={onNeedsSubscription} />
+        </View>
+      </Screen>
+    );
+  }
+
+  // Paid, or paying. The form stays closed because the gateway will refuse it
+  // until the entitlement lands — but the answer is "hold on", never "pay".
+  if (phase === "activating") {
+    const paying = activation === "payment";
+    return (
+      <Screen>
+        {header("Naira account", paying ? "PAYMENT IN FLIGHT" : "ALMOST OPEN")}
+        <View
+          style={{
+            marginTop: 30,
+            backgroundColor: C.raised,
+            borderWidth: 1,
+            borderColor: "rgba(245,184,61,0.3)",
+            borderRadius: 20,
+            padding: 20,
+            overflow: "hidden",
+          }}
+        >
+          <Shine />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+            {watching ? <PulseDot /> : null}
+            <Display size={18}>
+              {paying ? "Your payment is still on its way" : "Switching your membership on"}
+            </Display>
+          </View>
+          <Body size={12.5} color={C.sub} style={{ marginTop: 12, lineHeight: 19 }}>
+            {paying
+              ? "Paradigm is waiting for your subscription transfer to land. A naira account opens the moment it does — nothing here needs paying twice."
+              : "Your payment is in and the gateway is still switching the naira side on. It usually takes a moment, and nothing needs paying again."}
+          </Body>
+          <SectionRule space={16} />
+          {/* Only claimed while it is true — the hook stops asking when this
+              screen is not in front, in the background, and once its window is
+              spent. */}
+          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
+            {watching ? "CHECKING EVERY FEW SECONDS" : "CHECK WHEN YOU ARE READY"}
+          </Mono>
+        </View>
+        <View style={{ marginTop: 22 }}>
+          <GhostButton label="Check now" onPress={reload} />
         </View>
       </Screen>
     );

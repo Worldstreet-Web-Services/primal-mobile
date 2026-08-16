@@ -21,11 +21,12 @@ import {
   SectionHead,
   Settle,
 } from "../components/crypto";
+import { useFiatOverview } from "../hooks/useLinkpay";
+import { formatMoney } from "../lib/gateway/money";
 
 // Buy & hold — pick an asset, key in ₦, PIN to buy. Fiat balance funds it.
 const PIN_LENGTH = 4;
 const FEE = 250;
-const available = "₦482,650.00";
 
 type Asset = {
   sym: string;
@@ -95,8 +96,21 @@ export default function BuyScreen({
   const [digits, setDigits] = useState("");
   const [pin, setPin] = useState("");
 
+  // The spending balance, from the gateway — the same read FiatSpaceScreen and
+  // FundBankScreen make. It replaces a hardcoded "₦482,650.00" that was shown
+  // flatly as this user's money, on the screen where they decide how much of it
+  // to spend. `balance` is only ever set from a `ready` account, so a null here
+  // is an honest "we have not been told", and the labels below say that rather
+  // than filling the gap.
+  const { balance } = useFiatOverview();
+  const availableLabel = balance?.available
+    ? formatMoney(balance.available)
+    : null;
+
   const amt = Number(digits || "0");
   const qty = fmtQty(amt / asset.price);
+  /** Nothing keyed yet — the ₦0 on screen is scaffolding, not an amount. */
+  const noAmount = digits === "";
 
   const handleAmountKey = (k: string) => {
     if (k === "del") {
@@ -189,14 +203,22 @@ export default function BuyScreen({
             <Label>Buying</Label>
             <Display
               size={44}
-              color={digits ? C.text : C.dim}
+              color={noAmount ? C.placeholder : C.text}
               style={{ marginTop: 12 }}
             >
               ₦{withCommas(digits || "0")}
             </Display>
-            <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
-              ≈ {qty} {asset.sym}
-            </Mono>
+            {noAmount ? (
+              // Carries the meaning the ghost figure above deliberately cannot,
+              // and replaces an "≈ 0.00 BTC" that was a quote for nothing.
+              <Body size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+                Enter an amount to buy
+              </Body>
+            ) : (
+              <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+                ≈ {qty} {asset.sym}
+              </Mono>
+            )}
             <View style={{ marginTop: 14 }}>
               <MetaChip label={`1 ${asset.sym} = ${asset.priceLabel}`} />
             </View>
@@ -209,7 +231,9 @@ export default function BuyScreen({
           }}
         >
           <Mono size={11.5} color={C.dim} style={{ marginBottom: 14 }}>
-            Pays from fiat · {available}
+            {availableLabel
+              ? `Pays from fiat · ${availableLabel}`
+              : "Pays from your fiat balance"}
           </Mono>
           <Keypad onKey={handleAmountKey} />
           <View style={{ marginTop: 16 }}>
@@ -244,7 +268,7 @@ export default function BuyScreen({
             <Label>Buying</Label>
             <Display size={40} style={{ marginTop: 10 }}>
               ₦{withCommas(digits)}
-              <Display size={24} color={C.dim}>
+              <Display size={24} color={C.figureTail}>
                 .00
               </Display>
             </Display>
@@ -327,7 +351,13 @@ export default function BuyScreen({
           <Body size={11.5} color={C.dim} style={{ textAlign: "center" }}>
             Bought assets settle into your crypto holdings.
           </Body>
-          <MetaChip label={`Fiat balance · ${available}`} />
+          <MetaChip
+            label={
+              availableLabel
+                ? `Fiat balance · ${availableLabel}`
+                : "Fiat balance not available yet"
+            }
+          />
         </View>
       </View>
     </View>

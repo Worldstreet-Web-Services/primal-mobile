@@ -186,7 +186,14 @@ export default function FundBankScreen({
   onNeedsSubscription?: () => void;
   onNeedsSignIn?: () => void;
 }) {
-  const { phase, account, error: accountError, reload } = useLinkpayAccount();
+  const {
+    phase,
+    account,
+    error: accountError,
+    activation,
+    watching,
+    reload,
+  } = useLinkpayAccount();
   const { copied, copy } = useCopy();
 
   /** The transfer this visit is about, once the provider has seen one. */
@@ -216,6 +223,8 @@ export default function FundBankScreen({
   // way a teller slides a card across the counter. The one motion moment here.
   const place = useRef(new Animated.Value(0)).current;
 
+  // `unentitled` only — a payment still in flight, or an entitlement still
+  // propagating, is `activating` and gets the wait below instead of a paywall.
   const told = useRef(false);
   useEffect(() => {
     if (phase !== "unentitled") {
@@ -374,6 +383,36 @@ export default function FundBankScreen({
               body="Naira deposits are part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing."
               action="See the plan"
               onAction={onNeedsSubscription}
+            />
+          );
+        case "activating":
+          // Money in flight, or money already taken and not propagated. Both
+          // are a wait; neither is an invitation to pay a second time.
+          return activation === "payment" ? (
+            <Gate
+              tone="warn"
+              pending={watching}
+              title="Your payment is still on its way"
+              body={
+                watching
+                  ? "Paradigm is waiting for your subscription transfer to land. Your account number appears here once it does — nothing needs paying twice."
+                  : "Paradigm is waiting for your subscription transfer to land, and has stopped re-checking on its own. Nothing needs paying twice."
+              }
+              action="Check now"
+              onAction={reload}
+            />
+          ) : (
+            <Gate
+              tone="warn"
+              pending={watching}
+              title="Switching your membership on"
+              body={
+                watching
+                  ? "Your payment is in and the gateway is still opening the naira side. It usually takes a moment, and nothing needs paying again."
+                  : "Your payment is in and the gateway has not opened the naira side yet. Paradigm has stopped re-checking on its own — nothing needs paying again."
+              }
+              action="Check now"
+              onAction={reload}
             />
           );
         case "no_account":

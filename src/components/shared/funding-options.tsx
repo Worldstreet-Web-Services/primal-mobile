@@ -4,7 +4,9 @@ import { Animated, Text, View } from "react-native";
 import { Option, OptionRow } from "@/components/OptionRow";
 import { C, F } from "@/theme/tokens";
 import { BankIcon, WalletIcon } from "../icons";
-import { CryptoCheckout, LocalBankCheckout } from "../payments";
+// `CryptoCheckout` / `LocalBankCheckout` are deliberately NOT imported here.
+// Both used to be mounted unquoted, which is exactly what made them fabricate a
+// destination and a price; see the note in `checkout` below.
 import { Sheet } from "../Sheet";
 
 export type FundingKey = "decentralized" | "local";

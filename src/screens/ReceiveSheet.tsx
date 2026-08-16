@@ -8,23 +8,89 @@ import {
   Mono,
   Label,
   GhostButton,
+  Pulse,
   SegTabs,
   Chip,
   PressableScale,
 } from "../components/ui";
 import { CopyMark, useCopy } from "../components/CopyAction";
 import { QrPlate } from "../components/QrPlate";
-import { user } from "../data/mock";
+import { useLinkpayAccount, type AccountPhase } from "../hooks/useLinkpay";
 import { usingMockAuth } from "../lib/auth/decane";
+import {
+  accountStatusLabel,
+  type LinkpayAccount,
+} from "../lib/gateway/linkpay";
 import { depositAddresses } from "../lib/crypto/addresses";
 
 // Static per-network-type deposit addresses (PRD §F4) — the auto-convert
 // on-ramp, not the embedded wallets. Mock-backed until the gateway serves them.
 const NETWORKS = depositAddresses();
 
-/** The bank block as one string — what "share details" actually hands over. */
-const bankBlock = () =>
-  `${user.name}\n${user.bank}\n${user.va.replace(/ /g, "")}`;
+/**
+ * Why this sheet no longer prints a NUBAN of its own.
+ *
+ * The bank tab used to read `user` from `src/data/mock` and hand out
+ * `9012 883 774 · Rubies MFB · Dave Kadiri` as the member's OWN naira account —
+ * on a plate, inside a scannable QR, under the caption "Anyone can transfer to
+ * this number", with TAP TO COPY under it. Every one of those affordances is
+ * built to be given to a third party, so the fabrication did not stay on the
+ * member's screen: it wired a stranger's real money to whoever holds that
+ * number. It is the same defect the crypto half of this sheet already refuses
+ * to ship, and it gets the same answer — the real account or nothing at all.
+ */
+
+/**
+ * The one thing this sheet is allowed to hand over on the bank tab.
+ *
+ * Built only from what the gateway returned. `null` when there is no number,
+ * which is what suppresses the QR and the copy affordances below — there is no
+ * partial version of this block worth sharing.
+ */
+function bankBlockFor(account: LinkpayAccount | null): string | null {
+  const number = account?.accountNumber?.replace(/\s/g, "");
+  if (!number) return null;
+  return [account?.accountName, account?.bankName, number]
+    .filter((line): line is string => !!line)
+    .join("\n");
+}
+
+/**
+ * Why the bank tab has no number to show, said in the voice the crypto half
+ * already uses. Never a guess, never a placeholder digit.
+ */
+function bankNotice(
+  phase: AccountPhase,
+  account: LinkpayAccount | null,
+  error: string | null,
+): string {
+  switch (phase) {
+    case "signed_out":
+      return "Sign in to see your naira account number.";
+    case "unentitled":
+      return "Your naira account number comes with a Paradigm subscription.";
+    case "no_account":
+      return "No naira account yet — open one and the number appears here.";
+    case "provisioning":
+      return "The bank is still opening your account. The number appears here as soon as there is one.";
+    case "provision_failed":
+      return (
+        account?.failureReason ??
+        "That account could not be opened, so there is no number to hand out."
+      );
+    case "disabled":
+      return "This account is disabled — a transfer into it would be returned, so the number is not shown.";
+    case "unknown_status":
+      return `Account status: ${accountStatusLabel(
+        account?.status ?? "UNKNOWN",
+      )}. Paradigm will not hand out a number it cannot vouch for.`;
+    case "error":
+      return error ?? "Could not load your account details.";
+    default:
+      // Includes a `ready` account the gateway sent with no number on it.
+      return "No account number to show yet.";
+  }
+}
 
 // Designs 4c + 4d: receive sheet — bank VA with copy affordance / crypto network picker.
 export default function ReceiveSheet({
@@ -38,6 +104,13 @@ export default function ReceiveSheet({
   const [tab, setTab] = useState(0);
   const [net, setNet] = useState(0);
   const { copied, copy } = useCopy();
+  // The same hook FiatSpaceScreen and FundBankScreen read. There is exactly one
+  // account number in this app and it comes from here.
+  const {
+    phase: bankPhase,
+    account,
+    error: bankError,
+  } = useLinkpayAccount();
   // Bottom-anchored, so the sheet owns its own home-indicator clearance —
   // the route mounts it bare rather than inside a SafeAreaView.
   const insets = useSafeAreaInsets();
@@ -62,6 +135,19 @@ export default function ReceiveSheet({
   // which is also why the QR below only renders once `addr` exists.
   const base = NETWORKS[net];
   const nw = { ...base, addr: live[base.kind] ?? null };
+
+  // Same rule as `nw.addr` one line up: the block exists only when the gateway
+  // gave us a real number, and everything shareable below is gated on it.
+  const bankShare = bankPhase === "ready" ? bankBlockFor(account) : null;
+  const accountNumber = account?.accountNumber ?? "";
+  // Provenance the gateway actually sent. Empty is a real possibility, and an
+  // empty provenance line is why the block button below is conditional: with
+  // nothing but the number in it, "copy name, bank and number" is a promise the
+  // clipboard would not keep.
+  const bankProvenance = [account?.bankName, account?.accountName].filter(
+    (part): part is string => !!part,
+  );
+
   return (
     <View
       style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
@@ -103,7 +189,9 @@ export default function ReceiveSheet({
           <View>
             <Display size={21}>Receive</Display>
             <Body size={11.5} color={C.dim} style={{ marginTop: 3 }}>
-              Hand this to anyone. It lands as naira.
+              {tab === 0
+                ? "Hand this to anyone. It lands as naira."
+                : "Your wallet addresses. What lands stays crypto."}
             </Body>
           </View>
           <Pressable
@@ -136,77 +224,113 @@ export default function ReceiveSheet({
         </View>
 
         {tab === 0 ? (
-          <View>
-            <View style={{ marginTop: 20 }}>
-              <QrPlate
-                value={bankBlock()}
-                size={132}
-                caption={user.bank}
-              />
-            </View>
+          bankShare ? (
+            <View>
+              <View style={{ marginTop: 20 }}>
+                <QrPlate
+                  value={bankShare}
+                  size={132}
+                  caption={account?.bankName ?? "Naira account"}
+                />
+              </View>
 
-            {/* The number is the crown jewel on this sheet too — it gets the
-                plate, and the bank and holder sit under it as provenance. */}
-            <PressableScale
-              onPress={() => void copy("va", user.va.replace(/ /g, ""))}
-              scale={0.985}
-            >
-              <View
-                accessibilityRole="button"
-                accessibilityLabel="Copy account number"
-                style={{
-                  marginTop: 18,
-                  alignItems: "center",
-                  backgroundColor: C.raised,
-                  borderWidth: 1,
-                  borderColor: copied === "va" ? "rgba(240,199,90,0.4)" : C.border,
-                  borderRadius: 20,
-                  paddingVertical: 16,
-                }}
+              {/* The number is the crown jewel on this sheet too — it gets the
+                  plate, and the bank and holder sit under it as provenance. */}
+              <PressableScale
+                onPress={() =>
+                  void copy("va", accountNumber.replace(/\s/g, ""))
+                }
+                scale={0.985}
               >
-                <Label>Account number</Label>
-                <Mono
-                  size={25}
-                  color={C.text}
+                <View
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy account number"
                   style={{
-                    fontFamily: F.monoSemibold,
-                    letterSpacing: 3,
-                    marginTop: 8,
+                    marginTop: 18,
+                    alignItems: "center",
+                    backgroundColor: C.raised,
+                    borderWidth: 1,
+                    borderColor:
+                      copied === "va" ? "rgba(240,199,90,0.4)" : C.border,
+                    borderRadius: 20,
+                    paddingVertical: 16,
                   }}
                 >
-                  {user.va}
-                </Mono>
-                <Body size={12} color={C.sub} style={{ marginTop: 8 }}>
-                  {user.bank} · {user.name}
-                </Body>
-                <View style={{ marginTop: 12 }}>
-                  <CopyMark copied={copied === "va"} label="TAP TO COPY" />
+                  <Label>Account number</Label>
+                  <Mono
+                    size={25}
+                    color={C.text}
+                    style={{
+                      fontFamily: F.monoSemibold,
+                      letterSpacing: 3,
+                      marginTop: 8,
+                    }}
+                  >
+                    {accountNumber}
+                  </Mono>
+                  {/* Provenance, and only what came back. A bank with no name
+                      on it prints no line rather than a stray separator. */}
+                  {bankProvenance.length ? (
+                    <Body size={12} color={C.sub} style={{ marginTop: 8 }}>
+                      {bankProvenance.join(" · ")}
+                    </Body>
+                  ) : null}
+                  <View style={{ marginTop: 12 }}>
+                    <CopyMark copied={copied === "va"} label="TAP TO COPY" />
+                  </View>
                 </View>
-              </View>
-            </PressableScale>
+              </PressableScale>
 
-            {/* The plate above already copies the number on tap, so the only
-                button left is the one it cannot do: hand over the whole block
-                — name, bank and number — in one paste. */}
-            <View style={{ marginTop: 14 }}>
-              <GhostButton
-                label={
-                  copied === "block" ? "Copied" : "Copy name, bank and number"
-                }
-                height={48}
-                onPress={() => void copy("block", bankBlock())}
-              />
+              {/* The plate above already copies the number on tap, so the only
+                  button left is the one it cannot do: hand over the whole block
+                  — name, bank and number — in one paste. */}
+              {bankProvenance.length ? (
+                <View style={{ marginTop: 14 }}>
+                  <GhostButton
+                    label={
+                      copied === "block"
+                        ? "Copied"
+                        : "Copy name, bank and number"
+                    }
+                    height={48}
+                    onPress={() => void copy("block", bankShare)}
+                  />
+                </View>
+              ) : null}
+
+              <Body
+                size={11}
+                color={C.dim}
+                style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
+              >
+                Anyone can transfer to this number.{"\n"}It credits to your
+                Paradigm balance once the provider confirms it.
+              </Body>
             </View>
-
-            <Body
-              size={11}
-              color={C.dim}
-              style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
-            >
-              Anyone can transfer to this number.{"\n"}It settles as your
-              Paradigm balance, usually under 10s.
-            </Body>
-          </View>
+          ) : bankPhase === "loading" ? (
+            // A skeleton, not a placeholder number. Nothing here is copyable
+            // and nothing is encoded into a QR while the answer is still out.
+            <View style={{ marginTop: 20, alignItems: "center", gap: 14 }}>
+              <Pulse width={132} height={132} radius={22} />
+              <Pulse height={78} radius={20} />
+              <Pulse width="60%" height={12} />
+            </View>
+          ) : (
+            <View style={{ marginTop: 24, paddingBottom: 6 }}>
+              <Body
+                size={12.5}
+                color={C.dim}
+                style={{
+                  textAlign: "center",
+                  maxWidth: 300,
+                  alignSelf: "center",
+                  lineHeight: 19,
+                }}
+              >
+                {bankNotice(bankPhase, account, bankError)}
+              </Body>
+            </View>
+          )
         ) : (
           <View>
             <View

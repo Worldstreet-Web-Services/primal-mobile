@@ -10,6 +10,7 @@
  * The distinction the whole fiat surface turns on, in one place:
  *
  * - **not entitled** (403) → the paywall. The user is signed in perfectly well.
+ * - **paying, or just paid** → a WAIT, never the paywall. See `activating`.
  * - **entitled, no account** (404 / an empty account body) → the KYC CTA.
  * - **entitled, ACTIVE account** → the money screen.
  *
@@ -22,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { appIsActive, onForeground } from "@/lib/appActive";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { isEntitlementRefusal } from "@/lib/gateway/entitlement";
+import { isEntitlementRefusal, isPending } from "@/lib/gateway/entitlement";
 import {
   describeLinkpayFailure,
   getAccount,
@@ -56,6 +57,11 @@ export type AccountPhase =
   | "loading"
   | "signed_out"
   | "unentitled"
+  /**
+   * Money is moving, or has moved and not propagated yet. A WAIT, and never
+   * the paywall — see `phaseForAppState`.
+   */
+  | "activating"
   | "no_account"
   | "provisioning"
   | "provision_failed"
@@ -109,6 +115,38 @@ const PROVISION_POLL_MS = 10_000;
 const PROVISION_POLL_WINDOW_MS = 10 * 60_000;
 
 /**
+ * How often an activating entitlement is re-probed from the screen the user is
+ * actually looking at.
+ *
+ * AuthContext already re-probes every 30 seconds while `isPending`, which is
+ * the right cadence for the app as a whole and much too slow for someone
+ * staring at the screen they just paid to unlock. This is the faster ask, and
+ * it exists only while a screen is in front of a person — the entitled surface
+ * cannot be reached at all until it resolves, so the wait IS the screen.
+ */
+const ACTIVATION_PROBE_MS = 6_000;
+
+/**
+ * How long that faster asking runs before it stands down.
+ *
+ * Two minutes is well past propagation, and AuthContext's slower timer keeps
+ * going for ten. After it, the screen says the asking has stopped and hands
+ * over the manual control rather than claiming a cadence it is not keeping —
+ * the same rule the provisioning poll follows.
+ */
+const ACTIVATION_PROBE_WINDOW_MS = 2 * 60_000;
+
+/**
+ * Which kind of wait `activating` is, so a screen can say the true one.
+ *
+ * - `payment` — a subscription exists and its transfer has not landed. The
+ *   money has not left yet, so "we have your payment" would be a lie.
+ * - `propagation` — the subscription reads ACTIVE and entitled routes still
+ *   403. The money HAS gone; the backend is catching up.
+ */
+export type ActivationWait = "payment" | "propagation";
+
+/**
  * The phase implied by the app-level state alone, before LinkPay is asked
  * anything — or `null` when the gateway is the one that has to answer.
  *
@@ -141,7 +179,27 @@ function phaseForAppState(
   if (primal.state === "anonymous" || primal.state === "session_expired") {
     return { phase: "signed_out", error: null };
   }
+  // A payment mid-flight and a payment the backend has taken but not finished
+  // propagating are both a WAIT, and this line is the whole reason.
+  //
+  // `isEntitled` is true for `active`/`cancel_at_period_end` and nothing else,
+  // so before this existed both `payment_pending` and `entitlement_syncing`
+  // fell through to `unentitled` — and the fiat space acts on that phase by
+  // pushing to /subscribe. A member who had just paid USD 1,000 was asked to
+  // pay again in the seconds while activation propagated, on a paywall whose
+  // only exit is "Sign out" (`subscribe.tsx` bars every entitlement-less
+  // state). `types.ts` says of `entitlement_syncing`: "wait and re-probe
+  // rather than asking for money twice". This is that, and `bills.tsx` reads
+  // the same two states the same way.
+  if (isPending(primal.state)) return { phase: "activating", error: null };
   return isEntitled(primal.state) ? null : { phase: "unentitled", error: null };
+}
+
+/** The wait behind an `activating` phase, or `null` when it is not one. */
+function activationWaitFor(state: PrimalAppState): ActivationWait | null {
+  if (state === "payment_pending") return "payment";
+  if (state === "entitlement_syncing") return "propagation";
+  return null;
 }
 
 /* ------------------------------------------------------------------ account */
@@ -151,6 +209,15 @@ export interface LinkpayAccountState {
   account: LinkpayAccount | null;
   /** Set only on `phase === "error"`. Already written for a person. */
   error: string | null;
+  /**
+   * Which wait `phase === "activating"` is, and `null` for every other phase.
+   *
+   * Carried because the two read very differently to the person waiting: one
+   * is money that has not moved yet, the other is money that has. A screen
+   * that says the wrong one is either asking for a payment already made or
+   * promising a payment that was never sent.
+   */
+  activation: ActivationWait | null;
   /**
    * A re-read is outstanding.
    *
@@ -168,10 +235,11 @@ export interface LinkpayAccountState {
    */
   version: number;
   /**
-   * The hook is still re-asking about a provisioning account on its own.
+   * The hook is still re-asking on its own — about a provisioning account, or
+   * about an entitlement that is still being switched on.
    *
-   * False once the account settles into any other phase, and false once the
-   * polling window is spent — at which point a screen that promised "checking
+   * False once the phase settles into anything else, and false once that
+   * phase's window is spent — at which point a screen that promised "checking
    * every ten seconds" is telling the user something that has stopped being
    * true, and owes them the manual control instead.
    *
@@ -193,7 +261,7 @@ export interface LinkpayAccountState {
  * the loop near the bottom for why each of those is not optional.
  */
 export function useLinkpayAccount(): LinkpayAccountState {
-  const { primal, linkPrimal, status } = useAuth();
+  const { primal, linkPrimal, status, refreshEntitlement } = useAuth();
 
   const [phase, setPhase] = useState<AccountPhase>("loading");
   const [account, setAccount] = useState<LinkpayAccount | null>(null);
@@ -284,8 +352,16 @@ export function useLinkpayAccount(): LinkpayAccountState {
   // such a status re-enters the wait and reports again if it is still stuck,
   // which is honest; signing there would not be.
   const needsHandshake = primal.state === "unknown" && canHandshake;
+  /**
+   * The entitlement itself is what has not landed. LinkPay cannot be asked
+   * about it — every route there is behind the guard that is still saying no —
+   * so the retry has to be the entitlement probe, exactly as `bills.tsx` does
+   * for its `waiting` gate.
+   */
+  const awaitingEntitlement = isPending(primal.state);
   const reload = useCallback(() => {
     if (needsHandshake) void linkPrimal();
+    else if (awaitingEntitlement) void refreshEntitlement();
     // Flagged here rather than in the effect below, so "a re-read is
     // outstanding" is true from the moment it is asked for. The effect runs a
     // commit later; a caller that gates a control on `refreshing` — the two
@@ -294,7 +370,7 @@ export function useLinkpayAccount(): LinkpayAccountState {
     // nothing is pending.
     setRefreshing(true);
     setNonce((n) => n + 1);
-  }, [needsHandshake, linkPrimal]);
+  }, [needsHandshake, awaitingEntitlement, linkPrimal, refreshEntitlement]);
 
   useEffect(() => {
     // The gateway session already answers this — do not spend a request to be
@@ -433,6 +509,86 @@ export function useLinkpayAccount(): LinkpayAccountState {
     };
   }, [phase, focused, pollSpent, reload]);
 
+  /* --------------------------------------------------- activation re-asking */
+
+  const activating = phase === "activating";
+
+  // Anchored to the moment the wait STARTED, in a ref, so leaving the screen
+  // and coming back resumes the same window rather than being handed a fresh
+  // two minutes on every visit.
+  const activationDeadline = useRef<number | null>(null);
+  const [activationSpent, setActivationSpent] = useState(false);
+  useEffect(() => {
+    if (!activating) {
+      activationDeadline.current = null;
+      setActivationSpent(false);
+      return;
+    }
+    activationDeadline.current ??= Date.now() + ACTIVATION_PROBE_WINDOW_MS;
+  }, [activating]);
+
+  // A probe already in the air. Mirrored into a ref for the same reason
+  // `rereadPending` is: a loop that listed it as a dependency would restart its
+  // own timer every time the flag flipped.
+  const probePending = useRef(false);
+  useEffect(() => {
+    probePending.current = primal.syncing;
+  }, [primal.syncing]);
+
+  /**
+   * Re-probe an entitlement that is still being switched on.
+   *
+   * The gates are the provisioning loop's gates, for the same reasons: not
+   * focused is a screen nobody can see, backgrounded skips the tick rather
+   * than killing the loop, a probe already outstanding is not asked twice, and
+   * the window is bounded so `watching` never claims a cadence that has
+   * stopped.
+   *
+   * The first ask is immediate rather than one interval in. AuthContext's own
+   * re-probe is on a 30-second timer, and a member who has just paid should
+   * not watch half a minute of nothing happening before anything is asked on
+   * their behalf.
+   */
+  useEffect(() => {
+    if (!activating || !focused || activationSpent) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const ask = () => {
+      if (appIsActive() && !probePending.current) void refreshEntitlement();
+    };
+
+    const tick = () => {
+      timer = null;
+      if (cancelled) return;
+
+      const deadline = activationDeadline.current;
+      if (deadline !== null && Date.now() >= deadline) {
+        setActivationSpent(true);
+        return;
+      }
+
+      ask();
+      timer = setTimeout(tick, ACTIVATION_PROBE_MS);
+    };
+
+    ask();
+    timer = setTimeout(tick, ACTIVATION_PROBE_MS);
+
+    const off = onForeground(() => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
+      tick();
+    });
+
+    return () => {
+      cancelled = true;
+      off();
+      if (timer) clearTimeout(timer);
+    };
+  }, [activating, focused, activationSpent, refreshEntitlement]);
+
   // Coming back from KYC (or from the background) should show what changed
   // while the screen was away. The first focus is skipped: the effect above has
   // already fired for it, and two account reads on mount is one too many.
@@ -451,9 +607,11 @@ export function useLinkpayAccount(): LinkpayAccountState {
     phase,
     account,
     error,
+    activation: activating ? activationWaitFor(primal.state) : null,
     refreshing,
     version: nonce,
-    watching: phase === "provisioning" && !pollSpent,
+    watching:
+      (phase === "provisioning" && !pollSpent) || (activating && !activationSpent),
     reload,
   };
 }
@@ -464,7 +622,7 @@ export function useLinkpayAccount(): LinkpayAccountState {
 const UNREADABLE_BALANCE =
   "Paradigm could not read the balance the gateway sent, so it will not show you a figure it cannot vouch for.";
 
-export interface FiatOverview extends LinkpayAccountState {
+export interface FiatBalanceState extends LinkpayAccountState {
   balance: Balance | null;
   /**
    * The balance failed, or arrived with no figure worth stating, while the
@@ -473,6 +631,9 @@ export interface FiatOverview extends LinkpayAccountState {
    * "still loading".
    */
   balanceError: string | null;
+}
+
+export interface FiatOverview extends FiatBalanceState {
   activity: ActivityEntry[];
   activityLoading: boolean;
   /** Feed failed on its own. The balance above it is still true. */
@@ -480,38 +641,26 @@ export interface FiatOverview extends LinkpayAccountState {
 }
 
 /**
- * Everything the fiat space puts on screen.
+ * The account and the one figure on it — no statement feed.
  *
- * Balance and activity are fetched and failed independently on purpose: a
- * statement feed that 502s is not a reason to hide a balance the gateway just
- * confirmed, and one combined error state would do exactly that.
+ * Split out of `useFiatOverview` for the home screen, which shows the balance
+ * and nothing else: pulling twelve statement rows to render none of them is a
+ * request spent on the launch path for nothing.
  */
-export function useFiatOverview(): FiatOverview {
+export function useFiatBalance(): FiatBalanceState {
   const accountState = useLinkpayAccount();
   const usable = accountState.phase === "ready";
 
   const [balance, setBalance] = useState<Balance | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const [activityError, setActivityError] = useState<string | null>(null);
 
   const accountId = accountState.account?.id ?? null;
 
   useEffect(() => {
-    if (!usable) {
-      setActivityLoading(false);
-      return;
-    }
+    if (!usable) return;
 
     const controller = new AbortController();
     let cancelled = false;
-    setActivityLoading(true);
-
-    const guard = (err: unknown): string | null => {
-      if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err)) return null;
-      return describeLinkpayFailure(err);
-    };
 
     void getBalance({ signal: controller.signal })
       .then((next) => {
@@ -527,22 +676,8 @@ export function useFiatOverview(): FiatOverview {
         setBalanceError(next.available ? null : UNREADABLE_BALANCE);
       })
       .catch((err) => {
-        const message = guard(err);
-        if (message) setBalanceError(message);
-      });
-
-    void listActivity({ take: 12 }, { signal: controller.signal })
-      .then((entries) => {
-        if (cancelled) return;
-        setActivity(entries);
-        setActivityError(null);
-      })
-      .catch((err) => {
-        const message = guard(err);
-        if (message) setActivityError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setActivityLoading(false);
+        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err)) return;
+        setBalanceError(describeLinkpayFailure(err));
       });
 
     return () => {
@@ -553,14 +688,57 @@ export function useFiatOverview(): FiatOverview {
     // covers focus, provisioning polls and an explicit retry alike.
   }, [usable, accountId, accountState.version]);
 
-  return {
-    ...accountState,
-    balance,
-    balanceError,
-    activity,
-    activityLoading,
-    activityError,
-  };
+  return { ...accountState, balance, balanceError };
+}
+
+/**
+ * Everything the fiat space puts on screen.
+ *
+ * Balance and activity are fetched and failed independently on purpose: a
+ * statement feed that 502s is not a reason to hide a balance the gateway just
+ * confirmed, and one combined error state would do exactly that.
+ */
+export function useFiatOverview(): FiatOverview {
+  const balanceState = useFiatBalance();
+  const usable = balanceState.phase === "ready";
+
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  const accountId = balanceState.account?.id ?? null;
+
+  useEffect(() => {
+    if (!usable) {
+      setActivityLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+    setActivityLoading(true);
+
+    void listActivity({ take: 12 }, { signal: controller.signal })
+      .then((entries) => {
+        if (cancelled) return;
+        setActivity(entries);
+        setActivityError(null);
+      })
+      .catch((err) => {
+        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err)) return;
+        setActivityError(describeLinkpayFailure(err));
+      })
+      .finally(() => {
+        if (!cancelled) setActivityLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [usable, accountId, balanceState.version]);
+
+  return { ...balanceState, activity, activityLoading, activityError };
 }
 
 /* ------------------------------------------------------------- payout draft */

@@ -1,12 +1,15 @@
 import { router } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
 
 import PodcastScreen from "@/screens/PodcastScreen";
+import { C } from "@/theme/tokens";
 
+/* Full-bleed by design — the rails run to both edges, so the screen applies
+   the insets itself. */
 export default function Podcast() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
-      <PodcastScreen onBack={() => router.back()} />
-    </SafeAreaView>
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <PodcastScreen unread onNotifications={() => router.push("/pulse")} />
+    </View>
   );
 }

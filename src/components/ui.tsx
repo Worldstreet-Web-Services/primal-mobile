@@ -204,6 +204,7 @@ export function CircleAction({
   size = 40,
   badge = false,
   accessibilityLabel,
+  style,
 }: {
   onPress?: () => void;
   children: React.ReactNode;
@@ -211,6 +212,8 @@ export function CircleAction({
   /** Unread marker in the top-right notch. */
   badge?: boolean;
   accessibilityLabel?: string;
+  /** Override the outline — a fill, where the button sits over artwork. */
+  style?: ViewStyle;
 }) {
   return (
     <Pressable
@@ -218,15 +221,18 @@ export function CircleAction({
       hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: PILL,
-        borderWidth: 1,
-        borderColor: C.border,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: PILL,
+          borderWidth: 1,
+          borderColor: C.border,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        style,
+      ]}
     >
       {children}
       {badge ? (

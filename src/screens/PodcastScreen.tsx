@@ -1,139 +1,145 @@
-import React from "react";
-import { View, Text } from "react-native";
-import { C } from "../theme/tokens";
+import { useState } from "react";
+import { View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { MediaCard, type MediaItem } from "@/components/home";
+import { BellIcon } from "@/components/icons";
+import { CategoryTabs, SectionHeader } from "@/components/news";
 import {
-  Screen,
-  BackHeader,
-  Card,
-  Label,
-  Mono,
-  Body,
-  Display,
-  MetallicButton,
-  GhostButton,
-} from "../components/ui";
+  AuthorRail,
+  EpisodeGrid,
+  type Author,
+  type Episode,
+} from "@/components/podcast";
+import { Body, CircleAction, Display, Screen } from "@/components/ui";
+import {
+  authors as defaultAuthors,
+  episodes as defaultEpisodes,
+  nowPlaying as defaultNowPlaying,
+  podcastTabs,
+} from "@/data/podcast";
+import { C, F } from "@/theme/tokens";
 
-// Podcast space — featured episode up top, back-catalog rows, subscribe strip.
-const featured = {
-  kicker: "LATEST · EP 12",
-  title: "The optimistic fill, explained",
-  sub: "Why deposits land before settlement · 24 min",
-};
-const episodes = [
-  {
-    title: "Reading the market pulse",
-    sub: "EP 11 · 18 min · Aug 8",
-    duration: "18:24",
-  },
-  {
-    title: "Kash points, settled weekly",
-    sub: "EP 10 · 21 min · Aug 1",
-    duration: "21:07",
-  },
-  {
-    title: "Copy-trading without the guesswork",
-    sub: "EP 9 · 26 min · Jul 25",
-    duration: "26:41",
-  },
-  {
-    title: "Passkeys, PINs and your money",
-    sub: "EP 8 · 19 min · Jul 18",
-    duration: "19:12",
-  },
-];
+/** Page gutter. Every rail escapes it, so it has to be shared. */
+const GUTTER = 18;
 
-export default function PodcastScreen({ onBack }: { onBack?: () => void }) {
+export interface PodcastScreenProps {
+  heading?: string;
+  subheading?: string;
+  featured?: MediaItem;
+  tabs?: string[];
+  episodes?: Episode[];
+  authors?: Author[];
+  unread?: boolean;
+  onNotifications?: () => void;
+  onPlayFeatured?: (key: string) => void;
+  onOpenEpisode?: (key: string) => void;
+  onOpenAuthor?: (key: string) => void;
+}
+
+/**
+ * Podcast discovery: what's playing now, the episode wall under its filter,
+ * then the hosts. Every shelf is a standalone component and every list is a
+ * prop, so this file is only layout and spacing.
+ */
+export default function PodcastScreen({
+  heading = "Discover",
+  subheading = "Enjoy your favorite podcast",
+  featured = defaultNowPlaying,
+  tabs = podcastTabs,
+  episodes = defaultEpisodes,
+  authors = defaultAuthors,
+  unread = false,
+  onNotifications,
+  onPlayFeatured,
+  onOpenEpisode,
+  onOpenAuthor,
+}: PodcastScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const [tab, setTab] = useState(0);
+
+  // Two tiles and a peek of the third, so the rail reads as scrollable.
+  const tileSize = Math.round((width - GUTTER * 2 - 12) / 2.35);
+  const cardWidth = width - GUTTER * 2;
+
   return (
-    <Screen>
-      <BackHeader title="Podcast" onBack={onBack} />
-      <Card style={{ marginTop: 18, borderRadius: 22, padding: 18 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              backgroundColor: C.key,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 22, color: C.brand }}>▶</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Label>{featured.kicker}</Label>
-            <Display size={17} style={{ marginTop: 6 }}>
-              {featured.title}
-            </Display>
-          </View>
-        </View>
-        <Body size={12} color={C.sub} style={{ marginTop: 12 }}>
-          {featured.sub}
-        </Body>
-        <View style={{ marginTop: 14 }}>
-          <MetallicButton
-            label="Play episode"
-            height={48}
-            radius={14}
-            size={13.5}
-          />
-        </View>
-      </Card>
-      <View style={{ marginTop: 22 }}>
-        <Label>Episodes</Label>
-        {episodes.map((ep, i) => (
-          <View
-            key={ep.title}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 13,
-              borderBottomWidth: i === episodes.length - 1 ? 0 : 1,
-              borderBottomColor: C.hairline,
-            }}
-          >
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: "rgba(255,255,255,0.06)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 11, color: C.silver }}>▶</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Body size={13.5} semibold>
-                {ep.title}
-              </Body>
-              <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-                {ep.sub}
-              </Body>
-            </View>
-            <Mono size={12}>{ep.duration}</Mono>
-          </View>
-        ))}
-      </View>
-      <Card
+    <Screen pad={GUTTER} top={insets.top + 20} bottom={insets.bottom + 40}>
+      <View
         style={{
-          marginTop: 20,
           flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          alignItems: "flex-start",
           gap: 12,
-          paddingVertical: 14,
         }}
       >
-        <Body size={12.5} color={C.silver} style={{ flex: 1 }}>
-          New episodes every Friday
-        </Body>
-        <View style={{ width: 108 }}>
-          <GhostButton label="Notify me" height={38} />
+        <View style={{ flex: 1 }}>
+          <Display
+            size={34}
+            style={{ fontFamily: F.displayBold, letterSpacing: -0.4 }}
+          >
+            {heading.toUpperCase()}
+          </Display>
+          <Body
+            size={16}
+            color={C.sub}
+            style={{ marginTop: 2, fontFamily: F.display }}
+          >
+            {subheading}
+          </Body>
         </View>
-      </Card>
+
+        {/* Filled rather than outlined — it is the only control on a page of
+            artwork, so it has to hold its own against the covers below. */}
+        <CircleAction
+          size={46}
+          badge={unread}
+          onPress={onNotifications}
+          accessibilityLabel={
+            unread ? "Notifications, unread" : "Notifications"
+          }
+          style={{
+            backgroundColor: "rgba(255,255,255,0.14)",
+            borderColor: "transparent",
+          }}
+        >
+          <BellIcon size={20} color={C.text} />
+        </CircleAction>
+      </View>
+
+      <View style={{ marginTop: 26 }}>
+        <MediaCard
+          item={featured}
+          width={cardWidth}
+          height={Math.round(cardWidth / 2.8)}
+          onPress={onPlayFeatured}
+        />
+      </View>
+
+      <SectionHeader title="Listen To Podcast" style={{ marginTop: 34 }} />
+
+      <View style={{ marginTop: 6 }}>
+        <CategoryTabs
+          categories={tabs}
+          active={tab}
+          onChange={setTab}
+          bleed={GUTTER}
+        />
+      </View>
+
+      <View style={{ marginTop: 16 }}>
+        <EpisodeGrid
+          episodes={episodes}
+          size={tileSize}
+          bleed={GUTTER}
+          onOpen={onOpenEpisode}
+        />
+      </View>
+
+      <SectionHeader title="Top Authors" style={{ marginTop: 32 }} />
+
+      <View style={{ marginTop: 16 }}>
+        <AuthorRail authors={authors} bleed={GUTTER} onOpen={onOpenAuthor} />
+      </View>
     </Screen>
   );
 }

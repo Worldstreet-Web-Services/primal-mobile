@@ -167,29 +167,48 @@ export function useLinkpayAccount(): LinkpayAccountState {
   const [nonce, setNonce] = useState(0);
 
   /**
-   * Whether the handshake is something that could be running right now.
+   * Whether the handshake is something this hook may START.
    *
    * Signing the SIWE challenge raises a biometric prompt on the passkey and
    * enclave tiers, which is why AuthContext's own handshake refuses to run
    * outside `ready`/`onboarding`: behind the lock screen it would be a prompt
-   * the user cannot explain. Everything this hook offers obeys the same rule —
+   * the user cannot explain. Everything this hook can DO obeys the same rule —
    * a retry control that reached past that guard would raise exactly the prompt
    * the automatic path declined to raise.
+   *
+   * It is not the same question as "is this wait going anywhere", and conflating
+   * the two is what put a permanent skeleton over the money surface: see below.
    */
   const canHandshake = status === "ready" || status === "onboarding";
+
+  /**
+   * Whether another screen owns the gate this `unknown` is waiting behind.
+   *
+   * Only `locked` does. LockGate redirects every route but the auth ones to
+   * /unlock, so a locked launch is waiting for a PIN that is one screen away —
+   * calling that stalled would put an error over a wait that is about to end.
+   * `signedOut` settles itself: AuthContext turns it into `anonymous`, which
+   * this hook reads as signed out long before the grace window is up.
+   *
+   * `loading` is emphatically NOT such a gate, and excluding it is what made
+   * HANDSHAKE_STALLED unreachable from the one failure it was written for. The
+   * launch effect that owns `loading` has no try/catch and no `.catch()`, and
+   * everything it awaits is called bare (SecureStore, LocalAuthentication), so
+   * one rejection — a keychain that will not decrypt after a device restore is
+   * the ordinary way in — pins the status there for the rest of the launch with
+   * nothing left in the app that could advance it. Nothing here can sign in that
+   * state either, and nothing here claims it can; what it can do is stop
+   * shimmering a skeleton over the user's money and say so.
+   */
+  const gatedElsewhere = status === "locked";
 
   // An `unknown` with nothing in flight and nothing to report. It is a real
   // state — the handshake deliberately waits for the wallet to unlock — and it
   // is indistinguishable from "about to start", so it is given a window rather
   // than being called dead on sight. Re-armed on every retry, so tapping "Try
   // again" visibly re-enters the waiting state instead of doing nothing.
-  //
-  // A locked or still-restoring app has not STALLED, it is waiting for a gate
-  // it does not own: nothing here can start the handshake and nothing here
-  // should claim it can, so those statuses stay in `loading` and the lock gate
-  // is the screen that moves them on.
   const idleHandshake =
-    canHandshake &&
+    !gatedElsewhere &&
     primal.state === "unknown" &&
     !primal.syncing &&
     primal.error === null;
@@ -199,7 +218,12 @@ export function useLinkpayAccount(): LinkpayAccountState {
     if (!idleHandshake) return;
     const timer = setTimeout(() => setHandshakeStalled(true), HANDSHAKE_GRACE_MS);
     return () => clearTimeout(timer);
-  }, [idleHandshake, nonce]);
+    // `status` is a dependency even where it does not change `idleHandshake`:
+    // each transition is a new gate and deserves a whole window, so a launch
+    // that only reaches `ready` at second five still gets the full grace period
+    // for the handshake it can finally start, rather than the remainder of the
+    // window the restore was already burning through.
+  }, [idleHandshake, status, nonce]);
 
   // Read as two primitives, not as the object: a fresh object every render
   // would make the load effect below fire on every render.
@@ -218,8 +242,12 @@ export function useLinkpayAccount(): LinkpayAccountState {
   // Retrying from a screen has to reach whichever layer actually failed: a
   // handshake that never completed is fixed by `linkPrimal`, not by asking
   // LinkPay a question the app has no session to ask with. `canHandshake` is
-  // carried into it so a tap can only start a handshake the automatic path
-  // would also have started.
+  // carried into it — and stays here rather than moving up into the stall
+  // detection above — so a tap can only start a handshake the automatic path
+  // would also have started, and never raises a signing prompt from behind the
+  // lock screen or a launch that has not decided anything yet. A retry from
+  // such a status re-enters the wait and reports again if it is still stuck,
+  // which is honest; signing there would not be.
   const needsHandshake = primal.state === "unknown" && canHandshake;
   const reload = useCallback(() => {
     if (needsHandshake) void linkPrimal();

@@ -33,6 +33,7 @@ import {
   reconcilePendingWithdrawal,
   retireWithdrawal,
   savePendingWithdrawal,
+  setAsideWithdrawal,
   subscribeToWithdrawal,
   trackWithdrawal,
   trackedWithdrawal,
@@ -160,6 +161,13 @@ function Row({
   );
 }
 
+/**
+ * A control that does nothing is worse than no control: it reads as a way out,
+ * VoiceOver announces it as one, and tapping it is a message the screen has
+ * ignored. So the chevron is drawn only where it is wired — every stage of this
+ * screen passes `onBack`, and any that ever stops passing it loses the button
+ * rather than keeping a dead one.
+ */
 function Head({ title, sub, onBack }: { title: string; sub: string; onBack?: () => void }) {
   return (
     <View
@@ -171,9 +179,16 @@ function Head({ title, sub, onBack }: { title: string; sub: string; onBack?: () 
         paddingHorizontal: 22,
       }}
     >
-      <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
-        <BackChevron />
-      </Pressable>
+      {onBack ? (
+        <Pressable
+          onPress={onBack}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <BackChevron />
+        </Pressable>
+      ) : null}
       <View style={{ flex: 1 }}>
         <Display size={20}>{title}</Display>
         <Mono size={9.5} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.4 }}>
@@ -319,6 +334,26 @@ export default function SendConfirmScreen({
   const [resumed, setResumed] = useState(false);
   /** Nothing is polling the payout on screen any more. Never claim otherwise. */
   const [unwatched, setUnwatched] = useState(false);
+  /**
+   * The earlier payout came back unresolvable, not just unfinished.
+   *
+   * Set only after a lookup has actually been tried and could neither find it
+   * nor prove it absent. It is what unlocks the way out of this panel — never
+   * offered before the gateway has been asked, because "check again" is the
+   * right first answer and this one is a last resort.
+   */
+  const [stuck, setStuck] = useState(false);
+  /**
+   * How many times a lookup for the earlier payout has come back unable to
+   * answer — thrown, or found nothing it could call conclusive.
+   *
+   * It is what times the escape on a record that HAS a reference. Asking by
+   * reference can still resolve on the next try (a 404 IS an answer, and it
+   * retires the payout properly), so "check again" gets its turn before the way
+   * past is offered; a record with nothing to ask by has no such prospect, and
+   * its first unresolved lookup is already the last word.
+   */
+  const [unresolvedChecks, setUnresolvedChecks] = useState(0);
 
   const live = useRef(true);
   /**
@@ -432,6 +467,8 @@ export default function SendConfirmScreen({
     setWithdrawal(null);
     setError(null);
     setUnwatched(false);
+    setStuck(false);
+    setUnresolvedChecks(0);
     if (!draft) {
       setStage("empty");
       return;
@@ -448,6 +485,8 @@ export default function SendConfirmScreen({
       const outcome = await reconcilePendingWithdrawal(record);
       if (!live.current) return;
       if (outcome.withdrawal) {
+        setStuck(false);
+        setUnresolvedChecks(0);
         setWithdrawal(outcome.withdrawal);
         if (!outcome.retired) {
           setUnwatched(false);
@@ -459,7 +498,11 @@ export default function SendConfirmScreen({
         // "I could not find it" is not "it never happened". Dropping the key on
         // a lookup that only ran out of window would leave the next attempt at
         // this transfer free to mint a second key and debit the money twice.
+        // The key stays; what opens up instead is the way past this panel that
+        // does not touch it.
         setUnwatched(true);
+        setStuck(true);
+        setUnresolvedChecks((n) => n + 1);
         setError(
           "Paradigm could not say what became of that transfer yet. Nothing here will send it again until it can.",
         );
@@ -475,8 +518,40 @@ export default function SendConfirmScreen({
       // Nothing is polling it and this check did not land either — the panel
       // must stop drawing a pulse over a transfer nobody is following.
       setUnwatched(true);
+      setStuck(true);
+      setUnresolvedChecks((n) => n + 1);
       setError(describeLinkpayFailure(err));
     }
+  }, [watched, leavePrior]);
+
+  /**
+   * Step around an earlier payout that cannot be resolved, without pretending
+   * it never happened.
+   *
+   * The two questions this panel conflates are "what became of that transfer?"
+   * and "may this one be sent?". Only the first is unanswerable: a record with
+   * no reference to ask by, on a feed that will not read, can never earn the
+   * conclusive negative that would let its key go — and it must not, because
+   * dropping that key is precisely what lets a live payout be sent twice. So
+   * nothing is released here. `setAsideWithdrawal` moves the attempt counter
+   * past the stuck payout so the next one is minted a key of its own, and only
+   * frees the pending record once it can prove that stuck key is unreachable.
+   */
+  const setAsidePrior = useCallback(async () => {
+    const record = watched;
+    if (!record) return;
+    setError(null);
+    const done = await setAsideWithdrawal(record);
+    if (!live.current) return;
+    if (!done) {
+      // It could not prove the next transfer would get a key of its own, so it
+      // changed nothing. Saying that plainly beats a silent no-op.
+      setError(
+        "This device could not set that transfer aside safely, so it stays where it is. Try again in a moment.",
+      );
+      return;
+    }
+    await leavePrior();
   }, [watched, leavePrior]);
 
   /**
@@ -568,9 +643,12 @@ export default function SendConfirmScreen({
         } catch (err) {
           if (cancelled) return;
           if (!ours) {
-            // An earlier payout that cannot be resolved cannot be dismissed
+            // An earlier payout that cannot be resolved cannot be RETIRED
             // either — its key is the only thing standing between a resume and
-            // a second debit. Say so and let the user look again.
+            // a second debit. Say so, let the user look again, and offer the
+            // one way past it that leaves the key exactly where it is.
+            setStuck(true);
+            setUnresolvedChecks((n) => n + 1);
             setError(describeLinkpayFailure(err));
             return;
           }
@@ -611,7 +689,10 @@ export default function SendConfirmScreen({
             // feed would not parse. Retiring on that reads "I could not find
             // it" as "it never happened" and drops the one thing stopping this
             // transfer from going out a second time. The earlier payout stays
-            // on its panel and the user can look again.
+            // on its panel, the user can look again, and if it never resolves
+            // they can step around it without its key moving.
+            setStuck(true);
+            setUnresolvedChecks((n) => n + 1);
             setError(
               "Paradigm could not say what became of that transfer yet. Nothing here will send it again until it can.",
             );
@@ -850,6 +931,47 @@ export default function SendConfirmScreen({
   if (stage === "prior" && watched) {
     const done = withdrawal !== null && isTerminalTransfer(withdrawal.status);
     const them = party(withdrawal, watched, null);
+    /**
+     * Has the gateway ever confirmed this payout exists?
+     *
+     * A record on disk is only proof that the request was SENT. The gateway
+     * confirming it — a status on the wire, or a reference it issued for it —
+     * is what makes "still with the bank" a statement of fact rather than a
+     * hope. Without one, the honest headline is the same thing the error line
+     * underneath says: nobody here knows yet.
+     */
+    const confirmed = withdrawal !== null || Boolean(watched.withdrawalId);
+    /**
+     * The way out. It releases nothing — `setAsideWithdrawal` moves the attempt
+     * counter past the stuck payout and frees the pending slot, so the next
+     * transfer is minted a key of its own and this one's key stays exactly
+     * where it is.
+     *
+     * Offered on any record a lookup has genuinely failed to resolve, including
+     * one that carries a reference: a 200 the reader cannot parse, or a
+     * persistent 5xx on that one id, never earns the conclusive negative that
+     * would let the key go — correctly — and without an escape the record then
+     * bounces every future payout back to this panel for good. What a reference
+     * buys is one more ask before the offer, because asking by it can still come
+     * back with a 404, and a 404 is an answer that retires the payout properly.
+     */
+    const escapable =
+      !done && stuck && (!watched.withdrawalId || unresolvedChecks >= 2);
+    /**
+     * Two silences and an unknown, told apart. A payout the gateway has
+     * confirmed carries on without us; one we have never had confirmation of
+     * may not have been taken at all — and either way, nothing here is polling,
+     * so nothing here draws a pulse.
+     */
+    const note = done
+      ? "That one is finished. Your new transfer has not been priced or sent yet — carry on below."
+      : !confirmed
+        ? `Paradigm has not been able to confirm whether the bank took it.${
+            unwatched ? " Nothing here is checking on it just now." : ""
+          } Its key is still held, so this screen cannot send it a second time.`
+        : unwatched
+          ? "This screen has stopped checking on it. The transfer itself carries on."
+          : "It has to land before a new transfer is set up, so the two can never be mistaken for each other. Nothing new has been sent.";
     return (
       <View style={{ flex: 1, backgroundColor: C.canvas }}>
         <Head title="One at a time" sub="AN EARLIER TRANSFER IS STILL OPEN" onBack={onBack} />
@@ -857,7 +979,11 @@ export default function SendConfirmScreen({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             {done || unwatched ? null : <PulseDot />}
             <Display size={19}>
-              {done ? withdrawalStatusLabel(withdrawal.status) : "Still with the bank"}
+              {done
+                ? withdrawalStatusLabel(withdrawal.status)
+                : confirmed
+                  ? "Still with the bank"
+                  : "No answer for this one yet"}
             </Display>
           </View>
           <Body size={12.5} color={C.sub} style={{ marginTop: 14, lineHeight: 19 }}>
@@ -866,22 +992,29 @@ export default function SendConfirmScreen({
             {them.bank ?? "Their bank"} · {them.tail}
           </Body>
           <Body size={11.5} color={C.dim} style={{ marginTop: 16, lineHeight: 17.5 }}>
-            {done
-              ? "That one is finished. Your new transfer has not been priced or sent yet — carry on below."
-              : unwatched
-                ? // Two different silences, and the screen must not tell the
-                  // second as if it were the first: a payout the gateway has
-                  // confirmed carries on without us, while one we never managed
-                  // to look up may not have been taken at all. Either way,
-                  // nothing here is polling, so nothing here draws a pulse.
-                  withdrawal !== null
-                  ? "This screen has stopped checking on it. The transfer itself carries on."
-                  : "Nothing here is checking on it just now. Its key is still held, so this cannot send it a second time."
-                : "It has to land before a new transfer is set up, so the two can never be mistaken for each other. Nothing new has been sent."}
+            {note}
           </Body>
           {error ? (
             <Body size={11.5} color={C.down} style={{ marginTop: 14 }}>
               {error}
+            </Body>
+          ) : null}
+          {stuck && !done && !escapable ? (
+            // The reference is worth one more ask, and the user is told what
+            // that ask can do and what follows if it does nothing — rather than
+            // being left tapping a button with no stated end.
+            <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
+              Check again — this one has a reference, and asking Paradigm for it by that reference
+              can still come back with an answer. If it still cannot say, you will be able to set
+              this one aside and carry on without it.
+            </Body>
+          ) : null}
+          {escapable ? (
+            <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
+              You can set that one aside and carry on. It is not cancelled: if the bank did take it,
+              it still stands, and yours would be a second transfer under a key of its own. Its key
+              stays held either way, so nothing here can ever re-send that one. This screen stops
+              tracking it; the fiat space still shows where it got to.
             </Body>
           ) : null}
         </View>
@@ -891,6 +1024,11 @@ export default function SendConfirmScreen({
           ) : (
             <MetallicButton label="Check again" onPress={() => void recheckPrior()} />
           )}
+          {escapable ? (
+            <View style={{ marginTop: 12 }}>
+              <GhostButton label="Set it aside and carry on" onPress={() => void setAsidePrior()} />
+            </View>
+          ) : null}
           <View style={{ marginTop: 12 }}>
             <GhostButton label="Done" onPress={onDone} />
           </View>
@@ -984,7 +1122,23 @@ export default function SendConfirmScreen({
       <View style={{ flex: 1, backgroundColor: C.canvas }}>
         <Head
           title={stage === "submitting" ? "Releasing" : "On its way"}
-          sub={resumed ? "PICKED UP WHERE YOU LEFT OFF" : "THE BANK HAS IT"}
+          // "THE BANK HAS IT" is a claim about a request that has been ACCEPTED.
+          // While the initiate call is still on the wire nobody knows that yet,
+          // and a 502 a second later would make it a lie the user was shown
+          // over their own money.
+          sub={
+            stage === "submitting"
+              ? "ASKING THE BANK TO TAKE IT"
+              : resumed
+                ? "PICKED UP WHERE YOU LEFT OFF"
+                : "THE BANK HAS IT"
+          }
+          // Leaving is safe and the screen says so two lines down: the record is
+          // on disk, the key is reserved, and the poll that retires it lives in
+          // the module rather than here. So the chevron does what it looks like
+          // it does, instead of being the one control on this screen that is
+          // announced as a way out and is not one.
+          onBack={onBack}
         />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -1014,7 +1168,12 @@ export default function SendConfirmScreen({
           <Body size={11.5} color={C.dim} style={{ marginTop: 22, textAlign: "center", lineHeight: 17.5 }}>
             {stalled
               ? "This screen has stopped checking on it. The transfer itself carries on, and the fiat space shows where it got to."
-              : "You can leave this screen. The transfer keeps going, and the fiat space shows where it got to."}
+              : stage === "submitting"
+                ? // Nothing has been accepted yet, so this may not promise the
+                  // transfer keeps going — only that the request does, which it
+                  // does whether or not this screen is still here.
+                  "You can leave this screen. The request carries on without it, and if Paradigm takes it the fiat space shows where it got to."
+                : "You can leave this screen. The transfer keeps going, and the fiat space shows where it got to."}
           </Body>
           {error ? (
             <Body size={11.5} color={C.down} style={{ marginTop: 14, textAlign: "center" }}>

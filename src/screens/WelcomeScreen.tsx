@@ -10,15 +10,26 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
-import { GlassDrawer } from "../components/GlassDrawer";
-import { Logo } from "../components/Logo";
-import { PressableScale } from "../components/ui";
+import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
 
-/** Beat the drawer starts on — the mark gets the screen to itself until here. */
-const DRAWER_DELAY = 620;
+const HERO = require("../../assets/images/paradigm_logo.png");
+/** The gold artwork's own ratio — width drives, height follows. */
+const HERO_ASPECT = 1100 / 1326;
+/**
+ * The gold is drawn off-center inside its own file: 122px of transparent margin
+ * on the left, none on the right (the export clips the third bar at the canvas
+ * edge). Centering the *file* therefore hangs the mark to the right of the
+ * wordmark below it. This is how far off center the drawn pixels sit, as a
+ * fraction of the width, so the layout can center the object instead.
+ */
+const HERO_BIAS = 0.055;
 
-/** Soft leaf bloom behind the mark, so it sits in light instead of on flat black. */
+/**
+ * Gold bloom behind the hero. The mark is a rendered metal object; on flat
+ * charcoal with no light around it, it reads as a sticker. This is the light it
+ * is standing in, which is why it is the only ornament on the screen.
+ */
 function Bloom({ size }: { size: number }) {
   return (
     <Svg
@@ -28,10 +39,10 @@ function Bloom({ size }: { size: number }) {
       style={{ position: "absolute" }}
     >
       <Defs>
-        <RadialGradient id="bloom" cx="50%" cy="50%" rx="50%" ry="50%">
-          <Stop offset="0" stopColor="#83BE60" stopOpacity={0.22} />
-          <Stop offset="0.55" stopColor="#83BE60" stopOpacity={0.07} />
-          <Stop offset="1" stopColor="#83BE60" stopOpacity={0} />
+        <RadialGradient id="welcome-bloom" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor={C.amber} stopOpacity={0.16} />
+          <Stop offset="0.5" stopColor={C.amber} stopOpacity={0.05} />
+          <Stop offset="1" stopColor={C.amber} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Ellipse
@@ -39,67 +50,50 @@ function Bloom({ size }: { size: number }) {
         cy={size / 2}
         rx={size / 2}
         ry={size / 2}
-        fill="url(#bloom)"
+        fill="url(#welcome-bloom)"
       />
     </Svg>
   );
 }
 
-const ACCESS_VECTOR = require("../../assets/images/access_vector.png");
-
 /**
- * Trailing glyph on the CTA. Tinted rather than drawn in its own colors, so it
- * always matches the label sitting beside it on the brand-filled button.
+ * The pitch, and nothing else.
+ *
+ * This screen answers one question — *what is this* — so it carries one action.
+ * It used to offer a method choice and an "I already have an account" door as
+ * well, which made it compete with the sign-in screen and left a returning user
+ * picking between two routes to the same place. The method choice lives one
+ * screen on; the reassurance for returning members is a line of copy, not a
+ * second button.
+ *
+ * The entry is deliberately short. A pitch screen a returning member has seen
+ * fifty times must not hold them: everything is on screen inside a second, and
+ * the CTA is live from the first frame.
  */
-function AccessGlyph({
-  color = C.brandSoftInk,
-  size = 20,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Image
-      source={ACCESS_VECTOR}
-      contentFit="contain"
-      tintColor={color}
-      style={{ width: size, height: size }}
-    />
-  );
-}
-
-/**
- * The membership pitch. The mark holds the screen alone for a beat, then the
- * glass drawer rises over its foot and the copy lands line by line behind it.
- */
-export default function WelcomeScreen({
-  onLogin,
-}: {
-  onLogin?: (method: string) => void;
-}) {
+export default function WelcomeScreen({ onLogin }: { onLogin?: () => void }) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const logoW = Math.min(width * 0.78, 320);
-  const bloom = logoW * 1.9;
+  const heroW = Math.min(width * 0.54, 230);
+  const bloom = heroW * 2.6;
 
   const mark = useRef(new Animated.Value(0)).current;
-  // One driver for the whole copy stack; each line reads a different slice of
-  // it, which is what makes them arrive staggered off a single animation.
+  // One driver for the whole stack below the mark; each line reads a different
+  // slice of it, which is what makes them arrive staggered off one animation.
   const copy = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(mark, {
       toValue: 1,
-      duration: 900,
+      duration: 820,
       easing: Easing.bezier(0.22, 1, 0.36, 1),
       useNativeDriver: true,
     }).start();
 
     Animated.timing(copy, {
       toValue: 1,
-      duration: 1100,
-      delay: DRAWER_DELAY + 190,
+      duration: 820,
+      delay: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -107,20 +101,20 @@ export default function WelcomeScreen({
 
   /** Slice `copy` into a rise-and-fade for the nth line down the stack. */
   const step = (i: number) => {
-    const start = i * 0.11;
-    const range = [start, Math.min(start + 0.42, 1)];
+    const start = i * 0.13;
+    const range = [start, Math.min(start + 0.5, 1)];
     return {
       opacity: copy.interpolate({
         inputRange: range,
         outputRange: [0, 1],
-        extrapolate: "clamp",
+        extrapolate: "clamp" as const,
       }),
       transform: [
         {
           translateY: copy.interpolate({
             inputRange: range,
-            outputRange: [22, 0],
-            extrapolate: "clamp",
+            outputRange: [18, 0],
+            extrapolate: "clamp" as const,
           }),
         },
       ],
@@ -128,117 +122,98 @@ export default function WelcomeScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      {/* The mark sits high and gets clipped by the drawer at its foot —
-          the overlap is the composition, not an accident of layout. */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: insets.top + height * 0.1,
-          left: 0,
-          right: 0,
-          alignItems: "center",
-          opacity: mark,
-          transform: [
-            {
-              scale: mark.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1.08, 1],
-              }),
-            },
-          ],
-        }}
-      >
-        <View style={{ alignItems: "center", justifyContent: "center" }}>
-          {/* <Bloom size={bloom} /> */}
-          <Logo width={logoW} />
-        </View>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: C.canvas,
+        paddingTop: insets.top,
+        paddingHorizontal: 26,
+        paddingBottom: Math.max(insets.bottom, 26) + 8,
+      }}
+    >
+      {/* The mark holds the upper two thirds alone — the composition is one
+          object in light, then the words, then the way in. */}
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <Animated.View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: mark,
+            transform: [
+              {
+                scale: mark.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1.06, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Bloom size={bloom} />
+          <Image
+            source={HERO}
+            contentFit="contain"
+            style={{
+              width: heroW,
+              height: heroW / HERO_ASPECT,
+              transform: [{ translateX: -HERO_BIAS * heroW }],
+            }}
+            accessibilityLabel="Paradigm"
+          />
+        </Animated.View>
+      </View>
+
+      <Animated.View style={step(0)}>
+        <Text
+          style={{
+            fontFamily: F.display,
+            fontSize: 26,
+            letterSpacing: 9,
+            // Tracking adds its space after the last letter, which walks
+            // centered type half a step left. Push it back.
+            marginLeft: 4.5,
+            color: C.text,
+            textAlign: "center",
+          }}
+        >
+          PARADIGM
+        </Text>
       </Animated.View>
 
-      <GlassDrawer
-        width={width}
-        delay={DRAWER_DELAY}
-        // The two glass dials. `clear` keeps the mark's foot legible through
-        // the blur; the tint is what buys the headline its contrast back —
-        // raise it toward 0.8 for a heavier slab, drop it to 0 for bare glass.
-        effect="clear"
-        tintOpacity={0.95}
-        style={{
-          paddingTop: 45,
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 56) + 10,
-        }}
-        prism={0.18}
-      >
-        {["ONE PLATFORM.", "EVERY STRATEGY.", "NO COMPROMISE."].map(
-          (line, i) => (
-            <Animated.View key={line} style={step(i)}>
-              <Text
-                style={{
-                  fontFamily: F.displayBold,
-                  fontSize: 36,
-                  lineHeight: 45,
-                  letterSpacing: 0.2,
-                  color: i === 2 ? C.brand : C.text,
-                  textAlign: "center",
-                }}
-              >
-                {line}
-              </Text>
-            </Animated.View>
-          ),
-        )}
+      <Animated.View style={[{ marginTop: 18 }, step(1)]}>
+        <Text
+          style={{
+            fontFamily: F.body,
+            fontSize: 16,
+            lineHeight: 25,
+            color: C.sub,
+            textAlign: "center",
+          }}
+        >
+          Markets, capital and payments {"—"} in one account.
+        </Text>
+      </Animated.View>
 
-        <Animated.View style={[{ marginTop: 46 }, step(4)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 15,
-              textAlign: "center",
-              color: C.silver,
-            }}
-          >
-            Begin Membership {"•"} $1k/mo
-          </Text>
-        </Animated.View>
+      <Animated.View style={[{ marginTop: 46 }, step(2)]}>
+        <MetalButton label="Get started" onPress={onLogin} />
+      </Animated.View>
 
-        <Animated.View style={[{ marginTop: 10 }, step(5)]}>
-          <PressableScale
-            scale={0.985}
-            onPress={() => onLogin && onLogin("access")}
-          >
-            <View
-              accessibilityRole="button"
-              accessibilityLabel="Get Access"
-              style={{
-                height: 60,
-                borderRadius: 999,
-                backgroundColor: C.brand,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 14,
-                shadowColor: C.brand,
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                shadowOffset: { width: 0, height: 10 },
-                elevation: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: F.display,
-                  fontSize: 21,
-                  color: C.brandSoftInk,
-                }}
-              >
-                Get Access
-              </Text>
-              <AccessGlyph />
-            </View>
-          </PressableScale>
-        </Animated.View>
-      </GlassDrawer>
+      {/* The returning member's answer. It is a sentence rather than a second
+          button because there is no second destination — the same door creates
+          a wallet or restores one. */}
+      <Animated.View style={[{ marginTop: 18 }, step(3)]}>
+        <Text
+          style={{
+            fontFamily: F.body,
+            fontSize: 12.5,
+            lineHeight: 18,
+            color: C.dim,
+            textAlign: "center",
+          }}
+        >
+          New or returning {"—"} you start in the same place.
+        </Text>
+      </Animated.View>
     </View>
   );
 }

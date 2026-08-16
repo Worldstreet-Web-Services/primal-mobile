@@ -27,6 +27,8 @@ import * as storage from "@/lib/auth/storage";
 import * as wire from "@/lib/auth/wire";
 import * as gatewayAuth from "@/lib/gateway/auth";
 import * as entitlement from "@/lib/gateway/entitlement";
+import { forgetPayoutState } from "@/lib/gateway/linkpay";
+import { clearVasState } from "@/lib/gateway/services";
 import * as gatewaySession from "@/lib/gateway/session";
 import {
   ApiError,
@@ -359,13 +361,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const linkPrimal = useCallback(async () => {
     const address = state.session?.addresses.evm;
     if (!address || decane.usingMockAuth) return;
+    // Same gate as the automatic handshake below: signing raises a biometric
+    // prompt on the passkey and enclave tiers, and behind the lock screen that
+    // is a prompt the user cannot explain. A caller retrying by hand must not
+    // reach past a guard the automatic path respects.
+    if (state.status !== "ready" && state.status !== "onboarding") return;
     if (primalSync.current) return primalSync.current;
     const run = runPrimalSync(address).finally(() => {
       primalSync.current = null;
     });
     primalSync.current = run;
     return run;
-  }, [state.session, runPrimalSync]);
+  }, [state.session, state.status, runPrimalSync]);
 
   const adopt = useCallback(async (session: DecaneSession) => {
     setAccessToken(session.accessToken);
@@ -435,6 +442,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // end it. `logout` clears local storage whatever the network does.
     await gatewayAuth.logout();
     await entitlement.forgetSubscriptionId();
+    // Money state is per-user but the keychain is per-device: without this the
+    // next account on this handset inherits the last one's in-flight payout
+    // record and attempt ledgers, and a confirm screen would narrate a stranger's
+    // transfer as their own. Sign-out is the only safe moment to drop them —
+    // they exist to survive crashes and timeouts everywhere else.
+    await forgetPayoutState();
+    clearVasState();
     await decane.signOut();
     await storage.clearAll();
 

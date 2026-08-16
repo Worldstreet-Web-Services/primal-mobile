@@ -2,6 +2,7 @@ import { router, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import HubHomeScreen from "@/screens/HubHomeScreen";
+import { C } from "@/theme/tokens";
 
 // The four locked spaces: Auto Earn (Kash), Copy Trading (Worldstreet),
 // Crypto (LinkPay), Games (Ark).
@@ -14,7 +15,7 @@ const ROUTES: Record<string, Href> = {
 
 export default function Hub() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <HubHomeScreen
         onOpen={(space) => {
           const href = ROUTES[space];

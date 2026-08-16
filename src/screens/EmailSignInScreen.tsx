@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { C, F } from "../theme/tokens";
-import { BackHeader, Body, Display, MetallicButton } from "../components/ui";
+import { BackHeader, Body, Display, MetalButton } from "../components/ui";
 
 /**
  * Decane's email sign-in is two-step: request a code, then verify it. With the
  * SDK running in-process there is no hosted page to host this, so the app owns
  * both steps.
+ *
+ * Third beat of the auth flow, so it wears the same metal pill as the provider
+ * rows one screen back — a different-looking button here would read as a
+ * different system, when it is the same decision being finished.
  */
 export default function EmailSignInScreen({
   onBack,
@@ -83,7 +87,7 @@ export default function EmailSignInScreen({
               }
               style={inputStyle}
             />
-            <MetallicButton
+            <MetalButton
               label="Send code"
               onPress={() => onSubmitEmail?.(value.trim())}
               loading={busy}
@@ -120,7 +124,7 @@ export default function EmailSignInScreen({
               editable={!busy}
               style={[inputStyle, { fontFamily: F.mono, letterSpacing: 6 }]}
             />
-            <MetallicButton
+            <MetalButton
               label="Verify"
               onPress={() => onSubmitCode?.(code)}
               loading={busy}

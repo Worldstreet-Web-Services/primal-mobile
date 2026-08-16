@@ -604,6 +604,28 @@ export function withdrawalFingerprint(payout: {
 const slotFor = (fingerprint: string, attempt: number): string =>
   `${WITHDRAWAL_SLOT}.${fingerprint}.${attempt}`;
 
+/**
+ * What a slot NAMES, or `null` when nothing `slotFor` can produce equals it.
+ *
+ * The `null` answer is the useful one: a record written before payouts carried
+ * an attempt sits under the bare stem, and no derived slot ever equals the bare
+ * stem — so a key left there can never be handed to a later payout, whatever
+ * the attempt ledger says.
+ */
+function parseWithdrawalSlot(
+  slot: string,
+): { fingerprint: string; attempt: number } | null {
+  const prefix = `${WITHDRAWAL_SLOT}.`;
+  if (!slot.startsWith(prefix)) return null;
+  const rest = slot.slice(prefix.length);
+  const cut = rest.lastIndexOf(".");
+  if (cut <= 0) return null;
+  const fingerprint = rest.slice(0, cut);
+  const attempt = rest.slice(cut + 1);
+  if (fingerprint === "" || !/^\d+$/.test(attempt)) return null;
+  return { fingerprint, attempt: Number(attempt) };
+}
+
 const slotKey = (slot: string) => `paradigm.idem.${slot}`;
 
 async function readSlot(slot: string): Promise<string | null> {
@@ -869,7 +891,59 @@ export async function clearPendingWithdrawal(): Promise<void> {
   }
 }
 
-/** One page of the withdrawal feed, and how far back the scan will walk. */
+/**
+ * Drop every trace of this account's payout and provisioning state.
+ *
+ * Sign-out only, and nothing else may call it: these records exist precisely to
+ * survive a crash, a relaunch and a timeout, so anything that clears them
+ * mid-flow reintroduces the double-send they prevent. But they are per-user,
+ * and the keychain is per-device — without this, the next account signed in on
+ * the same handset inherits the previous one's in-flight payout record (amount,
+ * destination tail, bank, idempotency key) and the confirm screen narrates it
+ * as their own.
+ *
+ * The keychain cannot be enumerated, so slots are gathered rather than listed:
+ * the two fixed ones, everything this process has reserved, and every slot the
+ * attempt ledger implies — a fingerprint sitting at attempt N has had a slot for
+ * each attempt up to N, and any of them may still hold a key.
+ */
+export async function forgetPayoutState(): Promise<void> {
+  const slots = new Set<string>([
+    PROVISION_SLOT,
+    WITHDRAWAL_SLOT,
+    ...memoryKeys.keys(),
+  ]);
+
+  const ledger = await readAttempts();
+  for (const row of ledger ?? []) {
+    for (let attempt = 0; attempt <= row.attempt; attempt += 1) {
+      slots.add(slotFor(row.fingerprint, attempt));
+    }
+  }
+
+  // Each release swallows its own failure, so one unreadable slot cannot
+  // abandon the rest of the sweep.
+  await Promise.all([...slots].map((slot) => releaseIdempotencyKey(slot)));
+  await clearPendingWithdrawal();
+
+  attemptMemory = null;
+  if (isWeb) return;
+  try {
+    await SecureStore.deleteItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
+  } catch {
+    // The memory mirror is already gone; a stale ledger row only costs the next
+    // identical payout a fresh attempt number, which is the safe direction.
+  }
+}
+
+/**
+ * What the scan ASKS for per page, and how many pages it will walk.
+ *
+ * `FIND_PAGE` is a request, never an assumption: a gateway is free to cap its
+ * own page below it (10 and 25 are the common caps), so nothing below infers
+ * anything from a page that came back shorter than this. The cursor advances by
+ * the rows actually returned for the same reason.
+ */
 const FIND_PAGE = 20;
 const FIND_MAX_PAGES = 5;
 
@@ -883,9 +957,10 @@ export interface PendingLookup {
    * sentences, and only the second one may release a key. The scan earns the
    * second only when it walked the feed back past this attempt's own floor (or
    * ran out of feed) AND could read every figure it walked past. A window that
-   * stopped short, or a row whose amount would not parse, leaves a payout the
-   * scan cannot rule out — and the key is the only thing standing between that
-   * payout and a second debit.
+   * stopped short, a row whose amount would not parse, a row with no readable
+   * date, or a feed that paged in a shape the scan did not recognise all leave a
+   * payout the scan cannot rule out — and the key is the only thing standing
+   * between that payout and a second debit.
    */
   conclusive: boolean;
 }
@@ -913,10 +988,34 @@ export async function findPendingWithdrawal(
   // Every in-window row so far was either matched or positively ruled out. One
   // the scan could not read is one it cannot swear is somebody else's.
   let cleared = true;
+  // The cursor moves by the rows actually returned, never by the page size that
+  // was asked for. A gateway that caps its own page at 10 while this asks for
+  // 20 would otherwise have rows 10-19 skipped over entirely — and a scan that
+  // never looked at a row must not be allowed to reach a terminator and call
+  // the payout absent.
+  let skip = 0;
+  let previousFirstId: string | null = null;
 
   for (let page = 0; page < FIND_MAX_PAGES; page += 1) {
-    const feed = await listWithdrawals({ skip: page * FIND_PAGE, take: FIND_PAGE }, call);
+    const feed = await listWithdrawals({ skip, take: FIND_PAGE }, call);
     const rows = feed.items;
+
+    // The one shape of "the end of the feed" that is a fact rather than an
+    // inference: nothing came back at all. A SHORT page is not that — it is
+    // what a server-side cap under FIND_PAGE looks like on page one, and a
+    // bare-array feed (which `readPage` reports as total = its own length)
+    // looks the same again. Reading either as exhaustion is how a payout
+    // sitting at index 25 becomes a confident "this never happened", and a
+    // confident negative is what authorises retiring a live key.
+    if (rows.length === 0) return { withdrawal: null, conclusive: cleared };
+
+    // The same page twice means `skip` is not being honoured, so walking on
+    // would re-read the newest rows forever while swearing it went deeper.
+    const firstId = rows[0]?.id ?? "";
+    if (firstId !== "" && firstId === previousFirstId) {
+      return { withdrawal: null, conclusive: false };
+    }
+    previousFirstId = firstId;
 
     let oldestSeen: number | null = null;
     let descending = true;
@@ -935,6 +1034,19 @@ export async function findPendingWithdrawal(
       // else the row carries.
       if (destination !== undefined && !destination.endsWith(record.destinationLast4)) continue;
 
+      if (createdMs === null) {
+        // Undated, and to an account that could be this one. A row that cannot
+        // be placed in time cannot be placed on the near side of the floor
+        // either, so it may not have it both ways: skipping the floor test and
+        // still being eligible to match on amount + destination alone is how a
+        // settled payout from last month is adopted as this attempt's, its key
+        // retired while this money may still be moving, and its reference
+        // printed as this transfer's receipt. Unreadable is refused here for
+        // the same reason an unreadable amount is refused below — and, like
+        // that one, it costs the scan its right to a negative.
+        cleared = false;
+        continue;
+      }
       if (destination === undefined || withdrawal.id === "" || !withdrawal.amount) {
         // In the window, and nothing on it rules it out: no destination to
         // compare, no reference to name it by, or a figure that would not parse
@@ -948,17 +1060,21 @@ export async function findPendingWithdrawal(
       return { withdrawal, conclusive: true };
     }
 
-    // The end of the feed is the strongest possible negative: there is nothing
-    // left that could be the payout, whatever order the rows came in.
-    if (rows.length < FIND_PAGE) return { withdrawal: null, conclusive: cleared };
-    if (feed.total !== null && (page + 1) * FIND_PAGE >= feed.total) {
+    // A total is only evidence of exhaustion when it is bigger than the page it
+    // arrived with. `readPage` synthesises `total = raw.length` for a bare
+    // array, which is indistinguishable from a real total that happens to equal
+    // this page's row count — so that case is left to the empty page above,
+    // which costs one extra request and cannot be wrong.
+    if (feed.total !== null && feed.total > rows.length && skip + rows.length >= feed.total) {
       return { withdrawal: null, conclusive: cleared };
     }
     // Newest first — checked rather than assumed, because a feed that came back
     // oldest-first would otherwise let page one end the scan before it started.
+    // This is the normal exit: the feed is now older than this attempt can be.
     if (descending && oldestSeen !== null && oldestSeen < floor) {
       return { withdrawal: null, conclusive: cleared };
     }
+    skip += rows.length;
   }
   return { withdrawal: null, conclusive: false };
 }
@@ -1197,6 +1313,66 @@ export async function retireWithdrawal(record: PendingWithdrawal): Promise<void>
   // late must not wipe the record of a payout that started after it.
   if (!current || current.idempotencyKey === record.idempotencyKey) {
     await clearPendingWithdrawal();
+  }
+}
+
+/**
+ * Stop BLOCKING on a payout that can be neither resolved nor resumed — without
+ * claiming it never happened.
+ *
+ * "What became of the old payout?" and "may the user start a new one?" are two
+ * questions, and only the first one is unanswerable here. A record with no
+ * withdrawalId (nothing to ask the gateway by) whose feed rows will not read
+ * (nothing to scan by) can never earn a conclusive negative, so it can never be
+ * retired — correctly, because retiring it is exactly the release that sends a
+ * live payout twice. But leaving it as the one pending record also wedges the
+ * payout feature for good: every later confirm lands back on its panel.
+ *
+ * So this releases NOTHING. The key stays in the keychain and the attempt
+ * counter for that payout's fingerprint moves PAST the stuck attempt, which is
+ * the whole of the guarantee: the next payout with the same details derives
+ * `.n+1`, is minted a key of its own, and can never be handed this one. Only
+ * then is the record cleared, so a new operation has the pending slot.
+ *
+ * Answers `false` — and changes nothing — when it cannot prove that guarantee:
+ * an unreadable ledger would answer attempt `0` for this fingerprint too, and a
+ * ledger write that never reached the keychain dies with the app. In both cases
+ * the next identical payout would derive THIS slot and be handed THIS key, so
+ * the honest answer is that the record has to stay where it is.
+ */
+export async function setAsideWithdrawal(record: PendingWithdrawal): Promise<boolean> {
+  const derived = parseWithdrawalSlot(record.slot);
+  if (derived) {
+    const list = await readAttempts();
+    if (!list) return false;
+    const row = list.find((entry) => entry.fingerprint === derived.fingerprint);
+    // Never backwards: a counter already past this attempt stays where it is.
+    const attempt = Math.max(derived.attempt + 1, row?.attempt ?? 0);
+    await saveAttempts([
+      ...list.filter((entry) => entry.fingerprint !== derived.fingerprint),
+      { fingerprint: derived.fingerprint, attempt },
+    ]);
+    // `saveAttempts` keeps a memory copy when the keychain write fails, and a
+    // memory copy dies with the app — after which `currentAttempt` answers with
+    // the OLD number again. Read it back rather than trust it.
+    if (!isWeb && !(await attemptPersisted(derived.fingerprint, attempt))) return false;
+  }
+  await clearPendingWithdrawal();
+  return true;
+}
+
+/** Is the ledger on disk — not just the mirror — at least at `attempt`? */
+async function attemptPersisted(fingerprint: string, attempt: number): Promise<boolean> {
+  try {
+    const raw = await SecureStore.getItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+    if (!Array.isArray(parsed)) return false;
+    const stored = parsed
+      .map(readAttemptRow)
+      .find((entry): entry is WithdrawalAttempt => entry !== null && entry.fingerprint === fingerprint);
+    return stored !== undefined && stored.attempt >= attempt;
+  } catch {
+    return false;
   }
 }
 

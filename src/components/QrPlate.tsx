@@ -6,6 +6,22 @@ import { C, F } from "../theme/tokens";
 import { Mono } from "./ui";
 
 /**
+ * The paper side of the plate, deliberately outside the palette.
+ *
+ * Every other color in this file is a token, because every other color is a
+ * design decision. These are not: they are the contrast a camera sensor needs,
+ * and they must hold through any rebrand. The 2026-08-16 ground move is the
+ * case in point — swapping the ink for `C.canvas` (as the rest of the app's
+ * near-blacks correctly did) would have quietly cost the symbol contrast and
+ * left a deposit QR that photographs badly in poor light. `INK_MUTED` is the
+ * same rule for type: it sits on the white field, so it must never track the
+ * chrome greys, which are mixed for a dark ground.
+ */
+const PAPER = "#FFFFFF";
+const INK = "#0A0B0D";
+const INK_MUTED = "#6A7078";
+
+/**
  * A real, scannable QR on a machined plate.
  *
  * The code itself is drawn dark-on-white, because that is the contrast a phone
@@ -61,7 +77,10 @@ export function QrPlate({
           left: 22,
           right: 22,
           height: 1,
-          backgroundColor: "rgba(255,255,255,0.22)",
+          // Matches the kit's `Shine` exactly (0.28). It was mixed at 0.22 for
+          // the near-black ground; on the lighter bezel a white lip carries
+          // less, so parity with the kit is what keeps the milled read.
+          backgroundColor: "rgba(255,255,255,0.28)",
         }}
       />
       <CornerTicks inset={7} />
@@ -71,7 +90,7 @@ export function QrPlate({
           width: size,
           height: size,
           borderRadius: 12,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: PAPER,
           overflow: "hidden",
         }}
       >
@@ -86,7 +105,7 @@ export function QrPlate({
               padding: 12,
             }}
           >
-            <Mono size={10} color="#6A7078" style={{ textAlign: "center" }}>
+            <Mono size={10} color={INK_MUTED} style={{ textAlign: "center" }}>
               CODE UNAVAILABLE
             </Mono>
           </View>
@@ -150,8 +169,8 @@ function QrMatrix({
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${span} ${span}`}>
-      <Rect x={0} y={0} width={span} height={span} fill="#FFFFFF" />
-      <Path d={d} fill="#0A0B0D" />
+      <Rect x={0} y={0} width={span} height={span} fill={PAPER} />
+      <Path d={d} fill={INK} />
     </Svg>
   );
 }
@@ -159,7 +178,7 @@ function QrMatrix({
 /** Four corner ticks — the machined register marks around the plate. */
 function CornerTicks({ inset }: { inset: number }) {
   const arm = 9;
-  const color = "rgba(255,255,255,0.16)";
+  const color = C.border;
   const bar = (s: ViewStyle) => (
     <View pointerEvents="none" style={[{ position: "absolute" }, s]} />
   );

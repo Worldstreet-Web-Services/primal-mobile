@@ -77,7 +77,7 @@ export default function ReceiveSheet({
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
           borderTopWidth: 1,
-          borderColor: "rgba(199,204,209,0.16)",
+          borderColor: C.border,
           paddingTop: 12,
           paddingHorizontal: 22,
           paddingBottom: Math.max(insets.bottom, 16) + 26,
@@ -88,7 +88,7 @@ export default function ReceiveSheet({
             width: 36,
             height: 4,
             borderRadius: 3,
-            backgroundColor: "rgba(199,204,209,0.3)",
+            backgroundColor: C.borderStrong,
             alignSelf: "center",
             marginBottom: 16,
           }}
@@ -115,7 +115,10 @@ export default function ReceiveSheet({
               width: 30,
               height: 30,
               borderRadius: 16,
-              backgroundColor: "#1A1D22",
+              // Sheets now sit *below* the ground, so this puck's old near-black
+              // fill landed within a point of C.sheet and the ✕ floated on
+              // nothing. Inset lifts it back into a pressable target.
+              backgroundColor: C.inset,
               alignItems: "center",
               justifyContent: "center",
             }}

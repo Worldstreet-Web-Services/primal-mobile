@@ -83,7 +83,11 @@ function SoonRoom({
             fontSize: 104,
             lineHeight: 116,
             color: C.silver,
-            opacity: 0.05,
+            // 0.05 was mixed against the near-black card, where 5% silver still
+            // doubled the local value. On the charcoal card the ground has come
+            // most of the way up to meet it, so the same alpha lifts almost
+            // nothing and the ghost disappears. Roughly doubled to hold it.
+            opacity: 0.09,
           }}
         >
           {glyph}

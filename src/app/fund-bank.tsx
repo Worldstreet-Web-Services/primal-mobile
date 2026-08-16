@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useToast } from "@/components/Toast";
 import FundBankScreen from "@/screens/FundBankScreen";
+import { C } from "@/theme/tokens";
 
 // Bank-transfer funding: the user's real provisioned account, then the
 // provider's own DETECTED → CREDITED narration. Deposits are provider-initiated
@@ -11,7 +12,7 @@ export default function FundBank() {
   const toast = useToast();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <FundBankScreen
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/home")}

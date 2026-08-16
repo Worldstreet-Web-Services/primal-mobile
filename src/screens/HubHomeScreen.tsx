@@ -47,7 +47,10 @@ function TileArt({ tileKey }: { tileKey: string }) {
         height: 116,
         borderRadius: 12,
         overflow: "hidden",
-        backgroundColor: "#050607",
+        // Seat under the artwork, shown for the beat before the loop decodes.
+        // Was a near-black that now reads as a punched-out rectangle on the
+        // charcoal ground; one step up reads as a well waiting for content.
+        backgroundColor: C.raised,
       }}
     >
       <Image

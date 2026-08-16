@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useToast } from "@/components/Toast";
 import KycScreen from "@/screens/KycScreen";
+import { C } from "@/theme/tokens";
 
 // Opening the LinkPay naira account: name, phone, email, BVN. The screen owns
 // the idempotency key and the resumable statuses; this route only decides where
@@ -11,7 +12,7 @@ export default function Kyc() {
   const toast = useToast();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <KycScreen
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/fiat")}

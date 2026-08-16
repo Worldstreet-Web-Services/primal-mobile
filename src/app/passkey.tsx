@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import PasskeyScreen from "@/screens/PasskeyScreen";
+import { C } from "@/theme/tokens";
 
 export default function Passkey() {
   const { enableBiometrics, skipBiometrics, capability } = useAuth();
@@ -48,7 +49,7 @@ export default function Passkey() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <PasskeyScreen
         onEnable={onEnable}
         onSkip={onSkip}

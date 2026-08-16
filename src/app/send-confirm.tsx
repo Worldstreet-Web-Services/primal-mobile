@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useToast } from "@/components/Toast";
 import SendConfirmScreen from "@/screens/SendConfirmScreen";
+import { C } from "@/theme/tokens";
 
 // The payout's last look, and its whole life after that: quote, PIN, initiate,
 // then poll to SETTLED / FAILED / REVERSED. `onDone` fires on an outcome the
@@ -11,7 +12,7 @@ export default function SendConfirm() {
   const toast = useToast();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <SendConfirmScreen
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/fiat")}

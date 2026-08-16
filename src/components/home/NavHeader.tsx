@@ -96,7 +96,11 @@ export function NavHeader({
               fontFamily: F.displayBold,
               fontSize: 25,
               color: C.text,
-              letterSpacing: -0.4,
+              // Urbanist is a narrower face than the one this was tracked for,
+              // and the negative value that opened up the old wordmark now jams
+              // the caps together — next to a tagline tracked at 2.6 it read as
+              // condensed. A hair positive restores the set width.
+              letterSpacing: 0.3,
             }}
           >
             {wordmark}

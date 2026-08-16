@@ -420,8 +420,11 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
               <Svg width="100%" height={72} style={{ marginTop: 10 }}>
                 <Defs>
                   <SvgGradient id="pot" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#FFFFFF" />
-                    <Stop offset="1" stopColor="#A7ADB4" />
+                    {/* Off the metal ramp rather than a hand-picked white →
+                        grey, so the pot figure is lit by the same source as
+                        every other milled face on the screen. */}
+                    <Stop offset="0" stopColor={C.metal[0]} />
+                    <Stop offset="1" stopColor={C.metal[3]} />
                   </SvgGradient>
                 </Defs>
                 <SvgText

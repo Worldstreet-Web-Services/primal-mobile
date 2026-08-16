@@ -1022,6 +1022,20 @@ interface PurchaseAttempt {
   transactionId: string | null;
   /** Epoch ms, so the screen can say WHICH purchase it is resuming. */
   startedAt: number;
+  /**
+   * Epoch ms of the first CORROBORATED "there is no such transaction" for the
+   * id this row currently names — `0` for none.
+   *
+   * It exists because a negative lookup is not proof of absence. One 404, even a
+   * run of them inside one call, can be a mis-routed read, a read replica that
+   * lost the row, or a 404 that really meant "not yours"; retiring an attempt on
+   * that evidence releases a key for a purchase that may be very much in the air
+   * and lets the next tap mint a second one. So the first finding is only
+   * written down here, and the key is not released until a LATER call finds the
+   * same thing again. Persisted, because the evidence has to survive the relaunch
+   * the crash-safety of this record is built around.
+   */
+  missingSince: number;
 }
 
 const isWeb = Platform.OS === "web";
@@ -1109,6 +1123,14 @@ function readAttempt(value: unknown): PurchaseAttempt | null {
         : null,
     startedAt:
       typeof row.startedAt === "number" && Number.isFinite(row.startedAt) ? row.startedAt : 0,
+    // A row written before this field existed reads as "never observed
+    // missing", which is the answer that keeps a key rather than dropping one.
+    missingSince:
+      typeof row.missingSince === "number" &&
+      Number.isFinite(row.missingSince) &&
+      row.missingSince > 0
+        ? row.missingSince
+        : 0,
   };
 }
 
@@ -1300,7 +1322,15 @@ export function clearVasState(): void {
 /** What the next tap on Pay actually means. */
 export type PurchasePlan =
   | {
-      /** Post it, under this key. */
+      /**
+       * Post it, under this key.
+       *
+       * Sometimes that is a re-send of a key an earlier attempt already used —
+       * when the gateway cannot be got to say what became of that attempt, the
+       * same key is the only answer that cannot buy the thing twice. The caller
+       * does not have to tell the two apart: posting the key it is handed is
+       * correct in both cases.
+       */
       action: "send";
       slot: string;
       idempotencyKey: string;
@@ -1329,9 +1359,11 @@ export type PurchasePlan =
  *   - still moving — resume it, and send nothing
  *   - finished     — that attempt is closed, so this is a new operation and it
  *                    gets a slot, and therefore a key, of its own
- *   - gone         — the gateway has no such transaction and has had long
- *                    enough to mean it, so the attempt naming it can never be
- *                    resumed and is retired the same way a finished one is
+ *   - gone         — the gateway says there is no such transaction, says it
+ *                    repeatedly, and has had long enough to mean it. A negative
+ *                    lookup is still not proof of absence, so the FIRST such
+ *                    finding only re-sends the same key (see below); the second
+ *                    one, from a later call, retires the attempt
  *   - never named  — the POST timed out, crashed or was killed; that is the
  *                    case the key exists for, so it is re-sent unchanged
  *
@@ -1352,35 +1384,52 @@ export async function planPurchase(
   const stem = prior?.stem ?? stemFor(record.scope, fingerprint);
 
   if (prior?.transactionId) {
-    let snapshot: VasTransaction | null;
-    try {
-      snapshot = await getTransaction(prior.transactionId, {
-        currency: intent.amount.currency,
-        signal: options.signal,
-      });
-    } catch (error) {
-      if (!isGoneForGood(error, prior.startedAt)) throw error;
-      // The gateway does not have this transaction and has had long enough for
-      // that to be an answer rather than a lag. Nothing can resume an attempt
-      // whose transaction does not exist, so leaving the row in place would
-      // wedge this purchase for good: every later tap would ask the same
-      // question and get the same 404, with nothing ever sent.
-      snapshot = null;
+    const snapshot = await lookUpAttempt(prior, intent.amount.currency, options.signal);
+
+    if (snapshot) {
+      if (!isTerminalTransfer(snapshot.status)) {
+        return {
+          action: "resume",
+          slot: slotOf(prior),
+          transaction: snapshot,
+          startedAt: prior.startedAt,
+        };
+      }
+      // Terminal in either direction — delivered, failed, reversed. It will not
+      // change its mind, so it can no longer be resumed and its key has done its
+      // job. Releasing it AND moving the attempt on means a keychain that
+      // silently refuses the delete still cannot leak a spent key into the next
+      // purchase: the retired slot is simply never asked for again.
+      await releaseIdempotencyKey(slotOf(prior));
+      return sendPlan(stem, fingerprint, prior.attempt + 1);
     }
 
-    if (snapshot && !isTerminalTransfer(snapshot.status)) {
-      return {
-        action: "resume",
-        slot: slotOf(prior),
-        transaction: snapshot,
-        startedAt: prior.startedAt,
-      };
+    // The gateway answered "no such transaction" on every read of a corroborated
+    // run, well outside the propagation window. That is the best evidence this
+    // client can gather, and it is still not proof: a mis-routed read, a 404
+    // that meant "not yours", or a replica that lost the row all look exactly
+    // like this, and the row may name a purchase in the air right now.
+    //
+    // So this finding does not retire anything. It is written down, and the tap
+    // is answered with a re-send of the SAME key in the SAME slot — the module's
+    // standing answer to "we cannot tell whether it landed". A gateway that
+    // still holds the key replays the original transaction (no second purchase);
+    // one that has genuinely lost the operation places it. Either way nothing is
+    // charged twice, and the fingerprint is not wedged: something IS sent, which
+    // is the whole complaint the old single-404 retirement was answering.
+    if (!hasConfirmedMissing(prior, Date.now())) {
+      // Stamped once and never re-stamped: re-dating it on every tap would push
+      // the confirmation window out ahead of the person tapping and turn a
+      // delay into a wedge.
+      if (prior.missingSince === 0) await noteMissingTransaction(prior, Date.now());
+      return resendPlan(prior);
     }
-    // Terminal in either direction — delivered, failed, reversed — or gone for
-    // good. It will not change its mind, so it can no longer be resumed and its
-    // key has done its job. Releasing it AND moving the attempt on means a
-    // keychain that silently refuses the delete still cannot leak a spent key
-    // into the next purchase: the retired slot is simply never asked for again.
+
+    // A second corroborated finding, from a later call and a later minute, with
+    // the re-send in between having produced no transaction the gateway will
+    // admit to. Nothing can resume a transaction that does not exist, so now the
+    // attempt is retired the way a terminal one is — which is also the only
+    // thing that stops this fingerprint asking the same dead question forever.
     await releaseIdempotencyKey(slotOf(prior));
     return sendPlan(stem, fingerprint, prior.attempt + 1);
   }
@@ -1401,19 +1450,119 @@ export async function planPurchase(
 const RESOLVE_GRACE_MS = 5 * 60 * 1000;
 
 /**
- * "There is no such transaction", said definitely.
+ * How many consecutive 404s it takes before one call will even record a finding
+ * of "missing", and how long it waits between them.
+ *
+ * Same three-strike rule `pollTransaction` uses on the same route, for the same
+ * reason: one edge response is a fact about one read, not about the purchase.
+ * The gaps are short because a person is waiting on this, and this path is only
+ * reached at all by a 404 already past the grace window.
+ */
+const MISSING_READS = 3;
+const MISSING_READ_GAPS_MS = [400, 1_200];
+
+/**
+ * How far apart two findings have to be before the second one may retire an
+ * attempt.
+ *
+ * A run of bad reads is bursty; two runs a minute apart, either side of a
+ * re-send, are not the same wobble. It only ever delays a retirement — every tap
+ * in the meantime is answered with the same key, which is safe — so the cost of
+ * being wrong here is a repeated request, and the cost of being hasty is a
+ * second charge.
+ */
+const MISSING_CONFIRM_MS = 60_000;
+
+/** A finding already stands against the id this row names, and it is old enough. */
+function hasConfirmedMissing(row: PurchaseAttempt, now: number): boolean {
+  return row.missingSince > 0 && now - row.missingSince >= MISSING_CONFIRM_MS;
+}
+
+/**
+ * Ask the gateway what became of `row`'s transaction.
+ *
+ * Returns the snapshot, or `null` for "every read in a corroborated run said
+ * there is no such transaction, and the grace window is long past". Everything
+ * else throws, unchanged: a 5xx, a timeout or a dropped connection say nothing
+ * about whether the purchase happened, a 403 says something about the account
+ * rather than the transaction, and a 404 still inside the grace window is a read
+ * side that has not caught up yet.
+ */
+async function lookUpAttempt(
+  row: PurchaseAttempt,
+  currency: string | undefined,
+  signal?: AbortSignal,
+): Promise<VasTransaction | null> {
+  const id = row.transactionId;
+  if (!id) return null;
+
+  for (let read = 0; ; read += 1) {
+    if (signal?.aborted) throw new AbortedError();
+    try {
+      return await getTransaction(id, { currency, signal });
+    } catch (error) {
+      if (!isGoneForGood(error, row.startedAt)) throw error;
+      if (read + 1 >= MISSING_READS) return null;
+      await sleep(MISSING_READ_GAPS_MS[Math.min(read, MISSING_READ_GAPS_MS.length - 1)]);
+    }
+  }
+}
+
+/**
+ * "There is no such transaction", said late enough to be about the transaction.
  *
  * Only a 404 qualifies. A 5xx, a timeout or a dropped connection say nothing
  * about whether the earlier purchase happened, and a 403 says something about
- * the account rather than the transaction; all of them must keep throwing.
+ * the account rather than the transaction; all of them must keep throwing. Even
+ * a qualifying one is only ONE reading — `lookUpAttempt` above needs a run of
+ * them, and `planPurchase` needs two such runs before a key is released.
  */
 function isGoneForGood(error: unknown, startedAt: number): boolean {
   if (!ApiError.is(error) || error.statusCode !== 404) return false;
   // A row with no clock cannot be inside any window — and it is not something
-  // this build writes, so reading it as old retires a corrupt row instead of
-  // wedging the purchase it names forever.
+  // this build writes, so reading it as old lets a corrupt row be resolved
+  // instead of wedging the purchase it names forever.
   if (startedAt <= 0) return true;
   return Date.now() - startedAt >= RESOLVE_GRACE_MS;
+}
+
+/**
+ * Write down that the transaction this row names could not be found, without
+ * changing anything else about the row.
+ *
+ * The id and the clock stay exactly as they were: the id because a later launch
+ * must still be able to ask about it, the clock because the row's grace window
+ * and "you placed this at 08:10" both hang off it. The finding is only stamped
+ * on if the row still names the same transaction — one that has moved on since
+ * this call started is a different question, and a stale finding against it
+ * could retire a live attempt.
+ */
+async function noteMissingTransaction(row: PurchaseAttempt, at: number): Promise<void> {
+  const record = await readAttempts();
+  // Unreadable: the finding is simply not kept, so the next call has to make it
+  // again from scratch. That errs towards holding the key, which is the side to
+  // err on.
+  if (!record) return;
+  await saveAttempts(
+    record.scope,
+    record.rows.map((existing) =>
+      slotOf(existing) === slotOf(row) && existing.transactionId === row.transactionId
+        ? { ...existing, missingSince: at }
+        : existing,
+    ),
+  );
+}
+
+/**
+ * Send it again, under the key this attempt already reserved.
+ *
+ * Not a new slot and not a new key — that is the point. Re-sending an
+ * idempotency key is how this module has always answered "we cannot tell whether
+ * it landed", and it is the only answer that cannot produce a second charge.
+ */
+async function resendPlan(row: PurchaseAttempt): Promise<PurchasePlan> {
+  const slot = slotOf(row);
+  return { action: "send", slot, idempotencyKey: await reserveIdempotencyKey(slot, "vas") };
 }
 
 async function sendPlan(
@@ -1431,6 +1580,7 @@ async function sendPlan(
     attempt,
     transactionId: null,
     startedAt: Date.now(),
+    missingSince: 0,
   });
   return { action: "send", slot, idempotencyKey: await reserveIdempotencyKey(slot, "vas") };
 }
@@ -1454,7 +1604,21 @@ export async function notePurchaseAccepted(
   if (!record) return;
   await saveAttempts(
     record.scope,
-    record.rows.map((row) => (slotOf(row) === slot ? { ...row, transactionId } : row)),
+    record.rows.map((row) =>
+      slotOf(row) === slot
+        ? {
+            ...row,
+            transactionId,
+            // A finding of "missing" is about ONE transaction id. Naming a
+            // different one makes it say nothing about this row, so it goes.
+            // The same id is kept deliberately: a POST answered by the very
+            // transaction the read side denies is the case that eventually has
+            // to free this fingerprint, and it still takes a second corroborated
+            // finding, a minute later, before any key is released.
+            missingSince: row.transactionId === transactionId ? row.missingSince : 0,
+          }
+        : row,
+    ),
   );
 }
 
@@ -1477,7 +1641,15 @@ async function advanceAttempt(slot: string): Promise<void> {
       record.scope,
       record.rows.map((row) =>
         slotOf(row) === slot
-          ? { ...row, attempt: row.attempt + 1, transactionId: null, startedAt: 0 }
+          ? {
+              ...row,
+              attempt: row.attempt + 1,
+              transactionId: null,
+              startedAt: 0,
+              // The fresh attempt inherits no evidence about the old one's
+              // transaction — it has no transaction of its own to be missing.
+              missingSince: 0,
+            }
           : row,
       ),
     );

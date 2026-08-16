@@ -1,9 +1,16 @@
 export const C = {
-  canvas: "#0A0B0D",
-  card: "rgba(255,255,255,0.05)",
-  border: "rgba(255,255,255,0.12)",
-  borderStrong: "rgba(255,255,255,0.3)",
-  hairline: "rgba(255,255,255,0.08)",
+  /**
+   * Ground, 2026-08-16: a neutral charcoal, not near-black.
+   *
+   * Everything below it moved with it. A white overlay reads weaker on a
+   * lighter ground, so the card/border/hairline alphas are all a step up from
+   * what they were on #0A0B0D — same apparent weight, different arithmetic.
+   */
+  canvas: "#232323",
+  card: "rgba(255,255,255,0.07)",
+  border: "rgba(255,255,255,0.16)",
+  borderStrong: "rgba(255,255,255,0.34)",
+  hairline: "rgba(255,255,255,0.11)",
   text: "#F2F4F6",
   sub: "#9BA1A8",
   dim: "#6A7078",
@@ -22,8 +29,9 @@ export const C = {
   highlight: "#D9F24B",
   highlightInk: "#12180A",
   ink: "#0a0a0a",
-  sheet: "#0f1012",
-  key: "#14161A",
+  /** Sheets sit *below* the ground, so a modal reads as depth rather than lift. */
+  sheet: "#1A1A1A",
+  key: "#2C2C2D",
   /**
    * Brushed metal, not flat white.
    *
@@ -57,25 +65,37 @@ export const C = {
   brandSoftInk: "#081103",
   brandGlow: "rgba(131,190,96,0.14)",
 
-  // Elevation steps above the canvas.
-  raised: "#141519",
-  inset: "#1C1E24",
+  // Elevation steps above the canvas. Both moved up with the ground — on
+  // #232323 the old values read as holes punched in the screen.
+  raised: "#2B2B2C",
+  inset: "#333335",
 
   // Translucent chrome (floating tab bar, sheets). `glass` is the fill used
   // where no native blur exists; `glassTint` colors the native glass effect.
-  glass: "rgba(20,21,25,0.72)",
-  glassTint: "rgba(10,11,13,0.5)",
+  glass: "rgba(43,43,44,0.72)",
+  glassTint: "rgba(35,35,35,0.5)",
   // Top stop of the falloff under the nav glass — fades to transparent.
-  glassEdge: "rgba(10,11,13,0.55)",
+  glassEdge: "rgba(35,35,35,0.55)",
 };
 
+/**
+ * Urbanist throughout, 2026-08-16 — one family, five weights, static instances
+ * (RN resolves `fontFamily` to a concrete face, so weight axes on a variable
+ * TTF never land on Android).
+ *
+ * `mono` is Urbanist too — every text in the app is one family now. It keeps
+ * the name because of the ROLE it plays, not the face: figures, account numbers
+ * and tracked labels. Urbanist has no monospace cut, so the alignment those
+ * placements need comes from `fontVariant: ["tabular-nums"]` on the `Mono`
+ * component rather than from the family. Set figures with `Mono` and they still
+ * line up column-wise; set them with a bare `Text` and they will not.
+ */
 export const F = {
-  // Mona Sans headers over Geist body — the wsws-frontend pairing.
-  display: "MonaSans-SemiBold",
-  displayBold: "MonaSans-Bold",
-  body: "Geist-Regular",
-  bodyMedium: "Geist-Medium",
-  bodySemibold: "Geist-SemiBold",
-  mono: "GeistMono-Regular",
-  monoSemibold: "GeistMono-SemiBold",
+  display: "Urbanist-Bold",
+  displayBold: "Urbanist-ExtraBold",
+  body: "Urbanist-Regular",
+  bodyMedium: "Urbanist-Medium",
+  bodySemibold: "Urbanist-SemiBold",
+  mono: "Urbanist-Medium",
+  monoSemibold: "Urbanist-SemiBold",
 };

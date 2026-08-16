@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import Svg, { Path, Polyline } from "react-native-svg";
 import { C, F } from "../theme/tokens";
+import { ParadigmLoader } from "./ParadigmMark";
 
 export function Screen({
   children,
@@ -373,6 +374,14 @@ export function Spinner({
   return <ActivityIndicator size={size} color={color} />;
 }
 
+/**
+ * Brand-filled action — the workhorse CTA inside the app.
+ *
+ * The name is a leftover from an earlier palette: this is *green*, not metal.
+ * The actual brushed-metal pill is `MetalButton` below. Renaming this would
+ * touch two dozen screens for no visual change, so the honest fix is this note
+ * plus a correctly-named sibling.
+ */
 export function MetallicButton({
   label,
   onPress,
@@ -445,6 +454,165 @@ export function MetallicButton({
       </View>
     </Pressable>
   );
+}
+
+/**
+ * Height of the auth-scale pills. Taller than the in-app buttons (52) because
+ * on an onboarding screen the pill *is* the content — at 52 under a 34pt
+ * headline it starts to read as a form field rather than a decision.
+ */
+export const AUTH_PILL_HEIGHT = 58;
+
+type PillProps = {
+  label: string;
+  onPress?: () => void;
+  /** Leading glyph. On the metal tier it must be inked dark — see `C.metalInk`. */
+  icon?: React.ReactNode;
+  height?: number;
+  radius?: number;
+  /** Label size. Only move it if the label genuinely cannot fit. */
+  size?: number;
+  /** Swaps the label for the falling mark and blocks presses. */
+  loading?: boolean;
+  disabled?: boolean;
+  style?: ViewStyle;
+};
+
+/**
+ * The two-tier auth pill. `MetalButton` is the light brushed face, `QuietButton`
+ * the dark one, and they are the same component on purpose: one height, one
+ * radius, one press curve, so a stack of them reads as a single system with one
+ * loud member rather than as three unrelated buttons.
+ */
+function AuthPill({
+  tone,
+  label,
+  onPress,
+  icon,
+  height = AUTH_PILL_HEIGHT,
+  radius = PILL,
+  size = 16,
+  loading = false,
+  disabled = false,
+  style,
+}: PillProps & { tone: "metal" | "quiet" }) {
+  const metal = tone === "metal";
+  const inert = loading || disabled;
+  const ink = metal ? C.metalInk : C.text;
+
+  // 0 at rest, 1 under the finger. One driver runs both the dip and the scrim,
+  // so the two halves of the press can never fall out of step.
+  const press = useRef(new Animated.Value(0)).current;
+  const to = (value: number) =>
+    Animated.spring(press, {
+      toValue: value,
+      useNativeDriver: true,
+      speed: 45,
+      bounciness: 0,
+    }).start();
+
+  return (
+    <Pressable
+      onPress={inert ? undefined : onPress}
+      onPressIn={inert ? undefined : () => to(1)}
+      onPressOut={inert ? undefined : () => to(0)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
+      style={[
+        // The lift lives out here: the face below clips itself to the pill, and
+        // a clipping layer casts no shadow on iOS.
+        metal
+          ? {
+              shadowColor: C.ink,
+              shadowOpacity: 0.38,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 8,
+            }
+          : null,
+        style,
+      ]}
+    >
+      <Animated.View
+        style={{
+          height,
+          borderRadius: radius,
+          overflow: "hidden",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          // The metal face is drawn by `MetalFill`, so this layer stays bare;
+          // the quiet tier is a raised fill under a hairline.
+          backgroundColor: metal ? undefined : C.raised,
+          borderWidth: metal ? 0 : 1,
+          borderColor: C.border,
+          // Dim only the untouched siblings; whatever is loading stays lit.
+          opacity: disabled && !loading ? 0.42 : 1,
+          transform: [
+            {
+              scale: press.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0.98],
+              }),
+            },
+          ],
+        }}
+      >
+        {metal ? <MetalFill radius={radius} /> : null}
+
+        {loading ? (
+          // The mark falling into place rather than a platform spinner. This
+          // wait is ours — a provider round-trip, sometimes key generation —
+          // and long enough that a system spinner reads as a stall.
+          <ParadigmLoader height={22} color={ink} />
+        ) : (
+          <>
+            {icon}
+            <Text
+              style={{ fontFamily: F.bodySemibold, fontSize: size, color: ink }}
+            >
+              {label}
+            </Text>
+          </>
+        )}
+
+        {/* Pressed scrim. Metal darkens under the finger, the dark tier lifts —
+            each moves away from its own resting value, which is what makes one
+            press curve work for both. */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: metal ? C.ink : C.text,
+            opacity: press.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, metal ? 0.12 : 0.07],
+            }),
+          }}
+        />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/**
+ * Primary auth action: a brushed-metal pill with dark ink. Built on `MetalFill`
+ * and `METAL_ANGLE`, so it is lit from the same source as every other metal
+ * surface in the app.
+ */
+export function MetalButton(props: PillProps) {
+  return <AuthPill tone="metal" {...props} />;
+}
+
+/** Secondary auth action: the same pill, dark, hairlined, light ink. */
+export function QuietButton(props: PillProps) {
+  return <AuthPill tone="quiet" {...props} />;
 }
 
 export function GhostButton({
@@ -538,7 +706,21 @@ export function Mono({
   style?: TextStyle;
 }) {
   return (
-    <Text style={[{ fontFamily: F.mono, fontSize: size, color }, style]}>
+    <Text
+      style={[
+        {
+          fontFamily: F.mono,
+          fontSize: size,
+          color,
+          // The app is one family now, and Urbanist has no monospace cut — so
+          // the column alignment figures need comes from the numeral set
+          // instead. Without this a balance changes width as its digits change,
+          // and a column of amounts stops lining up.
+          fontVariant: ["tabular-nums"],
+        },
+        style,
+      ]}
+    >
       {children}
     </Text>
   );
@@ -1417,73 +1599,5 @@ export function SectionRule({
         marginHorizontal: inset,
       }}
     />
-  );
-}
-
-export function AuthButton({
-  label,
-  icon,
-  onPress,
-  tone = "neutral",
-  height = 48,
-  loading = false,
-  disabled = false,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  onPress?: () => void;
-  tone?: "brand" | "neutral";
-  height?: number;
-  /** Sign-in is a network round-trip — the pressed provider spins. */
-  loading?: boolean;
-  disabled?: boolean;
-}) {
-  const brand = tone === "brand";
-  const inert = loading || disabled;
-  const ink = brand ? C.brandSoftInk : C.text;
-  return (
-    <PressableScale
-      onPress={inert ? undefined : onPress}
-      scale={0.98}
-      disabled={inert}
-    >
-      <View
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: inert, busy: loading }}
-        style={{
-          height,
-          borderRadius: PILL,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          backgroundColor: brand ? C.brand : "rgba(255,255,255,0.09)",
-          borderWidth: brand ? 0 : 1,
-          borderColor: C.hairline,
-          // Dim only the untouched providers; the spinning one stays lit.
-          opacity: disabled && !loading ? 0.4 : 1,
-        }}
-      >
-        {loading ? (
-          <Spinner color={ink} />
-        ) : (
-          <>
-            {icon}
-            <Text
-              style={{
-                // Semibold from the premium pass — an auth CTA carries more
-                // weight than the body buttons.
-                fontFamily: F.bodySemibold,
-                fontSize: 15,
-                color: ink,
-              }}
-            >
-              {label}
-            </Text>
-          </>
-        )}
-      </View>
-    </PressableScale>
   );
 }

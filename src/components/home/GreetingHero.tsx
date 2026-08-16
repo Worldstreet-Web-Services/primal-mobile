@@ -72,8 +72,13 @@ export function GreetingHero({
           sibling below — a rounded view masks its own children, so anything
           meant to break the frame cannot live inside it. */}
       <View>
+        {/* Olive-cast slab, relit for the charcoal ground (2026-08-16). The old
+            stops were a near-black barely above #0A0B0D; on #232323 they read
+            as a hole cut in the home screen. Same two moves as before — a step
+            up from the ground, with a faint brand-green bias, rolling back down
+            to the ground at the far corner — just measured from the new one. */}
         <LinearGradient
-          colors={["#141A0E", "#0D0F0C"]}
+          colors={["#2F3524", "#262821"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{

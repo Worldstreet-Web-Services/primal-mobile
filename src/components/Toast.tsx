@@ -177,13 +177,16 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           backgroundColor: C.raised,
           borderWidth: 1,
           borderColor: C.border,
-          // Lifts the card off the canvas — without it a near-black toast on a
-          // near-black screen has no edge.
-          shadowColor: "#000",
-          shadowOpacity: 0.45,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 10,
+          // Separation comes from the border first, the shadow second. On the
+          // old near-black ground a wide 0.45 shadow was invisible as a shadow
+          // and simply read as "edge"; on charcoal the same pool reads as dirt
+          // smeared under the toast. Tighter and fainter, so it lifts the card
+          // without staining the screen around it.
+          shadowColor: C.ink,
+          shadowOpacity: 0.3,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 8,
         }}
       >
         <View

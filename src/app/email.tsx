@@ -10,6 +10,7 @@ import {
   logAuthError,
 } from "@/lib/auth/decane";
 import EmailSignInScreen from "@/screens/EmailSignInScreen";
+import { C } from "@/theme/tokens";
 
 export default function EmailSignIn() {
   const { startEmailSignIn, verifyEmailCode } = useAuth();
@@ -54,7 +55,9 @@ export default function EmailSignIn() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    // Was a raw pre-rebrand hex; the ground is a token now, so this screen
+    // moves with the rest of the app.
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <EmailSignInScreen
         stage={stage}
         email={email}

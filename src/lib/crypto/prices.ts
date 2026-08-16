@@ -18,7 +18,7 @@ export const STATIC_PRICES_USD: Record<string, number> = {
   DAI: 1,
 };
 
-/** Static demo FX until primal-be quotes it — mirrors the mock's ₦/$ ratio. */
+/** Static demo FX until the gateway quotes it — mirrors the mock's ₦/$ ratio. */
 export const USD_NGN = 1537;
 
 /**

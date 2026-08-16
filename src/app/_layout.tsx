@@ -11,6 +11,7 @@ import { PinPromptProvider } from "@/components/PinPrompt";
 import { PrivacyOverlay } from "@/components/PrivacyOverlay";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { LockGate } from "@/lib/auth/LockGate";
 
 import "../global.css";
 
@@ -59,6 +60,9 @@ export default function RootLayout() {
                     contentStyle: { backgroundColor: "#0A0B0D" },
                   }}
                 />
+                {/* Renders nothing — sends a locked app back to /unlock no
+                    matter which route a deep link mounted. */}
+                <LockGate />
                 {/* Last sibling, so it covers every route including modals. */}
                 <PrivacyOverlay />
               </BottomSheetModalProvider>

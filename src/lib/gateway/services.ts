@@ -877,6 +877,44 @@ export class PurchaseInputError extends Error {
 }
 
 /**
+ * The idempotency slot for one intended purchase — feed it to
+ * `reserveIdempotencyKey` from `./linkpay`.
+ *
+ * The slot is derived from every field that changes what the user is buying,
+ * so the SAME intent retried (after a timeout, after a crash, after a relaunch)
+ * reserves the SAME key, and a DIFFERENT intent can never collide with a key
+ * already spent. That is the whole trick: the caller never has to decide
+ * whether a failure was safe to retry, because retrying an identical intent is
+ * always the same operation.
+ *
+ * Two independent FNV-1a passes, concatenated. Not a security hash — nothing
+ * secret goes in — just a stable short name for a tuple, in a keychain key
+ * that has to stay alphanumeric.
+ */
+export function purchaseSlot(intent: PurchaseIntent): string {
+  const fingerprint = [
+    intent.serviceType,
+    intent.serviceCategory,
+    intent.serviceProviderId,
+    intent.destinationIdentifier,
+    intent.amount.amountMinor,
+    normalizeCurrency(intent.amount.currency),
+    intent.serviceProductCode ?? "",
+  ].join(" ");
+
+  const fnv = (seed: number, prime: number): string => {
+    let hash = seed >>> 0;
+    for (let i = 0; i < fingerprint.length; i += 1) {
+      hash = (hash ^ fingerprint.charCodeAt(i)) >>> 0;
+      hash = Math.imul(hash, prime) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+  };
+
+  return `linkpay.vas.${fnv(0x811c9dc5, 0x01000193)}${fnv(0x243f6a88, 0x01000193)}`;
+}
+
+/**
  * Buy the thing.
  *
  * `idempotencyKey` is the caller's, deliberately: it must be minted ONCE for an

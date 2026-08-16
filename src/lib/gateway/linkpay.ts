@@ -324,6 +324,25 @@ export async function provisionAccount(
   );
 }
 
+/**
+ * A 200 that carries nothing.
+ *
+ * The contract says an unprovisioned user gets a 404, and `getAccount` turns
+ * that into `null`. But the live OpenAPI documents no 200 body at all, so a
+ * gateway that answers `{}` (or `{account: null}`) instead would otherwise read
+ * as an account in an unrecognised state — and park a user in front of an
+ * "unknown status" panel when what they actually need is the provisioning CTA.
+ * Same answer for both shapes: there is no account here.
+ */
+export function isBlankAccount(account: LinkpayAccount | null | undefined): boolean {
+  if (!account) return true;
+  return (
+    account.status === "UNKNOWN" &&
+    account.id === undefined &&
+    account.accountNumber === undefined
+  );
+}
+
 /* ------------------------------------------------------------------ balance */
 
 export async function getBalance(call: Call = {}): Promise<Balance> {
@@ -731,6 +750,80 @@ export function watchDeposits(
   }, options);
 }
 
+/* ---------------------------------------------------------------- activity */
+
+/**
+ * One line of money movement, in or out.
+ *
+ * The two feeds are separate routes with separate shapes and separate status
+ * machines, and merging them in a screen means every screen that wants a
+ * statement re-derives "which of these happened first". This does it once and
+ * keeps the entity intact — the copy stays the caller's business.
+ */
+export type ActivityEntry =
+  | { kind: "deposit"; key: string; at: number | null; deposit: Deposit }
+  | { kind: "withdrawal"; key: string; at: number | null; withdrawal: Withdrawal };
+
+/**
+ * The recent deposits and withdrawals as one list, newest first.
+ *
+ * Entries with no readable timestamp sort last rather than to the top: an
+ * undated row claiming to be the most recent thing that happened to someone's
+ * money is a worse lie than an undated row at the bottom.
+ */
+export async function listActivity(
+  page: PageInfo = {},
+  call: Call = {},
+): Promise<ActivityEntry[]> {
+  const take = page.take ?? 20;
+  const [deposits, withdrawals] = await Promise.all([
+    listDeposits({ skip: page.skip, take }, call),
+    listWithdrawals({ skip: page.skip, take }, call),
+  ]);
+
+  const entries: ActivityEntry[] = [
+    ...deposits.items.map((deposit, index) => ({
+      kind: "deposit" as const,
+      key: `deposit:${deposit.id || index}`,
+      at: toMillis(deposit.creditedAt) ?? toMillis(deposit.createdAt),
+      deposit,
+    })),
+    ...withdrawals.items.map((withdrawal, index) => ({
+      kind: "withdrawal" as const,
+      key: `withdrawal:${withdrawal.id || index}`,
+      at: toMillis(withdrawal.createdAt),
+      withdrawal,
+    })),
+  ];
+
+  entries.sort((a, b) => (b.at ?? -Infinity) - (a.at ?? -Infinity));
+  return entries.slice(0, take);
+}
+
+/** True once a deposit can no longer move — safe to stop watching for it. */
+export function isTerminalDeposit(status: DepositStatus): boolean {
+  return status === "CREDITED" || status === "REJECTED";
+}
+
+/** The last four digits of an account number, for matching a payout to a row. */
+export function lastFour(accountNumber: string): string {
+  return accountNumber.replace(/\D/g, "").slice(-4);
+}
+
+/**
+ * A destination account as it should appear on screen: the tail only.
+ *
+ * Somebody's full account number does not need to be printed on a receipt to
+ * make the receipt legible, and the four digits are what a person actually
+ * checks against the number they typed.
+ */
+export function maskAccount(accountNumber: string | undefined): string {
+  const digits = (accountNumber ?? "").replace(/\D/g, "");
+  if (digits === "") return "—";
+  if (digits.length <= 4) return digits;
+  return `•••• ${digits.slice(-4)}`;
+}
+
 /* ----------------------------------------------------------------- labels */
 
 /** Wire status to something a person can read. `UNKNOWN` never blanks a row. */
@@ -763,6 +856,24 @@ export function withdrawalStatusLabel(status: TransferStatus): string {
       return "Failed";
     case "REVERSED":
       return "Reversed";
+    default:
+      return "Unknown";
+  }
+}
+
+/** Account status as a person reads it. `UNKNOWN` says so rather than lying. */
+export function accountStatusLabel(status: AccountStatus): string {
+  switch (status) {
+    case "PENDING_KYC":
+      return "Verifying";
+    case "CUSTOMER_CREATED":
+      return "Almost ready";
+    case "ACTIVE":
+      return "Active";
+    case "DISABLED":
+      return "Disabled";
+    case "PROVISION_FAILED":
+      return "Could not be opened";
     default:
       return "Unknown";
   }

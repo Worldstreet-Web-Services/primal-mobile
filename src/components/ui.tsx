@@ -25,6 +25,7 @@ export function Screen({
   bottom = 40,
   center = false,
   showsScrollIndicator = false,
+  keyboardShouldPersistTaps,
 }: {
   children: React.ReactNode;
   pad?: number;
@@ -35,10 +36,17 @@ export function Screen({
   /** Center short content in the viewport — placeholders and empty states. */
   center?: boolean;
   showsScrollIndicator?: boolean;
+  /**
+   * Set `"handled"` on any screen with a text field: the default swallows the
+   * first tap to dismiss the keyboard, so a button under an open keyboard needs
+   * pressing twice — which on a form reads as a button that does not work.
+   */
+  keyboardShouldPersistTaps?: "always" | "never" | "handled";
 }) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: C.canvas }}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       contentContainerStyle={{
         paddingHorizontal: pad,
         paddingTop: top,

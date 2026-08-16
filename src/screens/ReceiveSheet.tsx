@@ -19,7 +19,7 @@ import { usingMockAuth } from "../lib/auth/decane";
 import { depositAddresses } from "../lib/crypto/addresses";
 
 // Static per-network-type deposit addresses (PRD §F4) — the auto-convert
-// on-ramp, not the embedded wallets. Mock-backed until primal-be serves them.
+// on-ramp, not the embedded wallets. Mock-backed until the gateway serves them.
 const NETWORKS = depositAddresses();
 
 /** The bank block as one string — what "share details" actually hands over. */
@@ -309,7 +309,7 @@ export default function ReceiveSheet({
                   deposit address. Those are minted per user/chain by the
                   provider (PRD §F4 — Liquifia static addresses, the same
                   shape as Ark's ensureStaticAddress) and are what the
-                  optimistic fill credits against. Until primal-be serves
+                  optimistic fill credits against. Until the gateway serves
                   them, promising naira here would be a lie: anything sent
                   to this address stays crypto. */}
               <Body

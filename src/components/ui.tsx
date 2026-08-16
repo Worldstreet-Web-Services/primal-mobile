@@ -264,6 +264,65 @@ export function Shine() {
   );
 }
 
+/**
+ * The raked angle every metal surface is lit from. Shared so a row of metal
+ * elements looks lit by one source rather than each catching its own.
+ */
+export const METAL_ANGLE = {
+  start: { x: 0.1, y: 0 },
+  end: { x: 0.9, y: 1 },
+} as const;
+
+/**
+ * A milled metal face — the app's "white". Fills its parent, so give the
+ * parent the radius and `overflow: "hidden"` and lay content over this.
+ *
+ * The specular hairline along the top edge is what sells it: without that one
+ * bright line the gradient reads as grey plastic.
+ */
+export function MetalFill({
+  radius = 0,
+  shine = true,
+}: {
+  radius?: number;
+  shine?: boolean;
+}) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: radius,
+        overflow: "hidden",
+      }}
+    >
+      <LinearGradient
+        colors={C.metal}
+        locations={C.metalStops}
+        start={METAL_ANGLE.start}
+        end={METAL_ANGLE.end}
+        style={{ flex: 1 }}
+      />
+      {shine ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 6,
+            right: 6,
+            height: 1,
+            backgroundColor: C.metalShine,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 export function Card({
   children,
   style,
@@ -763,24 +822,25 @@ export function SegTabs({
           style={{ flex: 1 }}
         >
           {i === active ? (
-            <LinearGradient
-              colors={C.metal}
+            <View
               style={{
                 paddingVertical: 8,
                 borderRadius: 9,
                 alignItems: "center",
+                overflow: "hidden",
               }}
             >
+              <MetalFill radius={9} />
               <Text
                 style={{
                   fontFamily: F.bodySemibold,
                   fontSize: 12.5,
-                  color: C.ink,
+                  color: C.metalInk,
                 }}
               >
                 {t}
               </Text>
-            </LinearGradient>
+            </View>
           ) : (
             <View style={{ paddingVertical: 8, alignItems: "center" }}>
               <Text
@@ -810,9 +870,14 @@ export function PinDots({ filled }: { filled: number }) {
             width: 15,
             height: 15,
             borderRadius: 8,
-            backgroundColor: i < filled ? "#e8e8ea" : "rgba(199,204,209,0.22)",
+            overflow: "hidden",
+            backgroundColor: i < filled ? undefined : "rgba(199,204,209,0.22)",
           }}
-        />
+        >
+          {/* Filled dots are milled beads, not white pips — same light source
+              as every other metal face on the screen. */}
+          {i < filled ? <MetalFill radius={8} shine={false} /> : null}
+        </View>
       ))}
     </View>
   );

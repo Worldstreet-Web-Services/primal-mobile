@@ -24,7 +24,26 @@ export const C = {
   ink: "#0a0a0a",
   sheet: "#0f1012",
   key: "#14161A",
-  metal: ["#e8e8ea", "#b6b6bc"] as [string, string], // Last Man CTA gradient
+  /**
+   * Brushed metal, not flat white.
+   *
+   * Four stops rather than two: the bright band at 0.38 and the darker roll-off
+   * at the foot are what make a surface read as a milled face catching light,
+   * instead of a grey wash. Always draw it on the diagonal (see `METAL_ANGLE`)
+   * — a vertical ramp reads as a gradient, a raked one reads as metal.
+   */
+  metal: ["#F4F6F8", "#CBD0D6", "#EAEDF0", "#A6ACB4"] as [
+    string,
+    string,
+    string,
+    string,
+  ],
+  /** Stop positions for `metal`; keep them together or the sheen moves. */
+  metalStops: [0, 0.38, 0.62, 1] as [number, number, number, number],
+  /** The specular hairline laid along a metal surface's top edge. */
+  metalShine: "rgba(255,255,255,0.85)",
+  /** Ink on metal — near-black, so the sheen stays the brightest thing on it. */
+  metalInk: "#0B0C0E",
 
   // Brand leaf green, #83BE60 (2026-08-14, superseding gold). Named by role,
   // not hue, so the next rebrand is a value change and nothing else.

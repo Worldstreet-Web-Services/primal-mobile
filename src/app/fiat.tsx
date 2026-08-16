@@ -16,7 +16,8 @@ export default function Fiat() {
         top={headerHeight}
         onAdd={() => router.push("/fund")}
         onSend={() => router.push("/send")}
-        onRemit={() => router.push("/remit")}
+        // onRemit intentionally not passed — cross-border is out of this
+        // version, so the Remit action hides itself. Restore by passing it.
       />
       <NavHeader
         wordmark="FIAT"

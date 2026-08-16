@@ -1,9 +1,11 @@
 # Primal — Product Requirements Document
 
-**Version:** 0.1 (draft for design)
-**Date:** 2026-08-13
-**Status:** Draft — feeds Claude Design for UI exploration
-**Repo:** `Primal` (Expo SDK 57 · React Native 0.86 · expo-router · NativeWind)
+**Version:** 0.6 — reconciled with the shipped app and the live backend
+**Date:** 2026-08-16 (first drafted 2026-08-13)
+**Status:** Living document. Where it disagrees with `https://api.tsion.io/openapi.json`, the gateway wins.
+**Repo:** `Primal` (Expo SDK 57 · React Native 0.86 · expo-router · dev build, not Expo Go)
+
+> **On the name.** The client renamed the app **Paradigm** on 2026-08-14 — that is what ships, and what every screen says. The backend, its gateway and its docs still say **Primal**, so both names appear here on purpose: *Paradigm* is the product, *Primal* is the platform/API it talks to. Worth settling before launch copy is written.
 
 ---
 
@@ -136,9 +138,10 @@ Ported from Ark's live implementation:
 ## 4. Platform & architecture
 
 - **App**: this repo (Expo 57, expo-router, NativeWind, React Compiler). `src/app` route groups: `(onboarding)`, `(auth)`, `(tabs)` [Home · Trade · Earn · Games · Profile].
-- **Backend**: new `primal-be` service cloned from `pouchpay-be`'s architecture (Bun + Express + Mongoose + Zod, module-per-domain, webhook module, reconcile/backfill jobs) — swap the auth module's root of trust to Decane token verification (`decane-node`), plus the small **KingsChat bridge issuer** (KingsChat OAuth verify → mint ES256 JWT, publish JWKS) which can live as a module inside `primal-be`.
-- **Auth surface**: a minimal hosted web page running `decane-connect-kit` (login + wallet signing), opened from the app via `expo-auth-session` — required because Decane has no RN SDK today (§F1).
-- **Providers**: Liquifia (VAs, payouts, static addresses, optimistic fill, bills), Worldstreet gateway (perp, remit, earn, prediction/RWA, games infra), Decane (identity + non-custodial social wallets), KingsChat (OAuth identity).
+- **Backend**: the **Primal API Gateway** at `https://api.tsion.io` (contract: `/openapi.json`, which is authoritative over any document including this one). It fronts User Management, Subscription and LinkPay over private gRPC; the app never talks to those services, a database, a queue, or a provider directly. **Paradigm owns no backend of its own.**
+- **Auth**: native `decane-connect-kit-expo` in the app (wallet + signing), SIWE against the gateway for the session (§F1). No hosted web surface, no bridge service — both were designed around constraints that no longer exist.
+- **Providers, and who talks to them**: the gateway owns LinkPay (accounts, deposits, withdrawals, bills) and Dextopus (subscription checkout) with its own credentials. The app talks directly to the **Worldstreet/Ark rails** the gateway does not implement — perp, remit, earn, the King of Night vault (games) — and to public RPC/Alchemy for wallet balances.
+- **Not implemented on the gateway** (per its own docs): ARK and WorldStreet product routes. Those stay app-side until the backend exposes them.
 - **Known provider sharp edges** (encode in the service layer from day 1): Liquifia returns errors inside HTTP 200 envelopes; `error` is sometimes a string, sometimes an object; always capture `request_id`; idempotency keys on all money-out; timeouts on reads only.
 - **Reference implementations**: `tsion` (Ark mobile — Privy setup, Worldstreet clients, games), `wsws-frontend` (Worldstreet web, shares the Ark identity — Kash engine client, perp/remit web flows), `pouchpay` + `pouchpay-be` (LinkPay — fiat rails, ledger, VA provisioning).
 
@@ -175,13 +178,15 @@ Ported from Ark's live implementation:
 
 ## 6. Phasing
 
-| Phase | Scope | Definition of done |
+| Phase | Scope | Status |
 |---|---|---|
-| **1 — NOW** | Decane auth end-to-end (**KingsChat bridge** + Google/email, hosted auth surface) + backend session exchange + user model + **VA provisioning (account number per user)** + onboarding UI | Sign in with KingsChat on a device → see your own account number on the Receive screen |
-| 2 | Fiat rails: deposit webhook → ledger → activity feed; send/withdraw with PIN; transaction history | Money in via bank transfer shows in-app in <10s; money out settles with idempotent safety |
-| 3 | Crypto: static deposit addresses + optimistic fill + embedded-wallet balances + on-chain send | Crypto deposit credits fiat balance optimistically; failure → refund path visible |
-| 4 | Cross-border (both rails) + Earn integration | Live corridor quote → payout; bounty feed authenticated by Decane token (needs §7.3) |
-| 5 | Games (Last Man @ $50) + copy trading **(gated on Worldstreet endpoints)** | First round completes with real claims; first mirrored trade |
+| **1 — Auth** | Decane wallet (KingsChat/Google/email) + SIWE session against the gateway + PIN/passkey onboarding | **Done.** Signs in on a dev build; wallet addresses real; session survives cold launch. |
+| **2 — Membership** | Subscription checkout ($1,000/mo, Dextopus deposit address), payment polling, entitlement-sync window, renewal | **In build.** Nothing behind the paywall works until this ships — it gates every LinkPay route. |
+| **3 — Fiat** | KYC account provisioning, balance, deposits feed, bank withdrawal (validate → quote → initiate → poll) | **In build**, against the gateway. |
+| **4 — Crypto** | Wallet balances (live), minted deposit addresses, spot buy/sell via Dextopus, on-chain send | Balances done; deposit + swap rails in build. Solana sends still refuse honestly. |
+| **5 — Games** | Last Man Standing on the v4 vault, $50 stake policy, claims | Rails + screen done and live against the vault gateway; awaiting a first real round. |
+| **6 — Bills & VAS** | Airtime, data, electricity, TV via the gateway | In build. |
+| **7 — Worldstreet** | Copy trading, Earn/Kash | **Blocked**: no gateway routes, and copy-trading endpoints do not exist anywhere yet (§7.1). |
 
 ---
 

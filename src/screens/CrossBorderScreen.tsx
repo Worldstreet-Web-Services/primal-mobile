@@ -14,6 +14,7 @@ import {
   PulseDot,
   SectionRule,
   Shine,
+  METAL_ANGLE,
 } from "../components/ui";
 
 // Design 4f: cross-border — provider-priced quote, then the rail narrating
@@ -62,6 +63,9 @@ function StageNode({ state }: { state: StageState }) {
     return (
       <LinearGradient
         colors={C.metal}
+        locations={C.metalStops}
+        start={METAL_ANGLE.start}
+        end={METAL_ANGLE.end}
         style={{
           width: 22,
           height: 22,

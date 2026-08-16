@@ -76,9 +76,14 @@ export default function FiatSpaceScreen({
         <View style={{ flex: 1 }}>
           <GhostButton label="Send" onPress={onSend} />
         </View>
-        <View style={{ flex: 1 }}>
-          <GhostButton label="Remit" onPress={onRemit} />
-        </View>
+        {/* Cross-border is out of this version (2026-08-16). The prop and the
+            screen stay — only the way in is closed — so putting it back is
+            re-adding this button, not rebuilding the corridor flow. */}
+        {onRemit ? (
+          <View style={{ flex: 1 }}>
+            <GhostButton label="Remit" onPress={onRemit} />
+          </View>
+        ) : null}
       </View>
       <View style={{ marginTop: 20 }}>
         <Label>Fiat activity</Label>

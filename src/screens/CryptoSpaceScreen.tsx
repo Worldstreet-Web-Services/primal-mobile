@@ -23,7 +23,7 @@ import {
 import { holdings as mockHoldings } from "../data/mock";
 import { useCryptoPortfolio } from "../hooks/useCryptoPortfolio";
 import { holdingQtyLabel } from "../lib/crypto/balances";
-import { STATIC_PRICES_USD, USD_NGN } from "../lib/crypto/prices";
+import { STATIC_PRICES_USD } from "../lib/crypto/prices";
 import { C } from "../theme/tokens";
 
 /** The mock's demo total — shown whenever live balances aren't on screen. */
@@ -117,15 +117,30 @@ export default function CryptoSpaceScreen({
             </View>
           ) : (
             <>
+              {/* The dollar figure and nothing under it.
+
+                  There was a "≈ ₦…" line here, set in the same quiet money
+                  register as a balance, computed as `total * USD_NGN` — a real
+                  on-chain figure multiplied by a hand-typed constant whose own
+                  comment called it "static demo FX". Nothing on screen
+                  distinguished the read number above from the invented one
+                  below, and at roughly ₦1.5m per $1,000 a stale rate is wrong
+                  by an amount that matters.
+
+                  There is no FX endpoint anywhere in the gateway contract —
+                  `/v1/auth/*`, `/v1/linkpay/*` and `/v1/subscriptions/*` are
+                  the whole surface and none of them quotes a rate. So this
+                  follows the rule the home card was just built on: show what
+                  was actually read, and decline to convert rather than convert
+                  with a number nobody stands behind. If a naira equivalent is
+                  wanted here, it needs a quoted, dated rate from the gateway
+                  first. */}
               <Display size={46} style={{ marginTop: 8 }}>
                 ${Number(whole).toLocaleString("en-US")}
                 <Display size={26} color={C.figureTail}>
                   .{cents}
                 </Display>
               </Display>
-              <Mono size={12.5} color={C.sub} style={{ marginTop: 9 }}>
-                ≈ ₦{Math.round(total * USD_NGN).toLocaleString("en-US")}
-              </Mono>
             </>
           )}
         </View>

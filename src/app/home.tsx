@@ -229,11 +229,13 @@ const NO_RATE =
  *
  * The client's reference puts a single aggregate at the top of the screen. The
  * app holds naira through LinkPay and crypto on-chain, so that aggregate needs
- * an FX rate, and the only NGN/USD rate in this codebase is `USD_NGN` in
- * `src/lib/crypto/prices.ts` — a hand-typed constant whose own comment calls it
- * a static demo value that "mirrors the mock's ₦/$ ratio". Multiplying a real
- * balance by it does not produce a total; it produces the same invented figure
- * this screen was rescued from, laundered through arithmetic.
+ * an FX rate — and there is no rate. The gateway quotes none (`/v1/auth/*`,
+ * `/v1/linkpay/*` and `/v1/subscriptions/*` are the whole surface), and the
+ * hand-typed `USD_NGN` constant that used to sit in `src/lib/crypto/prices.ts`
+ * has been deleted for the same reason this function exists: multiplying a real
+ * balance by a number nobody stands behind does not produce a total, it
+ * produces the invented figure this screen was rescued from, laundered through
+ * arithmetic.
  *
  * So a single figure is only ever shown when it needs no rate:
  *

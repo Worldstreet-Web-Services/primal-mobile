@@ -20,10 +20,10 @@ import { Body, Mono, Pulse } from "../ui";
  *
  * - `split` — every leg read fine, but they are denominated in different
  *   currencies and more than one is non-zero. Adding them needs an FX rate.
- *   The only NGN/USD rate in this app is `USD_NGN` in `lib/crypto/prices.ts`, a
- *   hand-typed constant whose own comment calls it a static demo value. A total
- *   built on it would be one real balance plus an invented conversion of
- *   another, which is the original lie with extra steps.
+ *   There is no NGN/USD rate in this app at all: the gateway quotes none, and
+ *   the hand-typed `USD_NGN` constant that used to stand in for one has been
+ *   deleted. A total built on such a number would be one real balance plus an
+ *   invented conversion of another — the original lie with extra steps.
  * - `blocked` — at least one leg could not be read at all (unentitled, a 403, a
  *   chain that would not answer). An unknown leg has no size, so no total
  *   exists. The readable legs are still shown; the headline is not a number.

@@ -260,6 +260,18 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
     path: req.path,
     status: response.status,
     correlationId: cid,
+    // The server's OWN words, dev only, on failures only.
+    //
+    // Surfaces deliberately do not show these: `describeGatewayFailure`
+    // replaces every 5xx with "Primal is temporarily unavailable" because the
+    // real text is written for operators ("User Management service is
+    // unavailable" is a genuine body from this gateway). That is right for
+    // members and useless for whoever has to fix it — the one line that says
+    // WHICH service failed was being thrown away. It goes to the dev console
+    // and nowhere else, and carries no headers, no body and no token.
+    ...(response.ok
+      ? null
+      : { serverMessage: normalizeMessage(parsed, "(no message in body)") }),
   });
 
   if (!response.ok) {

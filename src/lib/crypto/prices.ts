@@ -18,8 +18,25 @@ export const STATIC_PRICES_USD: Record<string, number> = {
   DAI: 1,
 };
 
-/** Static demo FX until the gateway quotes it — mirrors the mock's ₦/$ ratio. */
-export const USD_NGN = 1537;
+/**
+ * There is deliberately NO NGN/USD rate in this app.
+ *
+ * `USD_NGN = 1537` lived here, described by its own comment as "static demo FX
+ * until the gateway quotes it". Its single consumer rendered `total * USD_NGN`
+ * under the real crypto balance on the crypto space, in the same quiet money
+ * type as a read figure — so a hand-typed constant was presented to members as
+ * their holdings in naira, wrong by whatever the market had done since someone
+ * typed it.
+ *
+ * The gateway quotes no rate: `/v1/auth/*`, `/v1/linkpay/*` and
+ * `/v1/subscriptions/*` are the entire surface. Until one exists, cross-currency
+ * conversion is not something this app can do, and a placeholder constant is not
+ * a substitute — see `portfolioView` in `src/app/home.tsx`, which refuses to sum
+ * naira and crypto at all rather than reach for a number nobody stands behind.
+ *
+ * If you are here because you want a naira equivalent: ask the backend for a
+ * quoted, dated rate. Do not reintroduce this.
+ */
 
 /**
  * Price the given symbols in USD. Starts from the static map and overlays

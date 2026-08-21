@@ -69,7 +69,7 @@ const VARIANTS: Record<
 > = {
   // Dollar-green owns "money in" semantics per the PRD, so success borrows the
   // gain token rather than the lime brand color — brand and success stay separate.
-  success: { accent: C.up, tint: "rgba(124,231,176,0.12)", glyph: "✓", role: "status" },
+  success: { accent: C.up, tint: "rgba(240,199,90,0.12)", glyph: "✓", role: "status" },
   error: { accent: C.down, tint: "rgba(246,165,165,0.12)", glyph: "!", role: "alert" },
   warning: { accent: C.amber, tint: "rgba(245,184,61,0.12)", glyph: "!", role: "alert" },
   info: { accent: C.silver, tint: "rgba(199,204,209,0.12)", glyph: "i", role: "status" },
@@ -177,13 +177,16 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           backgroundColor: C.raised,
           borderWidth: 1,
           borderColor: C.border,
-          // Lifts the card off the canvas — without it a near-black toast on a
-          // near-black screen has no edge.
-          shadowColor: "#000",
-          shadowOpacity: 0.45,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 10,
+          // Separation comes from the border first, the shadow second. On the
+          // old near-black ground a wide 0.45 shadow was invisible as a shadow
+          // and simply read as "edge"; on charcoal the same pool reads as dirt
+          // smeared under the toast. Tighter and fainter, so it lifts the card
+          // without staining the screen around it.
+          shadowColor: C.ink,
+          shadowOpacity: 0.3,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 8,
         }}
       >
         <View

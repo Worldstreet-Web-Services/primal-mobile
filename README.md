@@ -25,6 +25,46 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Running on a phone with Expo Go
+
+This project is **Expo SDK 57** (`expo` in package.json). Expo Go embeds **exactly one**
+SDK version and it must match — there is no "SDK 54 and upwards" range. A mismatch shows
+up on iOS as *the app opening and closing instantly with nothing in the Metro logs*.
+
+**The App Store / Play Store build of Expo Go is capped at SDK 54** — Apple never approved
+SDK 55+. So the store app will not run this project. Get a matching SDK 57 client instead:
+
+| Device | How to get Expo Go SDK 57 |
+| --- | --- |
+| Android phone | [expo.dev/go](https://expo.dev/go?sdkVersion=57&platform=android&device=true) — pick SDK 57, download the APK, install it. Uninstall the Play Store Expo Go first. |
+| iPhone (free) | [sign.expo.dev](https://sign.expo.dev/) — signs an SDK 57 build with your free Apple ID. The certificate expires after ~7 days, then reinstall. |
+| iPhone (paid) | `eas go` — installs via TestFlight, no weekly expiry. Requires Apple Developer Program membership. |
+| Simulator | `npx expo start` then press `i` / `a`; the correct Expo Go is downloaded automatically. |
+
+Then `npx expo start` and scan the QR code.
+
+### What does not work in Expo Go
+
+Every dependency here is Expo Go compatible except **passkey sign-in**. `react-native-passkeys`
+is a third-party native module that Expo Go cannot load, but it is reached only through the
+`optional()` try/catch wrapper in `decane-connect-kit-expo`, so it fails soft — the app runs
+and sign-in falls back to the non-passkey tiers. See `src/lib/auth/decane.ts`.
+
+For passkeys, Face ID approval and anything else needing real native code, use a development
+build (`npx expo run:ios` / `npx expo run:android`). A development build never has SDK-match
+problems and supports every package in this project.
+
+### Keeping dependencies aligned
+
+```bash
+npx expo install --check   # report drift from the SDK 57 pinned versions
+npx expo install --fix     # correct it
+npx expo-doctor            # full 21-check diagnostic
+```
+
+`expo-constants` is pinned via `overrides` in package.json — `expo-auth-session` and
+`expo-linking` otherwise pull nested duplicate copies, which expo-doctor flags.
+
 ## Get a fresh project
 
 When you're ready, run:

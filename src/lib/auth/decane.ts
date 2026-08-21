@@ -9,10 +9,17 @@
  * KingsChat is a first-class `authMethod` here — the PRD's bridge issuer
  * (KingsChat OAuth → ES256 JWT + JWKS) is no longer needed at all.
  *
- * ⚠ Requires a development build. `expo-secure-store` and
- * `react-native-passkeys` are native modules; Expo Go rejects the project
- * before any JS runs, which presents as the app opening and closing instantly
- * with nothing in the Metro logs.
+ * ⚠ Passkey sign-in requires a development build, but the module as a whole is
+ * Expo Go safe. `expo-secure-store` ships inside Expo Go, and the kit reaches
+ * `react-native-passkeys` only through its `optional()` try/catch wrapper — in
+ * Expo Go `requireNativeModule("ReactNativePasskeys")` throws at import, the
+ * catch swallows it, and sign-in degrades to the non-passkey tiers.
+ *
+ * The "app opens and closes instantly with nothing in the Metro logs" symptom
+ * is NOT this module. It is an Expo Go SDK mismatch: Expo Go embeds exactly one
+ * SDK and must equal the `expo` version in package.json (57). App Store Expo Go
+ * is capped at SDK 54, so a matching client has to come from expo.dev/go
+ * (Android) or sign.expo.dev / `eas go` (iOS). See README.
  */
 
 import {

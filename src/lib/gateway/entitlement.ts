@@ -22,7 +22,6 @@ import * as client from "./client";
 import {
   ApiError,
   asSubscriptionStatus,
-  isEntitlementError,
   SessionExpiredError,
   type PrimalAppState,
   type Subscription,
@@ -37,6 +36,35 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 const isWeb = Platform.OS === "web";
+
+/* --------------------------------------------------------- what a 403 means */
+
+/**
+ * The gateway refused this because the subscription is not live.
+ *
+ * `isEntitlementError` in `types.ts` insists on the literal word SUBSCRIPTION,
+ * and the only 403 envelope this gateway has ever been observed to send —
+ * `{statusCode, message, correlationId}`, with no `code` field — does not carry
+ * it. So that predicate answers "no" to the exact refusal it was written for,
+ * and the surface behind it shows a lapsed subscriber an operator error with a
+ * Try again that can never succeed.
+ *
+ * Widened here, deliberately and only for the entitled surface: every
+ * `/v1/linkpay/*` route sits behind the entitlement guard, which runs before
+ * any lookup, so a 403 from one of them has exactly one meaning. Read it that
+ * way rather than handing a paying user a dead tab.
+ *
+ * It cannot swallow a session failure, and that is the point of the two guards
+ * below rather than a bare status check: a 401 is one serialized refresh and,
+ * if the fresh token is refused too, a `SessionExpiredError` — neither is a
+ * paywall, and parking an expired session behind one would leave the user
+ * tapping "See the plan" for a subscription they already hold.
+ */
+export function isEntitlementRefusal(error: unknown): boolean {
+  if (SessionExpiredError.is(error)) return false;
+  if (!ApiError.is(error)) return false;
+  return error.statusCode === 403;
+}
 
 /* --------------------------------------------- remembered subscription id */
 
@@ -134,18 +162,13 @@ export async function probeEntitlement(options?: {
   } catch (error) {
     if (SessionExpiredError.is(error)) throw error;
 
-    if (isEntitlementError(error)) {
+    if (isEntitlementRefusal(error)) {
       entitled = false;
     } else if (ApiError.is(error) && error.statusCode === 404) {
       // Entitled, but no LinkPay account provisioned yet. The entitlement guard
       // runs ahead of the lookup, so reaching a 404 at all means we were let in.
       entitled = true;
       hasLinkpayAccount = false;
-    } else if (ApiError.is(error) && error.statusCode === 403) {
-      // A 403 the message did not identify. The contract reserves 403 for
-      // entitlement, so read it that way rather than showing a signed-in user
-      // a dead LinkPay tab.
-      entitled = false;
     } else {
       throw error;
     }

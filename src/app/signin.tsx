@@ -15,18 +15,17 @@ export default function SignIn() {
   const toast = useToast();
 
   const onSignIn = async (method: string) => {
-    // Decane's built-in methods are google / email / kingschat. Apple would
-    // have to come through the generic external-provider path with an Apple
-    // identity token, which needs a provider registered in the dashboard —
-    // not wired yet, so it is surfaced honestly rather than failing opaquely.
-    if (method === "apple") {
-      toast.info(
-        "Apple sign-in isn't ready",
-        "Use KingsChat or Google for now.",
-      );
+    // Email is the one method that isn't a single handshake — it needs an
+    // address and a code, so it gets its own screen rather than a modal
+    // stapled onto this one.
+    if (method === "email") {
+      router.push("/email");
       return;
     }
 
+    // Decane's built-in methods are google / email / kingschat, and the screen
+    // offers exactly those three. Anything else is a caller bug, not a state
+    // worth apologising for on screen.
     if (method !== "google" && method !== "kingschat") return;
 
     try {

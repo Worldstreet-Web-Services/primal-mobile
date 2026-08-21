@@ -79,19 +79,35 @@ export class ApiError extends Error {
  * decides entitlement — never a decoded JWT, never a wallet transaction hash,
  * never a cached local flag.
  *
- * The written contract names the code `ACTIVE_SUBSCRIPTION_REQUIRED`. We could
- * not observe a real 403 (the gateway's User Management dependency was
- * returning 503 while this was built), and the observed envelope has no `code`
- * field at all — so the match is deliberately broad but scoped to 403, which
- * the contract reserves for entitlement.
+ * The status is the whole test, and that is a deliberate widening. The written
+ * contract names the code `ACTIVE_SUBSCRIPTION_REQUIRED`, so an earlier form of
+ * this also insisted on seeing the word SUBSCRIPTION in `${code} ${message}` —
+ * but the only 403 envelope this gateway has ever been observed to send is
+ * `{statusCode, message, correlationId}` with no `code` field at all and no such
+ * word in the body. That form therefore answered "no" to the exact refusal it
+ * was written for, and every surface behind it (bills, Send, Send confirm, the
+ * catalogue sweep, `describeLinkpayFailure`) showed a lapsed subscriber an
+ * operator error with a Try again that can never succeed.
+ *
+ * Widening is safe because of WHERE it is asked: every caller is on a
+ * `/v1/linkpay/*` route, where the entitlement guard runs ahead of any lookup,
+ * so there is nothing else on those routes for a 403 to mean. This is the same
+ * reasoning, and deliberately the same shape, as `isEntitlementRefusal` in
+ * `./entitlement`, which solved it for the LinkPay hooks first; the two must
+ * stay in step, and they cannot simply be one function because that module
+ * imports this one.
+ *
+ * What it must never swallow is a session failure. A 401 is one serialized
+ * refresh and only the failure of THAT becomes a `SessionExpiredError` —
+ * neither is a paywall, and parking an expired session behind one would leave
+ * the user tapping "See the plan" for a subscription they already hold. The
+ * status check excludes the 401; the guard on the first line excludes the
+ * wrapper it turns into, whatever else that wrapper may be carrying.
  */
 export function isEntitlementError(error: unknown): boolean {
-  if (!ApiError.is(error) || error.statusCode !== 403) return false;
-  const haystack = `${error.code ?? ""} ${error.message}`.toUpperCase();
-  return (
-    haystack.includes("ACTIVE_SUBSCRIPTION_REQUIRED") ||
-    haystack.includes("SUBSCRIPTION")
-  );
+  if (SessionExpiredError.is(error)) return false;
+  if (!ApiError.is(error)) return false;
+  return error.statusCode === 403;
 }
 
 /**

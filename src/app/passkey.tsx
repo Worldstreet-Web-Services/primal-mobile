@@ -5,13 +5,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import PasskeyScreen from "@/screens/PasskeyScreen";
+import { C } from "@/theme/tokens";
 
 export default function Passkey() {
   const { enableBiometrics, skipBiometrics, capability } = useAuth();
   const toast = useToast();
   const [enabling, setEnabling] = useState(false);
 
-  const finish = () => router.replace("/home");
+  // Through "/" rather than at /home directly: onboarding's last step should
+  // hand back to the one router that decides where a signed-in, paid, unlocked
+  // account belongs, instead of asserting the answer itself.
+  const finish = () => router.replace("/");
 
   const onEnable = async () => {
     if (!capability?.available) {
@@ -48,7 +52,7 @@ export default function Passkey() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0B0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
       <PasskeyScreen
         onEnable={onEnable}
         onSkip={onSkip}

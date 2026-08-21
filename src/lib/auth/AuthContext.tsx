@@ -19,7 +19,6 @@ import React, {
   useState,
 } from "react";
 
-import { setAccessToken } from "@/lib/api";
 import * as biometrics from "@/lib/auth/biometrics";
 import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
@@ -27,6 +26,8 @@ import * as storage from "@/lib/auth/storage";
 import * as wire from "@/lib/auth/wire";
 import * as gatewayAuth from "@/lib/gateway/auth";
 import * as entitlement from "@/lib/gateway/entitlement";
+import { clearPayoutState } from "@/lib/gateway/linkpay";
+import { clearVasState } from "@/lib/gateway/services";
 import * as gatewaySession from "@/lib/gateway/session";
 import {
   ApiError,
@@ -107,6 +108,14 @@ function describeGatewayFailure(error: unknown): string {
       : "Could not reach Primal. Check your connection.";
   }
   if (ApiError.is(error)) {
+    // 429's live body is "Request rate limit exceeded" and it arrives with no
+    // Retry-After to quote, so there is nothing in it worth showing a person
+    // beyond "wait". Everything else 4xx keeps its text: a rejected signature
+    // or a refused challenge is a case where the specific reason is the useful
+    // part.
+    if (error.statusCode === 429) {
+      return "Too many attempts. Wait a moment and try again.";
+    }
     return error.statusCode >= 500
       ? "Primal is temporarily unavailable. Try again shortly."
       : error.message;
@@ -171,6 +180,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const primalSync = useRef<Promise<void> | null>(null);
 
+  /**
+   * The wallet the last automatic handshake was started for.
+   *
+   * Two jobs, and the second is the load-bearing one. It stops the effect below
+   * re-running the whole handshake every time `status` moves, and — because it
+   * is compared against the address Decane currently reports — it is what makes
+   * a WALLET CHANGE visible at all. Sign out of one wallet and into another
+   * within a launch and `state.session` is simply replaced; nothing about that
+   * new object says the Primal tokens on disk were minted for someone else.
+   * `bootstrap(address)` does the actual refusing; this is what gets it asked.
+   */
+  const syncedFor = useRef<string | null>(null);
+
   // Launch: let the SDK restore its own session, then decide where the user
   // belongs before the first frame commits to a route.
   useEffect(() => {
@@ -196,7 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setAccessToken(session.accessToken);
       setState((s) => ({
         ...s,
         status: pinSet ? "locked" : "onboarding",
@@ -259,30 +280,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPrimal((p) => ({ ...p, syncing: true, error: null }));
 
     try {
-      let identity = (await gatewayAuth.bootstrap()).identity;
+      // The connected address is passed in so a stored pair belonging to a
+      // DIFFERENT wallet is refused rather than restored. Those tokens are
+      // still valid — that is the trap — and `me()` would happily confirm them.
+      let identity = (await gatewayAuth.bootstrap(walletAddress)).identity;
 
       if (!identity) {
-        await gatewayAuth.signInWithWallet(walletAddress, decane.signMessage);
+        // The chain is named here rather than left to `signMessage`'s default,
+        // so `SIWE_CHAIN` is the single declaration both sides read. Two
+        // constants that happen to agree today are two constants that can
+        // drift, and a signature produced on the wrong chain fails verification
+        // with the same opaque 400 as a corrupted message.
+        await gatewayAuth.signInWithWallet(walletAddress, (message) =>
+          decane.signMessage(message, gatewayAuth.SIWE_CHAIN),
+        );
         identity = await gatewayAuth.me();
       }
+
+      // Commit the identity the moment authentication is settled, BEFORE asking
+      // about entitlement. The two are independent decisions and the contract is
+      // explicit that a verified wallet does not mean a paid one — so the
+      // reverse has to hold too. Leaving `identity` null until the probe
+      // returned meant one failed GET presented a fully authenticated user as
+      // nobody: the store subscriber below stopped recognising a forced
+      // sign-out (it only fires when there was an identity to lose), and a
+      // dropped connection read as "not signed in" rather than "signed in, do
+      // not know about the subscription yet".
+      const authenticated = identity;
+      setPrimal((p) => ({
+        ...p,
+        // `anonymous` and `session_expired` both assert "not authenticated",
+        // and we have just proved otherwise. Drop back to `unknown` — which is
+        // the honest reading of "signed in, entitlement not decided yet" —
+        // rather than leaving a stale claim on screen if the probe below never
+        // lands. Any settled state is left alone; the probe will replace it.
+        state: p.state === "anonymous" || p.state === "session_expired" ? "unknown" : p.state,
+        identity: authenticated,
+        error: null,
+      }));
 
       const snapshot = await entitlement.probeEntitlement();
       setPrimal({
         state: snapshot.state,
-        identity,
+        identity: authenticated,
         syncing: false,
         error: null,
       });
     } catch (error) {
+      const dead = SessionExpiredError.is(error);
+      // A failure that is not a session failure must not cost the caller its
+      // record of who is signed in — an entitlement probe that never arrived
+      // says nothing about authentication, and signing a paying user out over
+      // it is the exact collapse the contract forbids.
+      if (!dead) syncedFor.current = null;
       setPrimal((p) => ({
         ...p,
         // A dead session is a routing decision; everything else is a message.
         // Notably NOT a downgrade to `authenticated_unpaid` — a request that
         // never arrived says nothing about whether this user has paid.
-        state: SessionExpiredError.is(error) ? "session_expired" : p.state,
-        identity: SessionExpiredError.is(error) ? null : p.identity,
+        state: dead ? "session_expired" : p.state,
+        identity: dead ? null : p.identity,
         syncing: false,
-        error: SessionExpiredError.is(error) ? null : describeGatewayFailure(error),
+        error: dead ? null : describeGatewayFailure(error),
       }));
     }
   }, []);
@@ -297,7 +356,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!state.session || !address) {
       // `loading` has not decided anything yet — only a settled sign-out is
       // anonymous, and clearing on `loading` would flash the sign-in route.
-      if (state.status === "signedOut") setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
+      if (state.status === "signedOut") {
+        syncedFor.current = null;
+        setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
+      }
       return;
     }
 
@@ -311,11 +373,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (primalSync.current) return;
+    // Already handled THIS wallet. A different one falls through and re-runs,
+    // which is the whole point: the stored pair belongs to the old address and
+    // `bootstrap` has to be given the chance to throw it away.
+    if (gatewayAuth.isSameWallet(syncedFor.current, address)) return;
+
+    syncedFor.current = address;
     const run = runPrimalSync(address).finally(() => {
       primalSync.current = null;
     });
     primalSync.current = run;
   }, [state.session, state.status, runPrimalSync]);
+
+  /**
+   * The wallet went away underneath us.
+   *
+   * Decane's session and Primal's expire independently, and a Primal pair
+   * outliving its wallet is the one direction that is never legitimate: those
+   * tokens were minted against a signature from a key this device can no longer
+   * produce. Clear them here rather than waiting for a screen to discover it,
+   * because until they are cleared they still work — the gateway has no idea
+   * the wallet is gone, and every entitled route keeps answering for a wallet
+   * the user cannot sign with.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    let dispose: (() => void)[] = [];
+
+    const drop = () => {
+      syncedFor.current = null;
+      primalSync.current = null;
+      void gatewayAuth.logout();
+      setPrimal({ ...IDLE_PRIMAL, state: "session_expired" });
+    };
+
+    (async () => {
+      const offs = await Promise.all([
+        decane.onSdkEvent("disconnected", drop),
+        decane.onSdkEvent("session-expired", drop),
+      ]);
+      if (cancelled) offs.forEach((off) => off());
+      else dispose = offs;
+    })();
+
+    return () => {
+      cancelled = true;
+      dispose.forEach((off) => off());
+    };
+  }, []);
 
   // The client clears storage when a refresh is refused outright. That can
   // happen mid-request, far from here, so react to the store rather than
@@ -359,16 +464,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const linkPrimal = useCallback(async () => {
     const address = state.session?.addresses.evm;
     if (!address || decane.usingMockAuth) return;
+    // Same gate as the automatic handshake below: signing raises a biometric
+    // prompt on the passkey and enclave tiers, and behind the lock screen that
+    // is a prompt the user cannot explain. A caller retrying by hand must not
+    // reach past a guard the automatic path respects.
+    if (state.status !== "ready" && state.status !== "onboarding") return;
     if (primalSync.current) return primalSync.current;
+    // Deliberately NOT gated on `syncedFor` the way the automatic effect is.
+    // This is a person tapping Try again on a failure they have since fixed;
+    // refusing because the same wallet was attempted before would make the
+    // button do nothing.
+    syncedFor.current = address;
     const run = runPrimalSync(address).finally(() => {
       primalSync.current = null;
     });
     primalSync.current = run;
     return run;
-  }, [state.session, runPrimalSync]);
+  }, [state.session, state.status, runPrimalSync]);
+
+  /**
+   * Keep asking while the answer is "not yet".
+   *
+   * `payment_pending` and `entitlement_syncing` are both waiting rooms: the
+   * money is moving, or the backend has taken the money and not finished
+   * propagating entitlement. Neither resolves from anything the app does, so
+   * without a re-probe the only ways out are a user tapping recheck on the
+   * subscription screen or an app restart — and a user who has just paid,
+   * looking at a screen that still says unpaid, pays again.
+   *
+   * Bounded on purpose. Thirty seconds is far below the gateway's limit (120 a
+   * window, observed), and it stops after ten minutes rather than polling for
+   * the life of the process: past that, something is wrong that waiting will
+   * not fix, and the manual recheck is still there.
+   */
+  useEffect(() => {
+    if (!entitlement.isPending(primal.state)) return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (attempts > MAX_ATTEMPTS) {
+        clearInterval(timer);
+        return;
+      }
+      void refreshEntitlement();
+    }, 30_000);
+
+    return () => clearInterval(timer);
+  }, [primal.state, refreshEntitlement]);
 
   const adopt = useCallback(async (session: DecaneSession) => {
-    setAccessToken(session.accessToken);
 
     if (__DEV__ && !session.accessToken) {
       // Sign-in succeeded but produced no JWT — the backend exchange has
@@ -428,17 +574,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // it, then end the Decane session, then clear local state. Each step is
     // independent — a failure in one must not leave the user half signed out,
     // which is why `decane.signOut` swallows its own errors.
-    setAccessToken(null);
     // Revoke the Primal refresh session before the wallet goes: once Decane is
     // disconnected there is no signer left to prove ownership, and a live
     // refresh token left on the server outlives the sign-out that was meant to
     // end it. `logout` clears local storage whatever the network does.
     await gatewayAuth.logout();
     await entitlement.forgetSubscriptionId();
+    // Both gateway modules namespace their persisted money state per account,
+    // so nothing here deletes any of it. A sign-out is not evidence that a
+    // payout or a purchase can no longer be resumed — and after five wrong PINs
+    // (unlock.tsx) it is not even a deliberate act, so a sweep here would
+    // release live keys on a guess and let the same user pay twice. What is
+    // dropped is the process-wide memory mirror, so a second account signing in
+    // during this launch starts clean. Neither call reads the session, so their
+    // position relative to `gatewayAuth.logout()` above does not matter.
+    clearPayoutState();
+    clearVasState();
     await decane.signOut();
     await storage.clearAll();
 
     primalSync.current = null;
+    // Without this, signing straight back in on the SAME wallet would find the
+    // guard still set and never re-run the handshake — the app would sit at
+    // `anonymous` holding no tokens.
+    syncedFor.current = null;
     setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
     setState({
       status: "signedOut",

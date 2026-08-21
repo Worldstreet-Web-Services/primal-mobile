@@ -4,7 +4,7 @@ import { networks } from "@/data/mock";
 // serving every supported EVM chain, plus Solana, Tron and Bitcoin. Deposits
 // here auto-convert into the fiat balance via optimistic fill (LinkPay
 // rails) — these are NOT the embedded-wallet addresses, which hold on-chain
-// assets. Mock-backed until primal-be serves the real set.
+// assets. Mock-backed until the gateway serves the real set.
 
 export type DepositNetworkKind = "evm" | "solana" | "tron" | "bitcoin";
 

@@ -16,27 +16,32 @@ export interface BankQuote {
   bank: { label: string; color?: string };
 }
 
-const DEFAULT_QUOTE: BankQuote = {
-  plan: "Primal Premium",
-  name: "Montly Subscription",
-  amount: "$1,000",
-  amountSub: "₦1,540,000",
-  method: { label: "Card", color: "#1A7F5A" },
-  bank: { label: "Rubies MFB", color: "#8247E5" },
-};
+// There is deliberately NO default quote — the same rule `CryptoCheckout` now
+// holds to, for the same reason.
+//
+// There used to be one, and it was invented end to end: a "$1,000 / ₦1,540,000"
+// price nobody quoted, at "Rubies MFB", a bank the member has no account with.
+// Because `quote` was optional, `<LocalBankCheckout />` with no props rendered
+// all of it under a live "Confirm payment" button — a checkout for a figure the
+// backend never stated.
+//
+// `quote` is required now. A bank checkout with nothing to quote must not be
+// renderable at all, and the type system is the only thing that reliably
+// enforces that.
 
 /**
  * Pay over local rails — card or bank wire. Mirrors `CryptoCheckout`'s shape so
  * the two read as one flow with different plumbing underneath.
  */
 export function LocalBankCheckout({
-  quote = DEFAULT_QUOTE,
+  quote,
   onBack,
   onClose,
   onConfirm,
   onChangeBank,
 }: {
-  quote?: BankQuote;
+  /** Required: see the note above — there is no safe default for a price. */
+  quote: BankQuote;
   onBack?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;

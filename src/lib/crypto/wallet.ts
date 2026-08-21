@@ -1,9 +1,7 @@
-import { user } from "@/data/mock";
-
-// The auth seam. Decane Kit (non-custodial ETH+SOL wallets, separate
-// workstream) installs the real provider via setCryptoWallet; until then the
-// stub serves the mock user's addresses for reads and refuses to sign.
-// Nothing in this file may import Privy or Decane.
+// The auth seam. Decane Kit installs the real provider via `setCryptoWallet`
+// (see src/lib/auth/wire.ts); until it does, the stub reports NO wallet and
+// refuses to sign. Nothing in this file may import Privy or Decane, and nothing
+// here may import `@/data/mock` — a fabricated address is a fabricated balance.
 
 export interface WalletAddresses {
   evm?: string;
@@ -45,10 +43,27 @@ export interface CryptoWallet {
 export const WALLET_NOT_WIRED =
   "Sign-in isn't wired yet — withdrawals need your Decane wallet.";
 
-/** Mock-backed reads keep the demo real (public-RPC balance fetches run
- * against these addresses); sends refuse until the real provider lands. */
+/**
+ * No wallet is no wallet. `getAddresses` returns null until Decane wires a real
+ * one, and the difference between "null" and "someone else's address" is the
+ * whole point.
+ *
+ * This used to serve `user.evm` / `user.sol` from `src/data/mock`, which cost
+ * twice over. Those literals are malformed — the EVM one is 32 hex characters,
+ * not 40 — so viem rejected them, every chain read failed, and the portfolio
+ * store reported a read ERROR when the truth was that there was nothing to
+ * read. Home could then never show a total: an entitled member with a real
+ * naira balance got an em dash and a "could not read your wallets" retry that
+ * structurally could not succeed.
+ *
+ * The second cost is the one that matters more. Had anyone ever replaced those
+ * literals with a VALID address — an easy, well-meaning fix — the stub would
+ * have handed every member the same wallet, and a stranger's on-chain balance
+ * would have rendered as their own portfolio. Reads are not harmless just
+ * because they are reads.
+ */
 const stubWallet: CryptoWallet = {
-  getAddresses: () => ({ evm: user.evm, solana: user.sol }),
+  getAddresses: () => null,
   sendEvm: async () => {
     throw new Error(WALLET_NOT_WIRED);
   },

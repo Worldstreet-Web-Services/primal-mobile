@@ -260,6 +260,18 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
     path: req.path,
     status: response.status,
     correlationId: cid,
+    // The server's OWN words, dev only, on failures only.
+    //
+    // Surfaces deliberately do not show these: `describeGatewayFailure`
+    // replaces every 5xx with "Primal is temporarily unavailable" because the
+    // real text is written for operators ("User Management service is
+    // unavailable" is a genuine body from this gateway). That is right for
+    // members and useless for whoever has to fix it — the one line that says
+    // WHICH service failed was being thrown away. It goes to the dev console
+    // and nowhere else, and carries no headers, no body and no token.
+    ...(response.ok
+      ? null
+      : { serverMessage: normalizeMessage(parsed, "(no message in body)") }),
   });
 
   if (!response.ok) {
@@ -389,7 +401,21 @@ async function performRefresh(): Promise<string> {
   } catch (error) {
     // A rejected token is unrecoverable and the session must go. A network
     // failure is not the token's fault — keep it and let the next call retry.
-    if (ApiError.is(error) && error.statusCode >= 400 && error.statusCode < 500) {
+    //
+    // 429 and 408 sit inside the 4xx range but are NOT verdicts on the token:
+    // the gateway rate-limits per IP, so a member behind carrier NAT or a shared
+    // office address can trip it through no fault of their own, and a timeout
+    // says nothing at all. Wiping the keychain on either silently signs a paying
+    // member out with no way back but a fresh SIWE signature — the exact
+    // auth/entitlement collapse the contract forbids. They fall through to the
+    // rethrow below, which keeps both tokens for the next attempt.
+    const dead =
+      ApiError.is(error) &&
+      error.statusCode >= 400 &&
+      error.statusCode < 500 &&
+      error.statusCode !== 429 &&
+      error.statusCode !== 408;
+    if (dead) {
       await session.clear();
       throw new SessionExpiredError("Primal session could not be renewed.", error);
     }

@@ -1,57 +1,66 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+
+import { CopyMark, useCopy } from "../components/CopyAction";
 import {
-  Screen,
   BackHeader,
-  MetallicButton,
-  Label,
-  Mono,
   Body,
   Display,
-  Keypad,
-  PressableScale,
+  GhostButton,
+  Label,
+  MetallicButton,
+  Mono,
+  Pulse,
   PulseDot,
+  Screen,
+  SectionRule,
   Shine,
 } from "../components/ui";
-import { CopyMark, useCopy } from "../components/CopyAction";
+import { useLinkpayAccount } from "../hooks/useLinkpay";
+import {
+  accountStatusLabel,
+  depositStatusLabel,
+  describeLinkpayFailure,
+  watchDeposits,
+} from "../lib/gateway/linkpay";
+import { formatMoney } from "../lib/gateway/money";
+import { SessionExpiredError, type Deposit } from "../lib/gateway/types";
+import { C, F } from "../theme/tokens";
 
-// Bank-transfer funding, modeled on Ark's fundbank flow: pick an amount,
-// get a one-off account that exists for exactly this transfer, send the
-// exact figure, watch it settle. The KYC leg is skipped — the mock user
-// is already verified — but the money mechanics carry over whole:
-// exact-amount discipline, copy-everything rows, an expiry countdown,
-// and a settle poll that narrates the middle instead of going quiet.
+/**
+ * Money in, by bank transfer.
+ *
+ * The earlier build of this screen asked for an amount and issued a one-off
+ * account that expired in thirty minutes. That was a fiction: LinkPay gives a
+ * user ONE permanent account number, deposits are provider-initiated, and
+ * nothing on our side knows or cares how much is coming. So the screen now does
+ * what the rail actually does — hands over the real account details and watches
+ * the deposit feed.
+ *
+ * The settlement narration follows the backend's own two-step vocabulary:
+ * `DETECTED` (the provider has seen the transfer) then `CREDITED` (it is in the
+ * balance). Nothing is claimed between them.
+ */
 
-type Step = "amount" | "account" | "done";
-
-type OneOffAccount = {
-  bank: string;
-  number: string;
-  name: string;
-  reference: string;
-  expiresAt: number;
-};
-
-const MIN_NGN = 1000;
-const MAX_DIGITS = 8;
-/** How long the one-off account stays payable. */
-const EXPIRY_MS = 30 * 60 * 1000;
-/** Simulated settle: the transfer is "seen" first, then credits. */
-const SETTLE_SEEN_MS = 14_000;
-const SETTLE_DONE_MS = 20_000;
-/** Simulated status-poll cadence — drives the "checked Ns ago" line. */
-const POLL_MS = 8_000;
-/** Below this the countdown stops being background and starts being a fact. */
-const URGENT_MS = 60_000;
-
-/** Standing amounts, so the common case is one tap instead of five. */
-const PRESETS = [5_000, 10_000, 50_000, 100_000];
-
-const fmt = (d: string) => d.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-const compact = (n: number) => (n >= 1000 ? `${n / 1000}K` : String(n));
+/** Polite: the gateway allows 120 requests a window and this screen may sit open. */
+const POLL_MS = 6_000;
+/** Stop watching after this long rather than polling until the battery dies. */
+const WATCH_MS = 20 * 60 * 1000;
+/**
+ * The backstop for when the screen must stop SAYING it is watching.
+ *
+ * `onStopped` is the exact answer and is preferred, but the poll can only
+ * notice its own deadline when its own timer fires, and a phone that spent
+ * those twenty minutes asleep does not fire it until it wakes. So the elapsed
+ * wall clock is read as well: `startPolling` gives up as soon as one more
+ * interval would overshoot `maxMs`, so taking the earlier of the two bounds
+ * means the pulse dot can be a beat early but never a lie. A spinner over
+ * someone's money after the asking has stopped is the defect, not the stopping.
+ */
+const WATCH_ENDS_MS = WATCH_MS - POLL_MS;
+/** Said to the user, so it is derived from the constant rather than typed. */
+const WATCH_MINUTES = Math.round(WATCH_MS / 60_000);
 
 function CheckSeal() {
   return (
@@ -100,14 +109,7 @@ function DetailRow({
       <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
         {label.toUpperCase()}
       </Mono>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          flexShrink: 1,
-        }}
-      >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
         <Mono size={12.5} color={C.text}>
           {value}
         </Mono>
@@ -117,38 +119,125 @@ function DetailRow({
   );
 }
 
+function Gate({
+  title,
+  body,
+  action,
+  onAction,
+  tone = "quiet",
+  pending,
+}: {
+  title: string;
+  body: string;
+  action?: string;
+  onAction?: () => void;
+  tone?: "quiet" | "warn" | "bad";
+  pending?: boolean;
+}) {
+  const edge =
+    tone === "bad"
+      ? "rgba(246,165,165,0.35)"
+      : tone === "warn"
+        ? "rgba(245,184,61,0.32)"
+        : C.border;
+  return (
+    <View
+      style={{
+        marginTop: 28,
+        backgroundColor: tone === "bad" ? "rgba(246,165,165,0.08)" : C.raised,
+        borderWidth: 1,
+        borderColor: edge,
+        borderRadius: 20,
+        padding: 20,
+        overflow: "hidden",
+      }}
+    >
+      <Shine />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+        {pending ? <PulseDot /> : null}
+        <Display size={18}>{title}</Display>
+      </View>
+      <Body
+        size={12.5}
+        color={tone === "bad" ? C.down : C.sub}
+        style={{ marginTop: 12, lineHeight: 19 }}
+      >
+        {body}
+      </Body>
+      {action ? (
+        <View style={{ marginTop: 20 }}>
+          <MetallicButton label={action} height={48} radius={14} size={13.5} onPress={onAction} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function FundBankScreen({
   onBack,
   onDone,
+  onProvision,
+  onNeedsSubscription,
+  onNeedsSignIn,
 }: {
   onBack?: () => void;
   onDone?: () => void;
+  onProvision?: () => void;
+  onNeedsSubscription?: () => void;
+  onNeedsSignIn?: () => void;
 }) {
-  const [step, setStep] = useState<Step>("amount");
-  const [digits, setDigits] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [account, setAccount] = useState<OneOffAccount | null>(null);
-  /** What the "provider" last said: waiting, then transfer seen. */
-  const [phase, setPhase] = useState<"waiting" | "processing">("waiting");
-  const [now, setNow] = useState(() => Date.now());
-  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const {
+    phase,
+    account,
+    error: accountError,
+    activation,
+    watching,
+    reload,
+  } = useLinkpayAccount();
   const { copied, copy } = useCopy();
+
+  /** The transfer this visit is about, once the provider has seen one. */
+  const [incoming, setIncoming] = useState<Deposit | null>(null);
+  const [credited, setCredited] = useState<Deposit | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  /** When the current watch was armed — the clock the expiry is read off. */
+  const [watchStartedAt, setWatchStartedAt] = useState<number | null>(null);
+  /**
+   * When the poll told us it gave up — exact, where the clock below is a
+   * backstop. The instant matters and not just the fact: `onStopped` fires for
+   * a lost session as readily as for the deadline, and comparing THIS against
+   * the start is the only way to tell the two apart from here.
+   */
+  const [stoppedAt, setStoppedAt] = useState<number | null>(null);
+  /** Bumped to arm a fresh watch after the last one ran out. */
+  const [watchNonce, setWatchNonce] = useState(0);
+
+  /** Ids that were already in the feed when this screen opened. */
+  const seen = useRef<Set<string> | null>(null);
+  /** The one deposit being narrated, so a later tick can follow its status. */
+  const tracking = useRef<string | null>(null);
 
   // The account card is placed, not rendered: it rises and settles once, the
   // way a teller slides a card across the counter. The one motion moment here.
   const place = useRef(new Animated.Value(0)).current;
 
-  const amount = parseInt(digits || "0", 10);
-  const valid = amount >= MIN_NGN;
-
-  // One clock for the countdown, one poll for the "checked Ns ago" line,
-  // and the simulated settle — all scoped to the account step.
+  // `unentitled` only — a payment still in flight, or an entitlement still
+  // propagating, is `activating` and gets the wait below instead of a paywall.
+  const told = useRef(false);
   useEffect(() => {
-    if (step !== "account") return;
-    setPhase("waiting");
-    setLastChecked(Date.now());
-    setNow(Date.now());
+    if (phase !== "unentitled") {
+      told.current = false;
+      return;
+    }
+    if (told.current) return;
+    told.current = true;
+    onNeedsSubscription?.();
+  }, [phase, onNeedsSubscription]);
+
+  useEffect(() => {
+    if (phase !== "ready") return;
     place.setValue(0);
     Animated.spring(place, {
       toValue: 1,
@@ -156,470 +245,515 @@ export default function FundBankScreen({
       speed: 11,
       bounciness: 5,
     }).start();
-    const clock = setInterval(() => setNow(Date.now()), 1_000);
-    const poll = setInterval(() => setLastChecked(Date.now()), POLL_MS);
-    const seen = setTimeout(() => setPhase("processing"), SETTLE_SEEN_MS);
-    const done = setTimeout(() => setStep("done"), SETTLE_DONE_MS);
-    return () => {
-      clearInterval(clock);
-      clearInterval(poll);
-      clearTimeout(seen);
-      clearTimeout(done);
-    };
-  }, [step, place]);
+  }, [phase, place]);
 
-  // Expiry: an unpaid account past its window goes back to the amount
-  // step with a fresh-account nudge, never a dead screen.
+  // One clock for the "checked Ns ago" line.
   useEffect(() => {
-    if (step !== "account" || !account || phase !== "waiting") return;
-    if (now >= account.expiresAt) {
-      setError(
-        "That account expired before your transfer arrived. Start again for a fresh one.",
-      );
-      setAccount(null);
-      setStep("amount");
-    }
-  }, [now, step, account, phase]);
+    if (phase !== "ready" || credited) return;
+    const clock = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(clock);
+  }, [phase, credited]);
 
-  const handleKey = (k: string) => {
-    if (k === "del") {
-      setDigits(digits.slice(0, -1));
-      return;
-    }
-    if (digits.length >= MAX_DIGITS) return;
-    if (digits === "" && k === "0") return;
-    setDigits(digits + k);
-  };
+  // Watch the deposit feed. The first tick is a baseline, not news: a transfer
+  // from last week must not announce itself as the one being waited for.
+  //
+  // `onStopped` is the poll saying it has given up — on the deadline, on a
+  // terminal deposit, or on a lost session. The wall-clock start is recorded
+  // alongside it because that callback rides the poll's own timer, and a phone
+  // that spent those twenty minutes asleep does not run it until it wakes.
+  // Reading elapsed time off `now` survives suspension, because both are wall
+  // clock; whichever notices first is the one the screen believes.
+  useEffect(() => {
+    if (phase !== "ready") return;
+    setWatchStartedAt(Date.now());
+    setStoppedAt(null);
 
-  const getAccount = () => {
-    if (!valid || busy) return;
-    setBusy(true);
-    setError(null);
-    setTimeout(() => {
-      setAccount({
-        bank: "Wema Bank",
-        number: "7810 442 953",
-        name: "Paradigm — Dave Kadiri",
-        reference: "PAR-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
-        expiresAt: Date.now() + EXPIRY_MS,
-      });
-      setBusy(false);
-      setStep("account");
-    }, 900);
-  };
+    const stop = watchDeposits(
+      (deposits) => {
+        setLastChecked(Date.now());
+        setFeedError(null);
 
-  const startOver = () => {
-    setAccount(null);
-    setDigits("");
-    setError(null);
-    setStep("amount");
-  };
+        if (seen.current === null) {
+          seen.current = new Set(deposits.map((d) => d.id));
+          const inflight = deposits.find((d) => d.status === "DETECTED");
+          if (inflight) {
+            tracking.current = inflight.id;
+            setIncoming(inflight);
+          }
+          return false;
+        }
 
-  if (step === "amount") {
-    const hintColor = digits === "" ? C.dim : !valid ? C.amber : C.sub;
-    const hint =
-      digits === ""
-        ? `MINIMUM ₦${fmt(String(MIN_NGN))}`
-        : !valid
-          ? `BELOW THE ₦${fmt(String(MIN_NGN))} MINIMUM`
-          : "ONE ACCOUNT, ISSUED FOR THIS AMOUNT";
-    return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
-          <BackHeader title="Bank transfer" onBack={onBack} />
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6 }}>
-            Naira in, from any Nigerian bank or app.
-          </Body>
-          {error ? (
-            <Pressable
-              onPress={() => setError(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss"
-              style={{
-                marginTop: 14,
-                backgroundColor: "rgba(246,165,165,0.1)",
-                borderWidth: 1,
-                borderColor: "rgba(246,165,165,0.35)",
-                borderRadius: 16,
-                padding: 13,
-              }}
-            >
-              <Body size={12} color={C.down} style={{ lineHeight: 17.5 }}>
-                {error}
-              </Body>
-            </Pressable>
-          ) : null}
-        </View>
+        const fresh = deposits.find((d) => d.id !== "" && !seen.current!.has(d.id));
+        const followed = tracking.current
+          ? deposits.find((d) => d.id === tracking.current)
+          : undefined;
+        const subject = fresh ?? followed;
+        if (!subject) return false;
 
-        <View style={{ marginTop: 26, paddingHorizontal: 22 }}>
-          <View
-            style={{
-              backgroundColor: C.raised,
-              borderWidth: 1,
-              borderColor: C.border,
-              borderRadius: 22,
-              paddingVertical: 22,
-              alignItems: "center",
-              overflow: "hidden",
-            }}
-          >
-            <Shine />
-            <Label>You add</Label>
-            <Text
-              style={{
-                fontFamily: F.display,
-                fontSize: 44,
-                lineHeight: 50,
-                marginTop: 10,
-                color: digits ? C.text : C.dim,
-              }}
-            >
-              ₦{fmt(digits || "0")}
-            </Text>
-            <Mono
-              size={10}
-              color={hintColor}
-              style={{ marginTop: 10, letterSpacing: 1.3 }}
-            >
-              {hint}
-            </Mono>
-          </View>
-
-          {/* Standing amounts. Ark's bank leg makes you type every figure;
-              the web build offers these, and at this size most transfers are
-              one of four round numbers. */}
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-            {PRESETS.map((p) => {
-              const on = digits === String(p);
-              return (
-                <Pressable
-                  key={p}
-                  onPress={() => setDigits(String(p))}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    borderRadius: 99,
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: on ? C.brandSoft : C.border,
-                    backgroundColor: on ? C.brandGlow : C.card,
-                  }}
-                >
-                  <Mono size={11.5} color={on ? C.brandSoft : C.silver}>
-                    ₦{compact(p)}
-                  </Mono>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ textAlign: "center", marginTop: 16 }}
-          >
-            Verified as @dave · no fee on bank transfers
-          </Body>
-        </View>
-
-        <View
-          style={{ marginTop: "auto", paddingHorizontal: 22, paddingBottom: 36 }}
-        >
-          <Keypad onKey={handleKey} />
-          <View
-            style={{ marginTop: 18, opacity: valid ? 1 : 0.4 }}
-            pointerEvents={valid && !busy ? "auto" : "none"}
-          >
-            <MetallicButton
-              label={busy ? "Issuing…" : "Get account number"}
-              onPress={getAccount}
-            />
-          </View>
-        </View>
-      </View>
+        tracking.current = subject.id;
+        if (subject.status === "CREDITED") {
+          setCredited(subject);
+          return true;
+        }
+        setIncoming(subject);
+        // REJECTED is terminal too, and the row says so rather than spinning.
+        return subject.status === "REJECTED";
+      },
+      {
+        intervalMs: POLL_MS,
+        maxMs: WATCH_MS,
+        onError: (err) => {
+          if (SessionExpiredError.is(err)) return;
+          setFeedError(describeLinkpayFailure(err));
+        },
+        onStopped: () => setStoppedAt(Date.now()),
+      },
     );
-  }
 
-  if (step === "account" && account) {
-    const expiresIn = Math.max(0, account.expiresAt - now);
-    const mm = Math.floor(expiresIn / 60_000);
-    const ss = String(Math.floor((expiresIn % 60_000) / 1000)).padStart(2, "0");
-    const urgent = expiresIn <= URGENT_MS;
-    const checkedAgo =
-      lastChecked === null
-        ? null
-        : Math.max(0, Math.round((now - lastChecked) / 1000));
-    const processing = phase === "processing";
+    return stop;
+  }, [phase, watchNonce]);
+
+  /**
+   * Watch again, on a tap.
+   *
+   * Deliberately not automatic: once the watch has run out, the person holding
+   * the phone is the one who knows whether a transfer is still coming, and a
+   * poll that re-arms itself is how a screen ends up asking until the battery
+   * dies — which is the thing WATCH_MS exists to prevent.
+   *
+   * A returned transfer is let go of here rather than followed. It is finished,
+   * and a re-armed watch still tracking it would match it on the very first
+   * tick and stop again at once — a control that promises to look and doesn't.
+   * A DETECTED one is kept, because that is still the transfer being waited on.
+   */
+  const restartWatch = () => {
+    if (tracking.current && incoming?.status === "REJECTED") {
+      // Into the baseline, so the fresh watch reads it as history rather than
+      // announcing the same returned transfer a second time.
+      seen.current?.add(tracking.current);
+      tracking.current = null;
+      setIncoming(null);
+    }
+    setFeedError(null);
+    setWatchNonce((n) => n + 1);
+  };
+
+  const header = (title: string, sub?: string) => (
+    <View style={{ paddingHorizontal: 0 }}>
+      <BackHeader title={title} onBack={onBack} />
+      {sub ? (
+        <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+          {sub}
+        </Body>
+      ) : null}
+    </View>
+  );
+
+  /* ------------------------------------------------------------- gates */
+
+  if (phase === "loading") {
     return (
       <Screen>
-        <BackHeader
-          title="Complete your transfer"
-          onBack={() => setStep("amount")}
-        />
-        <Body size={12.5} color={C.sub} style={{ marginTop: 8, lineHeight: 18 }}>
-          Send the exact amount, once, from any Nigerian bank or app.
-        </Body>
-
-        {/* The account is one object, not a form: the figure to send, the
-            number to send it to, and who it belongs to, on a single plate.
-            Splitting them across four equal rows is what made the crown
-            jewel read like a table cell. */}
-        <Animated.View
-          style={{
-            marginTop: 18,
-            opacity: place,
-            transform: [
-              {
-                translateY: place.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [22, 0],
-                }),
-              },
-              {
-                scale: place.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.97, 1],
-                }),
-              },
-            ],
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: C.raised,
-              borderWidth: 1,
-              borderColor: C.border,
-              borderRadius: 24,
-              overflow: "hidden",
-            }}
-          >
-            <Shine />
-
-            {/* Header band: the exact figure, and how long it stays payable. */}
-            <View
-              style={{
-                paddingHorizontal: 18,
-                paddingTop: 16,
-                paddingBottom: 14,
-                backgroundColor: C.brandGlow,
-                borderBottomWidth: 1,
-                borderBottomColor: "rgba(131,190,96,0.28)",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Label style={{ color: C.brandSoft }}>Send exactly</Label>
-                {!processing ? (
-                  <Mono
-                    size={11.5}
-                    color={urgent ? C.down : C.dim}
-                    style={{ letterSpacing: 1 }}
-                  >
-                    EXPIRES {mm}:{ss}
-                  </Mono>
-                ) : null}
-              </View>
-              <PressableScale
-                onPress={() => void copy("amount", String(amount))}
-                scale={0.985}
-              >
-                <View
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy amount"
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between",
-                    marginTop: 6,
-                  }}
-                >
-                  <Display size={34}>₦{fmt(digits)}</Display>
-                  <View style={{ paddingBottom: 6 }}>
-                    <CopyMark copied={copied === "amount"} />
-                  </View>
-                </View>
-              </PressableScale>
-            </View>
-
-            {/* The number itself — the one figure this whole screen exists
-                to hand over. */}
-            <PressableScale
-              onPress={() =>
-                void copy("number", account.number.replace(/ /g, ""))
-              }
-              scale={0.99}
-            >
-              <View
-                accessibilityRole="button"
-                accessibilityLabel="Copy account number"
-                style={{ paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18 }}
-              >
-                <Label>Account number</Label>
-                <Text
-                  style={{
-                    fontFamily: F.monoSemibold,
-                    fontSize: 27,
-                    lineHeight: 34,
-                    letterSpacing: 2.5,
-                    color: C.text,
-                    marginTop: 9,
-                  }}
-                >
-                  {account.number}
-                </Text>
-                <View style={{ marginTop: 12, alignSelf: "flex-start" }}>
-                  <CopyMark copied={copied === "number"} label="COPY NUMBER" />
-                </View>
-              </View>
-            </PressableScale>
-
-            {/* Everything else the transfer needs, demoted but still one tap
-                from the clipboard — the references make all four copyable and
-                people do reach for the reference. */}
-            <View
-              style={{
-                paddingHorizontal: 18,
-                borderTopWidth: 1,
-                borderTopColor: C.hairline,
-              }}
-            >
-              <DetailRow
-                label="Bank"
-                value={account.bank}
-                copied={copied === "bank"}
-                onPress={() => void copy("bank", account.bank)}
-              />
-              <DetailRow
-                label="Account name"
-                value={account.name}
-                copied={copied === "name"}
-                onPress={() => void copy("name", account.name)}
-              />
-              <DetailRow
-                label="Reference"
-                value={account.reference}
-                copied={copied === "ref"}
-                onPress={() => void copy("ref", account.reference)}
-                last
-              />
-            </View>
-          </View>
-        </Animated.View>
-
-        <Body
-          size={11.5}
-          color={C.dim}
-          style={{ marginTop: 14, lineHeight: 17.5 }}
-        >
-          One transfer, this exact figure. A different amount — or two smaller
-          ones — may be returned rather than credited.
-        </Body>
-
-        <View
-          style={{
-            marginTop: 22,
-            paddingTop: 18,
-            borderTopWidth: 1,
-            borderTopColor: C.hairline,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 9,
-            }}
-          >
-            {processing ? (
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: C.up,
-                }}
-              />
-            ) : (
-              <PulseDot />
-            )}
-            <Body size={13} color={processing ? C.up : C.silver}>
-              {processing
-                ? "Transfer received — crediting now"
-                : "Watching for your transfer"}
-            </Body>
-          </View>
-          <Mono
-            size={10}
-            color={C.dim}
-            style={{ textAlign: "center", marginTop: 8, letterSpacing: 1.2 }}
-          >
-            {checkedAgo === null
-              ? "STANDING BY"
-              : `CHECKED ${checkedAgo}S AGO · USUALLY UNDER A MINUTE`}
-          </Mono>
+        {header("Bank transfer")}
+        <View style={{ marginTop: 26, gap: 14 }}>
+          <Pulse height={120} radius={22} />
+          <Pulse height={56} radius={16} />
+          <Pulse width="60%" height={12} />
         </View>
-
-        <Pressable
-          onPress={startOver}
-          accessibilityRole="button"
-          style={{ marginTop: 20, alignItems: "center", paddingVertical: 8 }}
-        >
-          <Body size={12} color={C.dim}>
-            Start again
-          </Body>
-        </Pressable>
       </Screen>
     );
   }
 
+  if (phase !== "ready") {
+    const gate = () => {
+      switch (phase) {
+        case "signed_out":
+          return (
+            <Gate
+              title="Sign in first"
+              body="Your account number belongs to your Paradigm identity, so it comes back when you sign in."
+              action="Sign in"
+              onAction={onNeedsSignIn}
+            />
+          );
+        case "unentitled":
+          return (
+            <Gate
+              title="Subscription required"
+              body="Naira deposits are part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing."
+              action="See the plan"
+              onAction={onNeedsSubscription}
+            />
+          );
+        case "activating":
+          // Money in flight, or money already taken and not propagated. Both
+          // are a wait; neither is an invitation to pay a second time.
+          return activation === "payment" ? (
+            <Gate
+              tone="warn"
+              pending={watching}
+              title="Your payment is still on its way"
+              body={
+                watching
+                  ? "Paradigm is waiting for your subscription transfer to land. Your account number appears here once it does — nothing needs paying twice."
+                  : "Paradigm is waiting for your subscription transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing needs paying twice."
+              }
+              action="Check now"
+              onAction={reload}
+            />
+          ) : (
+            <Gate
+              tone="warn"
+              pending={watching}
+              title="Switching your membership on"
+              body={
+                watching
+                  ? "Your payment is in and the gateway is still opening the naira side. It usually takes a moment, and nothing needs paying again."
+                  : "Your payment is in and the gateway has not opened the naira side yet. It is taking longer than usual — check whenever you want the latest. Nothing needs paying again."
+              }
+              action="Check now"
+              onAction={reload}
+            />
+          );
+        case "no_account":
+          return (
+            <Gate
+              title="You need an account number first"
+              body="A one-time check opens a naira account in your own name. Money sent to it lands in Paradigm."
+              action="Open my account"
+              onAction={onProvision}
+            />
+          );
+        case "provisioning":
+          return (
+            <Gate
+              tone="warn"
+              pending
+              title="Your account is being opened"
+              body="The bank is still working on it. As soon as there is a number to transfer into, it appears here."
+              action="Check now"
+              onAction={reload}
+            />
+          );
+        case "provision_failed":
+          return (
+            <Gate
+              tone="bad"
+              title="That account could not be opened"
+              body={
+                account?.failureReason ??
+                "The bank turned down the details we sent. Check them and try again."
+              }
+              action="Try again"
+              onAction={onProvision}
+            />
+          );
+        case "disabled":
+          return (
+            <Gate
+              tone="bad"
+              title="This account is disabled"
+              body="Transfers into it would be returned, so the details are not shown. Support can turn it back on."
+            />
+          );
+        case "unknown_status":
+          return (
+            <Gate
+              tone="warn"
+              title={`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}`}
+              body="Paradigm does not recognise the state your account is in, and will not hand out a number it cannot vouch for."
+              action="Check again"
+              onAction={reload}
+            />
+          );
+        default:
+          return (
+            <Gate
+              tone="bad"
+              title="Could not load your account"
+              body={accountError ?? "Something went wrong reaching Paradigm."}
+              action="Try again"
+              onAction={reload}
+            />
+          );
+      }
+    };
+
+    return (
+      <Screen>
+        {header("Bank transfer")}
+        {gate()}
+      </Screen>
+    );
+  }
+
+  /* ------------------------------------------------------------- credited */
+
+  if (credited) {
+    return (
+      <Screen center>
+        <View
+          style={{
+            width: 62,
+            height: 62,
+            borderRadius: 31,
+            backgroundColor: C.upBg,
+            borderWidth: 1,
+            borderColor: "rgba(240,199,90,0.35)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CheckSeal />
+        </View>
+        <Display size={23} style={{ marginTop: 20 }}>
+          Credited to your balance
+        </Display>
+        <Text
+          style={{
+            fontFamily: F.monoSemibold,
+            fontSize: 30,
+            lineHeight: 38,
+            color: C.up,
+            marginTop: 14,
+          }}
+        >
+          {formatMoney(credited.amount)}
+        </Text>
+        <Body
+          size={12.5}
+          color={C.sub}
+          style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}
+        >
+          {credited.senderName ? `From ${credited.senderName}.\n` : ""}
+          Spend it anywhere in the app.
+        </Body>
+        <View style={{ marginTop: 30, alignSelf: "stretch" }}>
+          <MetallicButton label="Done" onPress={onDone} />
+        </View>
+      </Screen>
+    );
+  }
+
+  /* --------------------------------------------------------------- account */
+
+  const number = account?.accountNumber ?? "";
+  const detected = incoming?.status === "DETECTED";
+  const rejected = incoming?.status === "REJECTED";
+  const checkedAgo =
+    lastChecked === null ? null : Math.max(0, Math.round((now - lastChecked) / 1000));
+
+  // Nothing is being asked any more. A `watchStartedAt` of `null` is the moment
+  // before the effect arms the watch, and that reads as watching, not as
+  // stopped — the first request is already on its way out.
+  //
+  // Two facts, not one. `onStopped` is the poll saying it gave up, and it says
+  // that for a lost session as readily as for the deadline; only elapsed time
+  // can attest that the twenty minutes ran out. So the callback decides WHETHER
+  // to stop claiming to watch, and the clock decides whether the screen may
+  // name the deadline as the reason — telling someone their twenty minutes are
+  // up when their session dropped is a false statement in exactly the place
+  // invariant 4 cares about.
+  //
+  // The reason is read at the instant the poll gave up, not at the instant the
+  // sentence is rendered: a session lost five minutes in must not turn into
+  // "after twenty minutes" simply because the user left the screen open that
+  // long. With no callback at all — a phone that slept through the deadline —
+  // `now` is the reading, and by then the deadline has genuinely passed.
+  const reasonReadAt = stoppedAt ?? now;
+  const deadlinePassed =
+    watchStartedAt !== null && reasonReadAt - watchStartedAt >= WATCH_ENDS_MS;
+  const watchEnded =
+    stoppedAt !== null ||
+    (watchStartedAt !== null && now - watchStartedAt >= WATCH_ENDS_MS);
+
+  const amountSuffix = incoming?.amount ? ` · ${formatMoney(incoming.amount)}` : "";
+  // The stop is stated either way; the deadline is named only when the clock
+  // says so. A stop with time left on it — a lost session is the one that
+  // reaches this screen — gets the same honest "not watching any more" without
+  // a reason invented for it.
+  const stoppedTail = deadlinePassed
+    ? `after ${WATCH_MINUTES} minutes`
+    : "for now";
+  const watchLine = rejected
+    ? "That transfer was returned rather than credited"
+    : watchEnded
+      ? detected
+        ? `Transfer detected${amountSuffix} — it will still credit, but this screen stopped checking ${stoppedTail}`
+        : `Stopped checking ${stoppedTail}. Anything you have already sent still credits — this screen just is not watching for it.`
+      : detected
+        ? `Transfer detected${amountSuffix} — crediting now`
+        : "Watching for your transfer";
+  const statusLine = incoming
+    ? `STATUS · ${depositStatusLabel(incoming.status).toUpperCase()}`
+    : null;
+  // A returned transfer keeps its own status line: it is a finished fact, not a
+  // claim that something is still being watched for.
+  const monoLine =
+    watchEnded && !rejected
+      ? checkedAgo === null
+        ? "NOT CHECKING"
+        : `NOT CHECKING · LAST LOOKED ${checkedAgo}S AGO`
+      : (statusLine ??
+        (checkedAgo === null ? "STANDING BY" : `CHECKED ${checkedAgo}S AGO`));
+
   return (
-    <Screen center>
+    <Screen>
+      {header(
+        "Bank transfer",
+        "Send naira to this account from any Nigerian bank or app. It is yours — any amount, as often as you like.",
+      )}
+
+      <Animated.View
+        style={{
+          marginTop: 18,
+          opacity: place,
+          transform: [
+            { translateY: place.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+            { scale: place.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
+          ],
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: C.raised,
+            borderWidth: 1,
+            borderColor: C.border,
+            borderRadius: 24,
+            overflow: "hidden",
+          }}
+        >
+          <Shine />
+
+          {/* Header band: whose account this is, and that it does not expire. */}
+          <View
+            style={{
+              paddingHorizontal: 18,
+              paddingTop: 16,
+              paddingBottom: 14,
+              backgroundColor: C.brandGlow,
+              borderBottomWidth: 1,
+              borderBottomColor: "rgba(227,182,47,0.28)",
+            }}
+          >
+            <Label style={{ color: C.brandSoft }}>Your naira account</Label>
+            <Body size={13.5} semibold style={{ marginTop: 7 }}>
+              {account?.accountName ?? "In your name"}
+            </Body>
+            <Mono size={10} color={C.dim} style={{ marginTop: 6, letterSpacing: 1.2 }}>
+              PERMANENT · NO EXPIRY
+            </Mono>
+          </View>
+
+          {/* The number itself — the one figure this whole screen exists
+              to hand over. */}
+          <Pressable
+            onPress={() => void copy("number", number.replace(/\s/g, ""))}
+            accessibilityRole="button"
+            accessibilityLabel="Copy account number"
+            style={{ paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18 }}
+          >
+            <Label>Account number</Label>
+            <Text
+              style={{
+                fontFamily: F.monoSemibold,
+                fontSize: 27,
+                lineHeight: 34,
+                letterSpacing: 2.5,
+                color: C.text,
+                marginTop: 9,
+              }}
+            >
+              {number || "—"}
+            </Text>
+            <View style={{ marginTop: 12, alignSelf: "flex-start" }}>
+              <CopyMark copied={copied === "number"} label="COPY NUMBER" />
+            </View>
+          </Pressable>
+
+          <View
+            style={{ paddingHorizontal: 18, borderTopWidth: 1, borderTopColor: C.hairline }}
+          >
+            <DetailRow
+              label="Bank"
+              value={account?.bankName ?? "—"}
+              copied={copied === "bank"}
+              onPress={() => void copy("bank", account?.bankName ?? "")}
+            />
+            <DetailRow
+              label="Account name"
+              value={account?.accountName ?? "—"}
+              copied={copied === "name"}
+              onPress={() => void copy("name", account?.accountName ?? "")}
+              last
+            />
+          </View>
+        </View>
+      </Animated.View>
+
+      <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
+        Transfers are credited once the provider confirms them. Paradigm does not ask you for an
+        exact figure — send whatever you mean to send.
+      </Body>
+
       <View
         style={{
-          width: 62,
-          height: 62,
-          borderRadius: 31,
-          backgroundColor: C.upBg,
-          borderWidth: 1,
-          borderColor: "rgba(124,231,176,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
+          marginTop: 22,
+          paddingTop: 18,
+          borderTopWidth: 1,
+          borderTopColor: C.hairline,
         }}
       >
-        <CheckSeal />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 9,
+          }}
+        >
+          {/* The pulse means "a request is going out on a timer". Once the
+              watch has run out that is no longer true, so the dot goes with
+              it — a dot that keeps beating over a dead poll is the whole
+              defect, not a decoration. */}
+          {detected ? (
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.up }} />
+          ) : rejected || watchEnded ? null : (
+            <PulseDot />
+          )}
+          <Body
+            size={13}
+            color={rejected ? C.down : watchEnded ? C.sub : detected ? C.up : C.silver}
+            style={{ flexShrink: 1, lineHeight: 18 }}
+          >
+            {watchLine}
+          </Body>
+        </View>
+        <Mono
+          size={10}
+          color={C.dim}
+          style={{ textAlign: "center", marginTop: 8, letterSpacing: 1.2 }}
+        >
+          {monoLine}
+        </Mono>
+        {feedError ? (
+          <Body size={11.5} color={C.down} style={{ textAlign: "center", marginTop: 10 }}>
+            {feedError}
+          </Body>
+        ) : null}
+        {/* Offered whenever the asking has stopped — including after a returned
+            transfer, where the poll ends early and the user's next move is
+            usually to send another one. */}
+        {watchEnded ? (
+          <View style={{ marginTop: 14 }}>
+            <GhostButton label="Check now" onPress={restartWatch} />
+          </View>
+        ) : null}
       </View>
-      <Display size={23} style={{ marginTop: 20 }}>
-        Wired to your name
-      </Display>
-      <Text
-        style={{
-          fontFamily: F.monoSemibold,
-          fontSize: 30,
-          lineHeight: 38,
-          color: C.up,
-          marginTop: 14,
-        }}
-      >
-        ₦{fmt(digits || "0")}
-      </Text>
-      <Body
-        size={12.5}
-        color={C.sub}
-        style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}
-      >
-        Settled into your Paradigm balance.{"\n"}Spend it anywhere in the app.
-      </Body>
-      <View style={{ marginTop: 30, alignSelf: "stretch" }}>
-        <MetallicButton label="Done" onPress={onDone} />
-      </View>
+
+      <SectionRule space={20} />
+
+      <GhostButton label="Done" onPress={onDone} />
     </Screen>
   );
 }

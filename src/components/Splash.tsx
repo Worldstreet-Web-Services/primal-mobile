@@ -23,8 +23,10 @@ const STAGGER = 150;
  */
 export function Splash({
   animated = true,
-  markSize = 54,
-  wordmark = "PARADIGM",
+  markSize = 96,
+  // Sentence case, matching the welcome lockup. Tracked caps were the old
+  // wordmark's treatment and read as a different brand beside it.
+  wordmark = "Paradigm",
   hold = 420,
   onDone,
 }: {
@@ -88,17 +90,20 @@ export function Splash({
       }}
     >
       <Animated.View style={lift(mark)}>
-        <Logo variant="mark" height={markSize} accessibilityLabel={wordmark} />
+        <Logo variant="gold" height={markSize} accessibilityLabel={wordmark} />
       </Animated.View>
 
       <Animated.Text
         style={[
           {
             fontFamily: F.display,
-            fontSize: 27,
-            letterSpacing: 2.4,
-            color: C.brand,
-            marginTop: 14,
+            fontSize: 38,
+            letterSpacing: -0.5,
+            // Plain white. The gold lives in the mark directly above it, and a
+            // coloured wordmark under a coloured mark makes two accents fight
+            // over one lockup.
+            color: C.text,
+            marginTop: 12,
           },
           lift(word),
         ]}

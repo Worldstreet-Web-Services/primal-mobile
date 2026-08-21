@@ -26,6 +26,7 @@
  * second money helper, no local float.
  */
 
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
@@ -263,6 +264,88 @@ export function readSettlementText(payment: CryptoPayment | null | undefined): s
   }
 }
 
+/* -------------------------------------------------- address, read by a human */
+
+/**
+ * How many characters at each end a person is actually asked to compare.
+ *
+ * Six, not four: four-character collisions are cheap to grind, six is where the
+ * vanity-generation cost starts to bite. It is a reading aid, not the check —
+ * the check is the whole string, which is why nothing here ever elides one.
+ */
+export const ADDRESS_EDGE_CHARS = 6;
+
+/**
+ * A deposit address split into fixed-width groups.
+ *
+ * This exists because of address poisoning. The attack seeds a victim's
+ * transaction history with an address whose first and last few characters match
+ * a real one, and every interface that renders `0x8335…2913` makes the two
+ * indistinguishable — the truncation IS the vulnerability. So the whole string
+ * is always shown, chunked, so the eye can walk it against the wallet it was
+ * pasted into instead of pattern-matching the ends.
+ *
+ * The `0x` rides on the first group rather than being counted into it, so the
+ * groups line up with the same address seen in a block explorer.
+ */
+export function addressGroups(address: string, size = 4): string[] {
+  const trimmed = address.trim();
+  if (trimmed === "" || size < 1) return [];
+  const prefix = /^0x/i.test(trimmed) ? trimmed.slice(0, 2) : "";
+  const body = prefix ? trimmed.slice(2) : trimmed;
+  const groups: string[] = [];
+  for (let i = 0; i < body.length; i += size) groups.push(body.slice(i, i + size));
+  if (!prefix) return groups;
+  return groups.length > 0 ? [prefix + groups[0], ...groups.slice(1)] : [prefix];
+}
+
+/**
+ * The address as three parts, so a screen can weight the two ends a person is
+ * being asked to check without ever dropping the middle.
+ *
+ * Short addresses (shorter than both edges together) come back whole in `head`:
+ * splitting one into overlapping halves would show the same characters twice and
+ * quietly turn a verification aid into a lie.
+ */
+export function addressEdges(address: string): {
+  head: string;
+  middle: string;
+  tail: string;
+} {
+  const trimmed = address.trim();
+  if (trimmed.length <= ADDRESS_EDGE_CHARS * 2) {
+    return { head: trimmed, middle: "", tail: "" };
+  }
+  return {
+    head: trimmed.slice(0, ADDRESS_EDGE_CHARS),
+    middle: trimmed.slice(ADDRESS_EDGE_CHARS, -ADDRESS_EDGE_CHARS),
+    tail: trimmed.slice(-ADDRESS_EDGE_CHARS),
+  };
+}
+
+/* ------------------------------------------------------------------ tracing */
+
+/**
+ * One id tying every request of a single checkout attempt together in the
+ * gateway's logs.
+ *
+ * Deliberately NOT an idempotency key, and deliberately not minted by
+ * `client.newIdempotencyKey`: an idempotency key names an operation the gateway
+ * may collapse, and confusing the two is exactly the mistake that turns one
+ * membership into two. This names a *session of watching* — the create, then
+ * every poll — and its only job is to give a user stuck in the entitlement gap
+ * something support can search on besides a subscription id.
+ */
+export function newCheckoutTrace(): string {
+  try {
+    return `checkout-${Crypto.randomUUID()}`;
+  } catch {
+    // expo-crypto is a native module. A build without it must not take a
+    // checkout down over a log header.
+    return `checkout-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
 /* ------------------------------------------------------------ normalizers */
 
 function str(value: unknown): string | null {
@@ -479,11 +562,6 @@ export interface CheckoutParams {
   refundTo: string;
 }
 
-const sameParams = (intent: CheckoutIntent, params: CheckoutParams): boolean =>
-  intent.originChainId === params.originChainId &&
-  intent.originAsset.toLowerCase() === params.originAsset.toLowerCase() &&
-  intent.refundTo.toLowerCase() === params.refundTo.toLowerCase();
-
 /* ------------------------------------------------------------- endpoints */
 
 export interface Checkout {
@@ -607,10 +685,20 @@ export async function startCheckout(
     await clearIntent();
   }
 
-  const reusable =
-    existing && !existing.subscriptionId && sameParams(existing, params)
-      ? existing
-      : null;
+  // An intent still on disk with no `subscriptionId` is UNRESOLVED: the POST
+  // went out and we never learned whether the gateway created a subscription
+  // from it. It is reused whatever the caller now asks for — deliberately
+  // ignoring `params` — because the only safe next move is to re-send the SAME
+  // key with its ORIGINAL parameters and find out.
+  //
+  // Matching on parameters here was a double-charge: the sheet leaves the
+  // network selector live while `payment` is null, so a member whose request
+  // timed out could switch chain, fail the parameter check, and mint a second
+  // key — a second subscription, a second deposit address, $1,000 charged twice.
+  // A changed route is not a new operation while the previous one is unresolved.
+  // If the gateway really does hold this key against different parameters it
+  // answers 409, which `describeFailure` already narrates.
+  const reusable = existing && !existing.subscriptionId ? existing : null;
 
   const intent: CheckoutIntent = reusable ?? {
     // The one place a key is minted. Everything else reuses what is on disk.

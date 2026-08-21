@@ -111,7 +111,10 @@ function StageNode({ state }: { state: StageState }) {
         height: 22,
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: "rgba(199,204,209,0.22)",
+        // The stage still ahead: the quietest of the three nodes, but it has to
+        // survive the lighter ground. Neutral border rather than the old silver
+        // tint, which now agrees with the rail running through it.
+        borderColor: C.border,
       }}
     />
   );
@@ -240,7 +243,7 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
               {i < stages.length - 1 ? (
                 s.link === "toAmber" ? (
                   <LinearGradient
-                    colors={["#e8e8ea", C.amber]}
+                    colors={[C.silver, C.amber]}
                     style={{ width: 2, flex: 1 }}
                   />
                 ) : (
@@ -248,10 +251,11 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
                     style={{
                       width: 2,
                       flex: 1,
-                      backgroundColor:
-                        s.link === "done"
-                          ? "#e8e8ea"
-                          : "rgba(199,204,209,0.15)",
+                      // Settled rail in silver, not the old near-white: on the
+                      // charcoal ground that value stopped reading as "behind
+                      // you" and started reading as a lit wire down the page.
+                      // The rail ahead is a plain border — structure, not state.
+                      backgroundColor: s.link === "done" ? C.silver : C.border,
                     }}
                   />
                 )

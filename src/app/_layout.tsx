@@ -11,6 +11,8 @@ import { PinPromptProvider } from "@/components/PinPrompt";
 import { PrivacyOverlay } from "@/components/PrivacyOverlay";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { LockGate } from "@/lib/auth/LockGate";
+import { C } from "@/theme/tokens";
 
 import "../global.css";
 
@@ -18,15 +20,15 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    // Display face: Mona Sans, matching wsws-frontend (Geist body + Mona Sans
-    // headers). Static instances rather than the variable TTF — RN maps
-    // fontFamily to a concrete face, so weight axes don't resolve on Android.
-    "MonaSans-Medium": require("@/assets/fonts/MonaSans-Medium.ttf"),
-    "MonaSans-SemiBold": require("@/assets/fonts/MonaSans-SemiBold.ttf"),
-    "MonaSans-Bold": require("@/assets/fonts/MonaSans-Bold.ttf"),
-    "Geist-Regular": require("@/assets/fonts/Geist-Regular.ttf"),
-    "Geist-Medium": require("@/assets/fonts/Geist-Medium.ttf"),
-    "Geist-SemiBold": require("@/assets/fonts/Geist-SemiBold.ttf"),
+    // Urbanist is the whole voice now (2026-08-16). Static instances rather
+    // than the variable TTF — RN maps fontFamily to a concrete face, so weight
+    // axes don't resolve on Android.
+    "Urbanist-Regular": require("@/assets/fonts/Urbanist-Regular.ttf"),
+    "Urbanist-Medium": require("@/assets/fonts/Urbanist-Medium.ttf"),
+    "Urbanist-SemiBold": require("@/assets/fonts/Urbanist-SemiBold.ttf"),
+    "Urbanist-Bold": require("@/assets/fonts/Urbanist-Bold.ttf"),
+    "Urbanist-ExtraBold": require("@/assets/fonts/Urbanist-ExtraBold.ttf"),
+    // Kept for figures only — see the note on `F.mono` in theme/tokens.
     "GeistMono-Regular": require("@/assets/fonts/GeistMono-Regular.ttf"),
     "GeistMono-SemiBold": require("@/assets/fonts/GeistMono-SemiBold.ttf"),
   });
@@ -56,9 +58,12 @@ export default function RootLayout() {
                 <Stack
                   screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: "#0A0B0D" },
+                    contentStyle: { backgroundColor: C.canvas },
                   }}
                 />
+                {/* Renders nothing — sends a locked app back to /unlock no
+                    matter which route a deep link mounted. */}
+                <LockGate />
                 {/* Last sibling, so it covers every route including modals. */}
                 <PrivacyOverlay />
               </BottomSheetModalProvider>

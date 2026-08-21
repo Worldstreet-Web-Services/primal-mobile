@@ -48,12 +48,37 @@ export interface StoredSession {
 }
 
 /**
+ * Why a pair is being written, which decides whether a `clear()` in the
+ * meantime wins.
+ *
+ * - `"signin"` — a fresh SIWE verify. Always opens the store; this IS the act
+ *   of creating a session, so nothing that came before it can veto it.
+ * - `"rotate"` — a refresh that swapped one live pair for another. The token it
+ *   was built from was read BEFORE the network round trip, so a sign-out landing
+ *   mid-flight would otherwise be undone by a write that finished after it:
+ *   the user taps sign out, a queued 401 refreshes, and the keychain ends the
+ *   sequence holding a perfectly good session nobody asked for. Discarded when
+ *   the store has been cleared since.
+ *
+ * Default is `"rotate"` on purpose: an unlabelled write is the conservative
+ * case, so a future caller cannot resurrect a session by forgetting the flag.
+ */
+export type SaveIntent = "signin" | "rotate";
+
+/**
  * In-memory mirror so the hot path (a bearer header on every request) is not a
  * keychain read. `undefined` means "not yet loaded"; `null` means "loaded, and
  * there is nothing there" — the distinction is what stops a cold start from
  * re-reading SecureStore on every call just because it is empty.
  */
 let cache: StoredSession | null | undefined;
+
+/**
+ * Set by `clear()`, lifted only by a `"signin"` write. See `SaveIntent` — this
+ * is the whole mechanism that stops an in-flight refresh from landing on top of
+ * a sign-out that has already happened.
+ */
+let sealed = false;
 
 /** Notified on every change so the auth layer can react to a forced sign-out. */
 type Listener = (session: StoredSession | null) => void;
@@ -118,18 +143,63 @@ export async function load(): Promise<StoredSession | null> {
 }
 
 /**
- * Replace the pair atomically. Call this with the ENTIRE response of
- * `/v1/auth/verify` or `/v1/auth/refresh` — never with a single token.
+ * The gateway's own contract (`SessionResponseDto`) marks all five fields and
+ * the nested user as required. Trusting that blindly is what turns a truncated
+ * or reshaped body into `accessToken: undefined` on disk — which `load()` then
+ * rejects on the NEXT launch, signing the user out long after the moment that
+ * caused it, with nothing left to point at. Check here, at the one chokepoint
+ * both `/v1/auth/verify` and `/v1/auth/refresh` pass through, so a bad body
+ * fails loudly where it happened.
  */
-export async function save(response: SessionResponse): Promise<StoredSession> {
-  const next: StoredSession = {
+function readSessionResponse(response: SessionResponse): StoredSession {
+  const str = (value: unknown): value is string =>
+    typeof value === "string" && value !== "";
+
+  const user = (response as { user?: { id?: unknown; walletAddress?: unknown } })?.user;
+
+  if (
+    !str(response?.accessToken) ||
+    !str(response?.refreshToken) ||
+    !str(response?.accessTokenExpiresAt) ||
+    !str(response?.refreshTokenExpiresAt) ||
+    !str(user?.id) ||
+    !str(user?.walletAddress)
+  ) {
+    // Names the missing shape, never a value — the object being described is a
+    // token pair, and this message can reach a log.
+    throw new Error("Primal returned an incomplete session.");
+  }
+
+  return {
     accessToken: response.accessToken,
     refreshToken: response.refreshToken,
     accessTokenExpiresAt: response.accessTokenExpiresAt,
     refreshTokenExpiresAt: response.refreshTokenExpiresAt,
-    userId: response.user.id,
-    walletAddress: response.user.walletAddress,
+    userId: user.id,
+    walletAddress: user.walletAddress,
   };
+}
+
+/**
+ * Replace the pair atomically. Call this with the ENTIRE response of
+ * `/v1/auth/verify` or `/v1/auth/refresh` — never with a single token.
+ *
+ * Pass `"signin"` for a verify. A rotate that lost the race to a sign-out is
+ * dropped rather than written; the returned value still describes what the
+ * gateway issued, so a caller mid-request can finish with the token in hand,
+ * but nothing about this device claims to be signed in afterwards.
+ */
+export async function save(
+  response: SessionResponse,
+  intent: SaveIntent = "rotate",
+): Promise<StoredSession> {
+  const next = readSessionResponse(response);
+
+  if (intent === "signin") {
+    sealed = false;
+  } else if (sealed) {
+    return next;
+  }
 
   // Publish before the write completes so an in-flight retry picks up the new
   // access token immediately; the write is the durable copy, the cache is the
@@ -146,6 +216,9 @@ export async function save(response: SessionResponse): Promise<StoredSession> {
 }
 
 export async function clear(): Promise<void> {
+  // Seal before publishing: a subscriber reacting synchronously to the sign-out
+  // must not be able to start something that then writes back in behind it.
+  sealed = true;
   publish(null);
   if (isWeb) return;
   try {

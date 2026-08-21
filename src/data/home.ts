@@ -1,20 +1,21 @@
 import type { Feature, MediaItem, Space } from "@/components/home";
 
 /**
- * Home shelf content. Static today; the shapes match what the home endpoint
- * will return so swapping in the API is a data-source change, not a UI change.
- * Artwork ships with the app (assets/images); a card falls back to its glass
- * placeholder whenever a render is missing.
+ * Home shelf content: the doorways and the editorial rail. Artwork ships with
+ * the app (assets/images); a card falls back to its glass placeholder whenever
+ * a render is missing.
+ *
+ * NOTHING IN HERE IS MONEY, and nothing in here may become money. This file
+ * used to export `portfolioTotal = "$10,383.42"` and a `+$3,204.18 · +6.9% this
+ * month` move, which `HomeScreen` rendered through `BalanceCard` as "TRADING
+ * BALANCE · IN USD" — the first figure a member saw after paying USD 1,000, in
+ * the app's largest type, invented. Both are gone. The home balance now comes
+ * from `useFiatBalance()` and the crypto store, and says so plainly when it
+ * cannot be read; see `src/app/home.tsx`.
+ *
+ * The shelves below are copy and artwork — a card's `kicker` describes what a
+ * space IS, never what is in it, so nothing here can be mistaken for a figure.
  */
-
-/** Everything the user holds, across every space — one ledger underneath. */
-export const portfolioTotal = "$10,383.42";
-
-/** The move on `portfolioTotal`, over the window named in the caption. */
-export const portfolioDelta = {
-  value: "+$3,204.18",
-  caption: "+6.9% this month",
-};
 
 /** Sits under the name in the home header. */
 export const tagline = "Built for the top";

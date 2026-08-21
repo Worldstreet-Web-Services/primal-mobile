@@ -420,8 +420,11 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
               <Svg width="100%" height={72} style={{ marginTop: 10 }}>
                 <Defs>
                   <SvgGradient id="pot" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#FFFFFF" />
-                    <Stop offset="1" stopColor="#A7ADB4" />
+                    {/* Off the metal ramp rather than a hand-picked white →
+                        grey, so the pot figure is lit by the same source as
+                        every other milled face on the screen. */}
+                    <Stop offset="0" stopColor={C.metal[0]} />
+                    <Stop offset="1" stopColor={C.metal[3]} />
                   </SvgGradient>
                 </Defs>
                 <SvgText
@@ -490,7 +493,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
               paddingVertical: 15,
               paddingHorizontal: 16,
               backgroundColor: C.raised,
-              borderColor: iAmKing ? "rgba(124,231,176,0.28)" : C.hairline,
+              borderColor: iAmKing ? "rgba(240,199,90,0.28)" : C.hairline,
             }}
           >
             <View
@@ -500,7 +503,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 borderRadius: 22,
                 backgroundColor: iAmKing ? C.upBg : C.inset,
                 borderWidth: 1,
-                borderColor: iAmKing ? "rgba(124,231,176,0.32)" : C.hairline,
+                borderColor: iAmKing ? "rgba(240,199,90,0.32)" : C.hairline,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -542,7 +545,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
               gap: 14,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: "rgba(124,231,176,0.26)",
+              borderColor: "rgba(240,199,90,0.26)",
               backgroundColor: C.upBg,
               paddingVertical: 15,
               paddingHorizontal: 16,
@@ -573,8 +576,8 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 style={{
                   borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: "rgba(124,231,176,0.45)",
-                  backgroundColor: "rgba(124,231,176,0.12)",
+                  borderColor: "rgba(240,199,90,0.45)",
+                  backgroundColor: "rgba(240,199,90,0.12)",
                   paddingVertical: 10,
                   paddingHorizontal: 18,
                   opacity: claiming ? 0.6 : 1,

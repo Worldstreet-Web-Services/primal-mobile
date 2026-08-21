@@ -10,6 +10,7 @@ export function useCryptoPortfolio() {
   const loading = usePortfolioStore((s) => s.loading);
   const refreshing = usePortfolioStore((s) => s.refreshing);
   const error = usePortfolioStore((s) => s.error);
+  const complete = usePortfolioStore((s) => s.complete);
   const ensure = usePortfolioStore((s) => s.ensure);
   const refresh = usePortfolioStore((s) => s.refresh);
 
@@ -17,5 +18,5 @@ export function useCryptoPortfolio() {
     ensure();
   }, [ensure]);
 
-  return { holdings, totalUsd, loading, refreshing, error, refresh };
+  return { holdings, totalUsd, loading, refreshing, error, complete, refresh };
 }

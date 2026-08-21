@@ -1,36 +1,67 @@
 import { useEffect, useRef } from "react";
-import {
-  Animated,
-  Easing,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Animated, Easing, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
-import { FloatingBackdrop } from "@/components/FloatingBackdrop";
-import { GlassDrawer } from "@/components/GlassDrawer";
-import { AppleMark, GoogleMark, KingsChatMark } from "@/components/icons";
-import { Logo } from "@/components/Logo";
-import { AuthButton } from "@/components/ui";
+import { GoogleMark, KingsChatMark } from "@/components/icons";
+import { ParadigmMark } from "@/components/ParadigmMark";
+import { MetalButton, QuietButton } from "@/components/ui";
 import { C, F } from "@/theme/tokens";
 
-/** Beat the drawer starts on — the mark gets the screen to itself until here. */
-const DRAWER_DELAY = 560;
+/**
+ * Envelope for the email row. Local because it exists for exactly this one
+ * placement — promote it into `icons.tsx` the day a second caller appears.
+ */
+function MailMark({ size = 19, color = C.text }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size * 0.78} viewBox="0 0 24 19" fill="none">
+      <Path
+        d="M2.4 3.2h19.2v12.6H2.4z"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="m2.9 3.8 9.1 6.3 9.1-6.3"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
-/** How far the mark rides down before the drawer pushes it up into place. */
-const LIFT = 64;
-
+/**
+ * The three ways in, all on the surface. This screen exists to ask exactly one
+ * question — which identity — so every answer to it is visible without a
+ * disclosure step. KingsChat takes the metal tier because it is the
+ * differentiator for this audience; the other two are quiet.
+ *
+ * Apple is not here on purpose. Decane's `AuthMethod` is google | email |
+ * kingschat — Apple would need an external provider registered in the
+ * dashboard, and offering a button that can only apologise is worse than not
+ * offering it.
+ */
 const METHODS = [
-  { id: "kingschat", label: "Sign in with KingsChat" },
-  { id: "google", label: "Sign in with Google" },
-  { id: "apple", label: "Sign in with Apple" },
+  { id: "kingschat", label: "Continue with KingsChat", tone: "metal" },
+  { id: "google", label: "Continue with Google", tone: "quiet" },
+  { id: "email", label: "Continue with email", tone: "quiet" },
 ] as const;
 
 /**
- * Sign-in, second beat of onboarding. Same construction as the welcome screen:
- * mark on the floating backdrop, then a glass drawer rises over its foot
- * carrying the whole pitch — headline, provider stack, and the legal line.
+ * Sign-in, and only sign-in.
+ *
+ * This screen answers one question — *which identity* — so every row on it is
+ * an answer to that question. There is deliberately no "I already have an
+ * account" link: authentication here is Decane Connect Kit, where the same
+ * provider handshake creates a wallet on first use and restores it (from the
+ * Shamir shares) on every use after. A registration door would lead to this
+ * exact room, so the honest fix is one line of copy saying so.
+ *
+ * Left-aligned and un-drawered on purpose: the pitch got the composed,
+ * centered treatment one screen back. This one is a decision, and a decision
+ * reads best set like a page.
  */
 export default function SignInScreen({
   onSignIn,
@@ -38,65 +69,43 @@ export default function SignInScreen({
   creatingWallet = false,
 }: {
   onSignIn?: (method: string) => void;
-  /** Which provider is mid-flight — that row spins, the others dim out. */
+  /** Which provider is mid-flight — that row loads, the others dim out. */
   pending?: string | null;
   /** First-time key generation: Shamir split + enclave session, several seconds. */
   creatingWallet?: boolean;
 }) {
   const busy = pending !== null;
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
 
-  const logoW = Math.min(width * 0.82, 230);
-
-  const mark = useRef(new Animated.Value(0)).current;
-  // One driver for the whole stack; each row reads a different slice of it,
-  // which is what makes them arrive staggered off a single animation.
+  // One driver for the page; each block reads a different slice of it, which is
+  // what makes them arrive staggered off a single animation.
   const copy = useRef(new Animated.Value(0)).current;
-  // Rides the drawer: the mark starts centered and is lifted as it arrives.
-  const lift = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.timing(mark, {
-      toValue: 1,
-      duration: 900,
-      easing: Easing.bezier(0.22, 1, 0.36, 1),
-      useNativeDriver: true,
-    }).start();
-
-    Animated.timing(lift, {
-      toValue: 0,
-      duration: 760,
-      delay: DRAWER_DELAY,
-      easing: Easing.bezier(0.16, 1, 0.3, 1),
-      useNativeDriver: true,
-    }).start();
-
     Animated.timing(copy, {
       toValue: 1,
-      duration: 1100,
-      delay: DRAWER_DELAY + 190,
+      duration: 780,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [mark, copy, lift]);
+  }, [copy]);
 
-  /** Slice `copy` into a rise-and-fade for the nth row down the stack. */
+  /** Slice `copy` into a rise-and-fade for the nth block down the page. */
   const step = (i: number) => {
-    const start = i * 0.11;
-    const range = [start, Math.min(start + 0.42, 1)];
+    const start = i * 0.12;
+    const range = [start, Math.min(start + 0.5, 1)];
     return {
       opacity: copy.interpolate({
         inputRange: range,
         outputRange: [0, 1],
-        extrapolate: "clamp",
+        extrapolate: "clamp" as const,
       }),
       transform: [
         {
           translateY: copy.interpolate({
             inputRange: range,
-            outputRange: [22, 0],
-            extrapolate: "clamp",
+            outputRange: [16, 0],
+            extrapolate: "clamp" as const,
           }),
         },
       ],
@@ -104,88 +113,75 @@ export default function SignInScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <FloatingBackdrop opacity={0.7} />
-
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: C.canvas,
+        paddingTop: insets.top + 14,
+        paddingHorizontal: 26,
+        paddingBottom: Math.max(insets.bottom, 24) + 6,
+      }}
+    >
+      {/* Lockup: the flat vector mark, not the gold hero. The hero is the
+          welcome screen's subject; here the brand is just a signature. */}
       <Animated.View
-        style={{
-          position: "absolute",
-          top: insets.top + height * 0.14,
-          left: 0,
-          right: 0,
-          alignItems: "center",
-          opacity: mark,
-          transform: [
-            {
-              scale: mark.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1.08, 1],
-              }),
-            },
-            {
-              translateY: lift.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, LIFT],
-              }),
-            },
-          ],
-        }}
+        style={[
+          { flexDirection: "row", alignItems: "center", gap: 10 },
+          step(0),
+        ]}
       >
-        <Logo width={logoW} />
+        <ParadigmMark height={26} color={C.text} />
+        <Text
+          style={{
+            fontFamily: F.display,
+            fontSize: 27,
+            letterSpacing: -0.4,
+            color: C.text,
+          }}
+        >
+          Paradigm
+        </Text>
       </Animated.View>
 
-      <GlassDrawer
-        width={width}
-        delay={DRAWER_DELAY}
-        effect="clear"
-        tintOpacity={0.55}
-        style={{
-          marginHorizontal: 8,
-          paddingTop: 38,
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 50) + 8,
-        }}
-        prism={0}
-      >
-        {/* Overhangs the drawer's top-left corner and is clipped by it, so the
-            smear reads as light spilling in from off-screen rather than a shape
-            parked behind the type. */}
-        {/* <Prism width={320} intensity={0.5} style={{ left: -84, top: -46 }} /> */}
-
-        <View style={{ marginBottom: 68 }}>
-          {["LET'S GET", "YOU IN"].map((line, i) => (
-            <Animated.View key={line} style={step(i)}>
-              <Text
-                style={{
-                  fontFamily: F.displayBold,
-                  fontSize: 33,
-                  lineHeight: 46,
-                  letterSpacing: 0.2,
-                  color: i === 0 ? C.brand : C.text,
-                  textAlign: "center",
-                }}
-              >
-                {line}
-              </Text>
-            </Animated.View>
+      {/* The headline carries the screen on its own — set large, left, and in
+          one colour. An accent on the third line turns a statement into a
+          slogan, and this audience reads the restraint as the confidence. */}
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Animated.View style={step(1)}>
+          {["One Platform.", "Every Strategy.", "No Compromise."].map((line) => (
+            <Text
+              key={line}
+              style={{
+                fontFamily: F.displayBold,
+                fontSize: 44,
+                lineHeight: 53,
+                letterSpacing: -1,
+                color: C.text,
+              }}
+            >
+              {line}
+            </Text>
           ))}
-        </View>
+        </Animated.View>
+      </View>
 
-        {METHODS.map((m, i) => (
+      {METHODS.map((m, i) => {
+        const Pill = m.tone === "metal" ? MetalButton : QuietButton;
+        const ink = m.tone === "metal" ? C.metalInk : C.text;
+        return (
           <Animated.View
             key={m.id}
-            style={[{ marginTop: i === 0 ? 0 : 16 }, step(i + 2)]}
+            style={[{ marginTop: i === 0 ? 0 : 12 }, step(i + 2)]}
           >
-            <AuthButton
+            <Pill
               label={m.label}
-              tone={m.id === "kingschat" ? "brand" : "neutral"}
               icon={
                 m.id === "kingschat" ? (
-                  <KingsChatMark />
+                  <KingsChatMark color={ink} />
                 ) : m.id === "google" ? (
                   <GoogleMark />
                 ) : (
-                  <AppleMark />
+                  <MailMark color={ink} />
                 )
               }
               onPress={() => onSignIn?.(m.id)}
@@ -193,32 +189,31 @@ export default function SignInScreen({
               disabled={busy && pending !== m.id}
             />
           </Animated.View>
-        ))}
+        );
+      })}
 
-        <Animated.View style={[{ marginTop: 26 }, step(5)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              lineHeight: 16,
-              textAlign: "center",
-              color: C.dim,
-            }}
-          >
-            {creatingWallet ? (
-              "Creating your wallet — this takes a few seconds. Keep the app open."
-            ) : (
-              <>
-                By continuing you agree to Paradigm&apos;s{" "}
-                <Text style={{ color: C.sub }}>Terms</Text> and{" "}
-                <Text style={{ color: C.sub }}>Privacy Policy</Text>. A smart
-                wallet is created on your behalf — Paradigm can never move your
-                funds.
-              </>
-            )}
-          </Text>
-        </Animated.View>
-      </GlassDrawer>
+      <Animated.View style={[{ marginTop: 22 }, step(6)]}>
+        <Text
+          style={{
+            fontFamily: F.body,
+            fontSize: 11.5,
+            lineHeight: 17,
+            color: C.dim,
+          }}
+        >
+          {creatingWallet ? (
+            "Creating your wallet — this takes a few seconds. Keep the app open."
+          ) : (
+            <>
+              By continuing you agree to Paradigm&apos;s{" "}
+              <Text style={{ color: C.sub }}>Terms</Text> and{" "}
+              <Text style={{ color: C.sub }}>Privacy Policy</Text>. A smart
+              wallet is created on your behalf — Paradigm can never move your
+              funds.
+            </>
+          )}
+        </Text>
+      </Animated.View>
     </View>
   );
 }

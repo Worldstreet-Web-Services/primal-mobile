@@ -13,13 +13,9 @@ import type { Href } from "expo-router";
 export const SIGN_IN_ROUTE: Href = "/signin";
 
 /**
- * The subscription screen.
+ * The subscription screen — the one place a paywall path is written down.
  *
- * It lands in a parallel workstream, so `src/app/subscribe.tsx` does not exist
- * yet and the path is not in expo-router's generated route union. Widening to
- * `string` and back is the seam that lets this compile in the meantime; the
- * moment the route file exists, delete the two assertions and the literal types
- * itself. Keeping it in one place is the point — nothing else in the app should
- * carry a hand-written subscription path.
+ * Now a real route (`src/app/subscribe.tsx`), so it types itself: the widening
+ * assertions that stood in while it was still a parallel workstream are gone.
  */
-export const SUBSCRIPTION_ROUTE = "/subscribe" as string as Href;
+export const SUBSCRIPTION_ROUTE: Href = "/subscribe";

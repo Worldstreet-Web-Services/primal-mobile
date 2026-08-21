@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import Svg, { Path, Polyline } from "react-native-svg";
 import { C, F } from "../theme/tokens";
+import { ParadigmLoader } from "./ParadigmMark";
 
 export function Screen({
   children,
@@ -25,6 +26,7 @@ export function Screen({
   bottom = 40,
   center = false,
   showsScrollIndicator = false,
+  keyboardShouldPersistTaps,
 }: {
   children: React.ReactNode;
   pad?: number;
@@ -35,10 +37,17 @@ export function Screen({
   /** Center short content in the viewport — placeholders and empty states. */
   center?: boolean;
   showsScrollIndicator?: boolean;
+  /**
+   * Set `"handled"` on any screen with a text field: the default swallows the
+   * first tap to dismiss the keyboard, so a button under an open keyboard needs
+   * pressing twice — which on a form reads as a button that does not work.
+   */
+  keyboardShouldPersistTaps?: "always" | "never" | "handled";
 }) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: C.canvas }}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       contentContainerStyle={{
         paddingHorizontal: pad,
         paddingTop: top,
@@ -371,6 +380,14 @@ export function Spinner({
   return <ActivityIndicator size={size} color={color} />;
 }
 
+/**
+ * Brand-filled action — the workhorse CTA inside the app.
+ *
+ * The name is a leftover from an earlier palette: this is *green*, not metal.
+ * The actual brushed-metal pill is `MetalButton` below. Renaming this would
+ * touch two dozen screens for no visual change, so the honest fix is this note
+ * plus a correctly-named sibling.
+ */
 export function MetallicButton({
   label,
   onPress,
@@ -443,6 +460,173 @@ export function MetallicButton({
       </View>
     </Pressable>
   );
+}
+
+/**
+ * Height of the auth-scale pills. Taller than the in-app buttons (52) because
+ * on an onboarding screen the pill *is* the content — at 52 under a 34pt
+ * headline it starts to read as a form field rather than a decision.
+ */
+export const AUTH_PILL_HEIGHT = 58;
+
+/**
+ * The bevel, lifted from Ark's button spec so the two apps share one object.
+ *
+ * `ring` is drawn as the OUTER gradient and shows only through `border` points
+ * of padding — it is the rim, not a backdrop. Both gradients run top-to-bottom;
+ * the rim's bright-to-dark fall is what reads as a machined edge, and running it
+ * on any other axis loses the effect. Values are Ark's, kept exact rather than
+ * re-derived from our palette: the ask was the same button, and a silver rim is
+ * the same silver on any ground.
+ */
+const BEVEL = {
+  border: 4,
+  axis: { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },
+  metal: {
+    ring: ["#D4D4D8", "#3C3C3C"] as [string, string],
+    fill: ["#B1B6BA", "#C9CACC"] as [string, string],
+    text: "#3C3C3C",
+  },
+  metalOff: {
+    ring: ["#9EA2A6", "#4A4A4A"] as [string, string],
+    fill: ["#A9ADB1", "#B8B9BB"] as [string, string],
+    text: "#6B6E71",
+  },
+  quiet: {
+    ring: ["#0F0F0F", "#3C3C3C"] as [string, string],
+    fill: ["#1C1C1C", "#3C3C3C"] as [string, string],
+    text: "#DCDCDC",
+  },
+} as const;
+
+type PillProps = {
+  label: string;
+  onPress?: () => void;
+  /** Leading glyph. On the metal tier it must be inked dark — see `C.metalInk`. */
+  icon?: React.ReactNode;
+  height?: number;
+  radius?: number;
+  /** Label size. Only move it if the label genuinely cannot fit. */
+  size?: number;
+  /** Swaps the label for the falling mark and blocks presses. */
+  loading?: boolean;
+  disabled?: boolean;
+  style?: ViewStyle;
+};
+
+/**
+ * The two-tier auth pill. `MetalButton` is the light brushed face, `QuietButton`
+ * the dark one, and they are the same component on purpose: one height, one
+ * radius, one press curve, so a stack of them reads as a single system with one
+ * loud member rather than as three unrelated buttons.
+ */
+/**
+ * Ark's beveled pill, ported to Paradigm.
+ *
+ * Structure is Ark's spec verbatim (its `src/components/common/Button.tsx`,
+ * dated 2026-07-31) because the client asked for the same button: TWO stacked
+ * VERTICAL gradients, where the outer one is not a background but the 4pt ring
+ * itself, and the inner fill sits on top of it. That is what makes the rim read
+ * as a machined bevel — a bright top edge falling to dark at the base — rather
+ * than as a border drawn around a fill. A single diagonal gradient cannot
+ * produce it, which is why this replaced the brushed `MetalFill` treatment.
+ *
+ * `MetalButton` is the silver tier, `QuietButton` the dark one. Same component
+ * on purpose: one height, one radius, one press curve, so a stack of them reads
+ * as one system with a single loud member.
+ */
+function AuthPill({
+  tone,
+  label,
+  onPress,
+  icon,
+  height = AUTH_PILL_HEIGHT,
+  loading = false,
+  disabled = false,
+  style,
+}: PillProps & { tone: "metal" | "quiet" }) {
+  const metal = tone === "metal";
+  const inert = loading || disabled;
+  const skin = metal
+    ? disabled
+      ? BEVEL.metalOff
+      : BEVEL.metal
+    : BEVEL.quiet;
+  const radius = height / 2;
+
+  return (
+    <Pressable
+      onPress={inert ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
+      style={({ pressed }) => [
+        {
+          // Ark dims the silver tier when disabled and deliberately does NOT dim
+          // the dark one — a secondary that is dark at rest reads as broken
+          // rather than as unavailable when it fades.
+          opacity: disabled && metal ? 0.5 : pressed && !inert ? 0.85 : 1,
+        },
+        style,
+      ]}
+    >
+      <LinearGradient
+        colors={skin.ring}
+        start={BEVEL.axis.start}
+        end={BEVEL.axis.end}
+        style={{ borderRadius: radius, padding: BEVEL.border }}
+      >
+        <LinearGradient
+          colors={skin.fill}
+          start={BEVEL.axis.start}
+          end={BEVEL.axis.end}
+          style={{
+            height: height - BEVEL.border * 2,
+            borderRadius: radius - BEVEL.border,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            paddingHorizontal: 24,
+          }}
+        >
+          {loading ? (
+            // The mark falling into place rather than a platform spinner. This
+            // wait is ours — a provider round-trip, sometimes key generation —
+            // and long enough that a system spinner reads as a stall.
+            <ParadigmLoader height={22} color={skin.text} />
+          ) : (
+            <>
+              {icon}
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: F.display,
+                  fontSize: 16,
+                  lineHeight: 22,
+                  // Ark's spec is -0.7% of the size.
+                  letterSpacing: -0.112,
+                  color: skin.text,
+                }}
+              >
+                {label}
+              </Text>
+            </>
+          )}
+        </LinearGradient>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+/** Primary auth action: the silver bevel. */
+export function MetalButton(props: PillProps) {
+  return <AuthPill tone="metal" {...props} />;
+}
+
+/** Secondary auth action: the same bevel, dark. */
+export function QuietButton(props: PillProps) {
+  return <AuthPill tone="quiet" {...props} />;
 }
 
 export function GhostButton({
@@ -536,7 +720,21 @@ export function Mono({
   style?: TextStyle;
 }) {
   return (
-    <Text style={[{ fontFamily: F.mono, fontSize: size, color }, style]}>
+    <Text
+      style={[
+        {
+          fontFamily: F.mono,
+          fontSize: size,
+          color,
+          // The app is one family now, and Urbanist has no monospace cut — so
+          // the column alignment figures need comes from the numeral set
+          // instead. Without this a balance changes width as its digits change,
+          // and a column of amounts stops lining up.
+          fontVariant: ["tabular-nums"],
+        },
+        style,
+      ]}
+    >
       {children}
     </Text>
   );
@@ -1415,73 +1613,5 @@ export function SectionRule({
         marginHorizontal: inset,
       }}
     />
-  );
-}
-
-export function AuthButton({
-  label,
-  icon,
-  onPress,
-  tone = "neutral",
-  height = 48,
-  loading = false,
-  disabled = false,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  onPress?: () => void;
-  tone?: "brand" | "neutral";
-  height?: number;
-  /** Sign-in is a network round-trip — the pressed provider spins. */
-  loading?: boolean;
-  disabled?: boolean;
-}) {
-  const brand = tone === "brand";
-  const inert = loading || disabled;
-  const ink = brand ? C.brandSoftInk : C.text;
-  return (
-    <PressableScale
-      onPress={inert ? undefined : onPress}
-      scale={0.98}
-      disabled={inert}
-    >
-      <View
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: inert, busy: loading }}
-        style={{
-          height,
-          borderRadius: PILL,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          backgroundColor: brand ? C.brand : "rgba(255,255,255,0.09)",
-          borderWidth: brand ? 0 : 1,
-          borderColor: C.hairline,
-          // Dim only the untouched providers; the spinning one stays lit.
-          opacity: disabled && !loading ? 0.4 : 1,
-        }}
-      >
-        {loading ? (
-          <Spinner color={ink} />
-        ) : (
-          <>
-            {icon}
-            <Text
-              style={{
-                // Semibold from the premium pass — an auth CTA carries more
-                // weight than the body buttons.
-                fontFamily: F.bodySemibold,
-                fontSize: 15,
-                color: ink,
-              }}
-            >
-              {label}
-            </Text>
-          </>
-        )}
-      </View>
-    </PressableScale>
   );
 }

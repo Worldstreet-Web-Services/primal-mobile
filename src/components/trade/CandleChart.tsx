@@ -40,7 +40,12 @@ export function CandleChart({
   gridLines = 5,
   formatPrice = abbreviate,
   up = C.up,
-  down = "#3A3D42",
+  // Down candles are deliberately neutral, not red — the house reads a chart by
+  // what rose, and a wall of red competes with that. The value is relit for the
+  // charcoal ground (2026-08-16): the old grey cleared near-black by a wide
+  // margin and cleared #232323 by almost nothing, which left every down bar
+  // dissolving into the plot. Lifted to hold the same separation it used to.
+  down = "#565B63",
   highlight = C.highlight,
   showLast = true,
 }: {

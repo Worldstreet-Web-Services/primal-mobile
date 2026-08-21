@@ -8,98 +8,84 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
-import { GlassDrawer } from "../components/GlassDrawer";
-import { Logo } from "../components/Logo";
-import { PressableScale } from "../components/ui";
+import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
 
-/** Beat the drawer starts on — the mark gets the screen to itself until here. */
-const DRAWER_DELAY = 620;
-
-/** Soft leaf bloom behind the mark, so it sits in light instead of on flat black. */
-function Bloom({ size }: { size: number }) {
-  return (
-    <Svg
-      pointerEvents="none"
-      width={size}
-      height={size}
-      style={{ position: "absolute" }}
-    >
-      <Defs>
-        <RadialGradient id="bloom" cx="50%" cy="50%" rx="50%" ry="50%">
-          <Stop offset="0" stopColor="#83BE60" stopOpacity={0.22} />
-          <Stop offset="0.55" stopColor="#83BE60" stopOpacity={0.07} />
-          <Stop offset="1" stopColor="#83BE60" stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Ellipse
-        cx={size / 2}
-        cy={size / 2}
-        rx={size / 2}
-        ry={size / 2}
-        fill="url(#bloom)"
-      />
-    </Svg>
-  );
-}
-
-const ACCESS_VECTOR = require("../../assets/images/access_vector.png");
+const HERO = require("../../assets/images/paradigm_logo.png");
+/** The gold artwork's own ratio — width drives, height follows. */
+const HERO_ASPECT = 1100 / 1326;
+/**
+ * The gold is drawn off-center inside its own file: 122px of transparent margin
+ * on the left, none on the right (the export clips the third bar at the canvas
+ * edge). Centering the *file* therefore hangs the mark to the right of the
+ * wordmark below it. This is how far off center the drawn pixels sit, as a
+ * fraction of the width, so the layout can center the object instead.
+ */
+const HERO_BIAS = 0.055;
 
 /**
- * Trailing glyph on the CTA. Tinted rather than drawn in its own colors, so it
- * always matches the label sitting beside it on the brand-filled button.
+ * Gold bloom behind the hero. The mark is a rendered metal object; on flat
+ * charcoal with no light around it, it reads as a sticker. This is the light it
+ * is standing in, which is why it is the only ornament on the screen.
  */
-function AccessGlyph({
-  color = C.brandSoftInk,
-  size = 20,
-}: {
-  color?: string;
-  size?: number;
-}) {
+function Bloom({ size }: { size: number }) {
   return (
     <Image
-      source={ACCESS_VECTOR}
-      contentFit="contain"
-      tintColor={color}
-      style={{ width: size, height: size }}
+      source={require("../../assets/images/star_behind.png")}
+      contentFit="cover"
+      style={{
+        width: size * 2,
+        height: size * 2,
+        position: "absolute",
+        top: 0,
+      }}
     />
   );
 }
 
 /**
- * The membership pitch. The mark holds the screen alone for a beat, then the
- * glass drawer rises over its foot and the copy lands line by line behind it.
+ * The pitch, and nothing else.
+ *
+ * This screen answers one question — *what is this* — so it carries one action.
+ * It used to offer a method choice and an "I already have an account" door as
+ * well, which made it compete with the sign-in screen and left a returning user
+ * picking between two routes to the same place. The method choice lives one
+ * screen on; the reassurance for returning members is a line of copy, not a
+ * second button.
+ *
+ * The entry is deliberately short. A pitch screen a returning member has seen
+ * fifty times must not hold them: everything is on screen inside a second, and
+ * the CTA is live from the first frame.
  */
 export default function WelcomeScreen({
   onLogin,
 }: {
-  onLogin?: (method: string) => void;
+  /** Into the method surface — KingsChat, Google, email. */
+  onLogin?: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const logoW = Math.min(width * 0.78, 320);
-  const bloom = logoW * 1.9;
+  const heroW = Math.min(width * 0.54, 230);
 
   const mark = useRef(new Animated.Value(0)).current;
-  // One driver for the whole copy stack; each line reads a different slice of
-  // it, which is what makes them arrive staggered off a single animation.
+  // One driver for the whole stack below the mark; each line reads a different
+  // slice of it, which is what makes them arrive staggered off one animation.
   const copy = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(mark, {
       toValue: 1,
-      duration: 900,
+      duration: 820,
       easing: Easing.bezier(0.22, 1, 0.36, 1),
       useNativeDriver: true,
     }).start();
 
     Animated.timing(copy, {
       toValue: 1,
-      duration: 1100,
-      delay: DRAWER_DELAY + 190,
+      duration: 820,
+      delay: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -107,20 +93,20 @@ export default function WelcomeScreen({
 
   /** Slice `copy` into a rise-and-fade for the nth line down the stack. */
   const step = (i: number) => {
-    const start = i * 0.11;
-    const range = [start, Math.min(start + 0.42, 1)];
+    const start = i * 0.13;
+    const range = [start, Math.min(start + 0.5, 1)];
     return {
       opacity: copy.interpolate({
         inputRange: range,
         outputRange: [0, 1],
-        extrapolate: "clamp",
+        extrapolate: "clamp" as const,
       }),
       transform: [
         {
           translateY: copy.interpolate({
             inputRange: range,
-            outputRange: [22, 0],
-            extrapolate: "clamp",
+            outputRange: [18, 0],
+            extrapolate: "clamp" as const,
           }),
         },
       ],
@@ -128,117 +114,92 @@ export default function WelcomeScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      {/* The mark sits high and gets clipped by the drawer at its foot —
-          the overlap is the composition, not an accident of layout. */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: insets.top + height * 0.1,
-          left: 0,
-          right: 0,
-          alignItems: "center",
-          opacity: mark,
-          transform: [
-            {
-              scale: mark.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1.08, 1],
-              }),
-            },
-          ],
-        }}
-      >
-        <View style={{ alignItems: "center", justifyContent: "center" }}>
-          {/* <Bloom size={bloom} /> */}
-          <Logo width={logoW} />
-        </View>
-      </Animated.View>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: C.canvas,
+        paddingTop: insets.top,
+        paddingHorizontal: 26,
+        paddingBottom: Math.max(insets.bottom, 26) + 8,
+        position: "relative",
+      }}
+    >
+      {/* Bloom sits behind everything — first sibling, so it is below the whole
+          stack in z-order.
 
-      <GlassDrawer
-        width={width}
-        delay={DRAWER_DELAY}
-        // The two glass dials. `clear` keeps the mark's foot legible through
-        // the blur; the tint is what buys the headline its contrast back —
-        // raise it toward 0.8 for a heavier slab, drop it to 0 for bare glass.
-        effect="clear"
-        tintOpacity={0.95}
-        style={{
-          paddingTop: 45,
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 56) + 10,
-        }}
-        prism={0.18}
+          The wrapper is not decoration: pinned left/right/top with no height,
+          Yoga sizes this to the artwork's intrinsic ratio, which is ~850pt tall
+          on an 874pt screen — it lies directly over the CTA. `pointerEvents` on
+          expo-image is not reliably forwarded to its native view, so the image
+          swallowed every tap on "Get started" and the button looked dead. A
+          plain View honours it, so the rays stay decorative. */}
+      <View
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
       >
-        {["ONE PLATFORM.", "EVERY STRATEGY.", "NO COMPROMISE."].map(
-          (line, i) => (
-            <Animated.View key={line} style={step(i)}>
-              <Text
-                style={{
-                  fontFamily: F.displayBold,
-                  fontSize: 36,
-                  lineHeight: 45,
-                  letterSpacing: 0.2,
-                  color: i === 2 ? C.brand : C.text,
-                  textAlign: "center",
-                }}
-              >
-                {line}
-              </Text>
-            </Animated.View>
-          ),
-        )}
+        <Image
+          source={require("../../assets/images/star_behind.png")}
+          contentFit="contain"
+          style={{ width: "100%", aspectRatio: 660 / 1395 }}
+        />
+      </View>
 
-        <Animated.View style={[{ marginTop: 46 }, step(4)]}>
+      {/* The mark holds the upper two thirds alone — the composition is one
+          object in light, then the words, then the way in. */}
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <Animated.View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: mark,
+            transform: [
+              {
+                scale: mark.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1.06, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Image
+            source={HERO}
+            contentFit="contain"
+            style={{
+              width: heroW,
+              height: heroW / HERO_ASPECT,
+              transform: [{ translateX: -HERO_BIAS * heroW }],
+            }}
+            accessibilityLabel="Paradigm"
+          />
+        </Animated.View>
+
+        {/* Sentence case, large and tight, directly under the mark. It lives
+            INSIDE the centred block on purpose: parked outside it, the flex
+            space opened up between the mark and the name and the lockup came
+            apart down the middle of the screen. */}
+        <Animated.View style={[{ marginTop: -4 }, step(0)]}>
           <Text
             style={{
-              fontFamily: F.body,
-              fontSize: 15,
+              fontFamily: F.display,
+              fontSize: 46,
+              lineHeight: 54,
+              letterSpacing: -0.6,
+              color: C.text,
               textAlign: "center",
-              color: C.silver,
             }}
           >
-            Begin Membership {"•"} $1k/mo
+            Paradigm
           </Text>
         </Animated.View>
+      </View>
 
-        <Animated.View style={[{ marginTop: 10 }, step(5)]}>
-          <PressableScale
-            scale={0.985}
-            onPress={() => onLogin && onLogin("access")}
-          >
-            <View
-              accessibilityRole="button"
-              accessibilityLabel="Get Access"
-              style={{
-                height: 60,
-                borderRadius: 999,
-                backgroundColor: C.brand,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 14,
-                shadowColor: C.brand,
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                shadowOffset: { width: 0, height: 10 },
-                elevation: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: F.display,
-                  fontSize: 21,
-                  color: C.brandSoftInk,
-                }}
-              >
-                Get Access
-              </Text>
-              <AccessGlyph />
-            </View>
-          </PressableScale>
-        </Animated.View>
-      </GlassDrawer>
+      {/* One action. The pitch does not ask the user to choose anything — the
+          methods live on the next screen, which is the screen whose whole job
+          is that choice. */}
+      <Animated.View style={step(1)}>
+        <MetalButton label="Get started" onPress={onLogin} />
+      </Animated.View>
     </View>
   );
 }

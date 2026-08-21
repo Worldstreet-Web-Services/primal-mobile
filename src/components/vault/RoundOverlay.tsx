@@ -236,7 +236,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
           alignItems: "center",
           borderRadius: 28,
           borderWidth: 1,
-          borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
+          borderColor: youWon ? "rgba(240,199,90,0.32)" : C.hairline,
           backgroundColor: C.raised,
           paddingHorizontal: 32,
           paddingVertical: 32,
@@ -260,7 +260,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
             justifyContent: "center",
             backgroundColor: youWon ? C.upBg : C.inset,
             borderWidth: 1,
-            borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
+            borderColor: youWon ? "rgba(240,199,90,0.32)" : C.hairline,
           }}
         >
           <CrownMark color={youWon ? C.up : C.silver} size={26} />

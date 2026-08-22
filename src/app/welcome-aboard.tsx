@@ -18,10 +18,11 @@ export default function WelcomeAboard() {
   // overlay still up, which is the intended exit.
   const onContinue = () => {
     setLeaving(true);
-    // Back to the entry gate, not straight to /home. Membership is now settled
-    // BEFORE onboarding, so a member arriving here may still have no PIN — and
-    // "/" is the one place that knows whether the next step is the app or the
-    // rest of setup. Jumping to /home would skip the app lock entirely.
+    // Back to the entry gate, not straight to /home. This screen is the last
+    // beat of the sequence "/" owns end to end — sign in, app lock, membership,
+    // welcome — and handing back to it means the destination is decided by the
+    // same file that decided every step before it. Naming /home here would
+    // assert an answer this screen has no way to check.
     router.replace("/");
   };
 

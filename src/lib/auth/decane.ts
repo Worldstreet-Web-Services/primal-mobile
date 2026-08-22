@@ -31,6 +31,8 @@ import {
 } from "decane-connect-kit-expo";
 import { Platform } from "react-native";
 
+import * as placeholder from "@/lib/auth/placeholder";
+
 const APP_ID = process.env.EXPO_PUBLIC_DECANE_APP_ID ?? "";
 
 /**
@@ -154,14 +156,18 @@ export async function getClient(): Promise<DecaneConnectNative> {
   return initialising;
 }
 
-async function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
-  await new Promise((r) => setTimeout(r, 1200));
-  return {
-    addresses: { evm: "0xMOCK", solana: "MOCKsol", tron: "TMOCK" },
-    isNewUser: true,
-    accessToken: `mock.decane.${method}.${Date.now()}`,
-    expiresAt: Date.now() + 120 * 60_000,
-  };
+/**
+ * Sign-in with no SDK behind it.
+ *
+ * Delegates to `placeholder.ts` rather than fabricating a session inline. The
+ * throwaway object this used to return carried the address `"0xMOCK"`, vanished
+ * on relaunch and could not sign — so a credential-less build could reach the
+ * sign-in screen and then nothing else. The stand-in wallet persists, mints a
+ * real-shaped address per sign-in, and produces signatures the placeholder
+ * gateway accepts, which is what lets the onboarding sequence run whole.
+ */
+function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
+  return placeholder.signIn(method);
 }
 
 /**
@@ -235,7 +241,11 @@ export async function signInWithPasskey(): Promise<DecaneSession> {
 
 /** Restores whatever the SDK persisted, or null if sign-in is needed again. */
 export async function restoreSession(): Promise<DecaneSession | null> {
-  if (usingMockAuth) return null;
+  // A stand-in session is restored like any other. Returning null here (as this
+  // did while the mock was a throwaway) signed the user out on every launch,
+  // which meant the one path a credential-less build most needs to exercise —
+  // returning to a locked, onboarded, paid-up account — could never be reached.
+  if (usingMockAuth) return placeholder.restoreSession();
   try {
     const decane = await getClient();
     const addresses = decane.getAddresses();
@@ -248,6 +258,10 @@ export async function restoreSession(): Promise<DecaneSession | null> {
 }
 
 export async function unlock(): Promise<void> {
+  // Nothing to unlock: the stand-in holds no key material, and reaching
+  // `getClient()` here would throw the "not configured" error into the unlock
+  // screen's own catch, where it reads as a wallet that will not open.
+  if (usingMockAuth) return;
   const decane = await getClient();
   await decane.unlock();
 }
@@ -268,6 +282,7 @@ export async function signMessage(
   message: string,
   chain: Chain = "evm:8453",
 ): Promise<string> {
+  if (usingMockAuth) return placeholder.signMessage(message);
   const decane = await getClient();
   return decane.signMessage({ chain, message });
 }
@@ -285,6 +300,13 @@ export async function signMessage(
  * that can no longer be unlocked — not a logout.
  */
 export async function signOut(): Promise<void> {
+  // The stand-in's whole session IS the stored wallet, so dropping it is the
+  // sign-out. Deliberately unlike the real path below, which keeps the device
+  // key share: there is no share here to make signing in again cheaper, and a
+  // wallet that outlived its sign-out would hand the next sign-in the previous
+  // account — membership included.
+  if (usingMockAuth) return placeholder.signOut();
+
   const existing = client ?? (initialising ? await initialising.catch(() => null) : null);
 
   try {

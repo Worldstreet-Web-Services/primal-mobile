@@ -69,7 +69,7 @@ const VARIANTS: Record<
 > = {
   // Dollar-green owns "money in" semantics per the PRD, so success borrows the
   // gain token rather than the lime brand color — brand and success stay separate.
-  success: { accent: C.up, tint: "rgba(240,199,90,0.12)", glyph: "✓", role: "status" },
+  success: { accent: C.up, tint: "rgba(124,231,176,0.12)", glyph: "✓", role: "status" },
   error: { accent: C.down, tint: "rgba(246,165,165,0.12)", glyph: "!", role: "alert" },
   warning: { accent: C.amber, tint: "rgba(245,184,61,0.12)", glyph: "!", role: "alert" },
   info: { accent: C.silver, tint: "rgba(199,204,209,0.12)", glyph: "i", role: "status" },

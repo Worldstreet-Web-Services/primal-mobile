@@ -212,6 +212,7 @@ export function CircleAction({
   children,
   size = 40,
   badge = false,
+  badgeRing = C.canvas,
   accessibilityLabel,
   style,
 }: {
@@ -220,6 +221,12 @@ export function CircleAction({
   size?: number;
   /** Unread marker in the top-right notch. */
   badge?: boolean;
+  /**
+   * What the badge is cut out of. It is a ring in the GROUND's colour, not a
+   * border — its whole job is to hold a gap between the dot and whatever it
+   * overlaps, so on a button with a filled face this has to be that face.
+   */
+  badgeRing?: string;
   accessibilityLabel?: string;
   /** Override the outline — a fill, where the button sits over artwork. */
   style?: ViewStyle;
@@ -253,9 +260,11 @@ export function CircleAction({
             width: 8,
             height: 8,
             borderRadius: 4,
-            backgroundColor: C.brand,
+            // Green, not the gold brand: an unread dot is a liveness signal,
+            // and `C.green` is the colour this app signals liveness in.
+            backgroundColor: C.green,
             borderWidth: 1.5,
-            borderColor: C.canvas,
+            borderColor: badgeRing,
           }}
         />
       ) : null}
@@ -497,7 +506,57 @@ const BEVEL = {
     fill: ["#1C1C1C", "#3C3C3C"] as [string, string],
     text: "#DCDCDC",
   },
+  /**
+   * The outline tier, added 2026-08-21 for the sign-in reference — and NOT one
+   * of Ark's three, because it is not a bevel at all.
+   *
+   * `fill` is transparent and means it: the canvas runs straight through this
+   * button, so the only things on screen are the line and the label. That is
+   * what lets it recede beside the `MetalButton` it is stacked with while still
+   * reading as a control, where a dark filled face on true black gives you one
+   * solid button and one smudge.
+   *
+   * Which is why `AuthPill` draws this tone as a BORDERED BOX rather than with
+   * the ring-as-padding trick the other two use. That trick works by laying an
+   * opaque fill over a ring layer so only `rim` points of the ring survive
+   * round the edge — put a transparent fill on top instead and the ring shows
+   * through the whole face, which renders the pill as a solid grey slab. `ring`
+   * is therefore the border colour here, and one flat grey rather than a fall
+   * from light to dark: a bevel describes a raised face catching light, and
+   * there is no face here to raise.
+   */
+  outline: {
+    ring: ["#4E4E51", "#4E4E51"] as [string, string],
+    fill: ["transparent", "transparent"] as [string, string],
+    text: C.text,
+  },
 } as const;
+
+/**
+ * Rim width per tone. Ark's 4pt band IS the bevel; on the outline tier that
+ * same 4pt stops being a line around a hole and becomes a frame, while 1pt
+ * disappears against true black on a 3x screen.
+ */
+const RIM = { metal: 4, metalOff: 4, quiet: 4, outline: 1.5 } as const;
+
+/**
+ * The row inside the edge, whichever way the edge is drawn. Both of
+ * `AuthPill`'s paths call this, so a metal pill and an outline pill stacked
+ * together put their marks and their labels on exactly the same line.
+ */
+const FACE = (height: number, radius: number, rim: number): ViewStyle => ({
+  height: height - rim * 2,
+  borderRadius: radius - rim,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 12,
+  // 24 is the auth-scale inset, where a pill spans the gutter and has room to
+  // spare. Below that height these come in pairs sharing a row — two 50pt
+  // pills inside a card on a 375pt screen leave ~146pt each, and 24 a side
+  // ellipsises "Deposit". The label is the content; the inset is not.
+  paddingHorizontal: height >= AUTH_PILL_HEIGHT ? 24 : 16,
+});
 
 type PillProps = {
   label: string;
@@ -544,15 +603,41 @@ function AuthPill({
   loading = false,
   disabled = false,
   style,
-}: PillProps & { tone: "metal" | "quiet" }) {
+}: PillProps & { tone: "metal" | "quiet" | "outline" }) {
   const metal = tone === "metal";
   const inert = loading || disabled;
-  const skin = metal
-    ? disabled
-      ? BEVEL.metalOff
-      : BEVEL.metal
-    : BEVEL.quiet;
+  const key = metal && disabled ? "metalOff" : tone;
+  const skin = BEVEL[key];
+  const rim = RIM[key];
   const radius = height / 2;
+  const outline = tone === "outline";
+
+  // Hoisted so both paths below lay the row out from the SAME numbers. When
+  // this was duplicated per path, the outline tier's mark and label sat a
+  // couple of points off the `MetalButton` stacked under it.
+  const face = loading ? (
+    // The mark falling into place rather than a platform spinner. This wait is
+    // ours — a provider round-trip, sometimes key generation — and long enough
+    // that a system spinner reads as a stall.
+    <ParadigmLoader height={22} color={skin.text} />
+  ) : (
+    <>
+      {icon}
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: F.display,
+          fontSize: 16,
+          lineHeight: 22,
+          // Ark's spec is -0.7% of the size.
+          letterSpacing: -0.112,
+          color: skin.text,
+        }}
+      >
+        {label}
+      </Text>
+    </>
+  );
 
   return (
     <Pressable
@@ -562,59 +647,47 @@ function AuthPill({
       accessibilityState={{ disabled: inert, busy: loading }}
       style={({ pressed }) => [
         {
-          // Ark dims the silver tier when disabled and deliberately does NOT dim
-          // the dark one — a secondary that is dark at rest reads as broken
-          // rather than as unavailable when it fades.
-          opacity: disabled && metal ? 0.5 : pressed && !inert ? 0.85 : 1,
+          // Ark dims the silver tier when disabled and deliberately does NOT
+          // dim the dark one — a secondary that is dark at rest reads as broken
+          // rather than as unavailable when it fades. The outline tier dims
+          // with the silver: it has no face to read as dark, so the line at
+          // full strength would be the only thing still saying "button".
+          opacity:
+            disabled && tone !== "quiet" ? 0.45 : pressed && !inert ? 0.85 : 1,
         },
         style,
       ]}
     >
-      <LinearGradient
-        colors={skin.ring}
-        start={BEVEL.axis.start}
-        end={BEVEL.axis.end}
-        style={{ borderRadius: radius, padding: BEVEL.border }}
-      >
-        <LinearGradient
-          colors={skin.fill}
-          start={BEVEL.axis.start}
-          end={BEVEL.axis.end}
+      {outline ? (
+        // A border, not a ring layer — see the note on `BEVEL.outline`. The
+        // border eats its own `rim` off the box, so the inner row lands on the
+        // same metrics as the bevelled path without any padding of its own.
+        <View
           style={{
-            height: height - BEVEL.border * 2,
-            borderRadius: radius - BEVEL.border,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            paddingHorizontal: 24,
+            borderRadius: radius,
+            borderWidth: rim,
+            borderColor: skin.ring[0],
           }}
         >
-          {loading ? (
-            // The mark falling into place rather than a platform spinner. This
-            // wait is ours — a provider round-trip, sometimes key generation —
-            // and long enough that a system spinner reads as a stall.
-            <ParadigmLoader height={22} color={skin.text} />
-          ) : (
-            <>
-              {icon}
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontFamily: F.display,
-                  fontSize: 16,
-                  lineHeight: 22,
-                  // Ark's spec is -0.7% of the size.
-                  letterSpacing: -0.112,
-                  color: skin.text,
-                }}
-              >
-                {label}
-              </Text>
-            </>
-          )}
+          <View style={FACE(height, radius, rim)}>{face}</View>
+        </View>
+      ) : (
+        <LinearGradient
+          colors={skin.ring}
+          start={BEVEL.axis.start}
+          end={BEVEL.axis.end}
+          style={{ borderRadius: radius, padding: rim }}
+        >
+          <LinearGradient
+            colors={skin.fill}
+            start={BEVEL.axis.start}
+            end={BEVEL.axis.end}
+            style={FACE(height, radius, rim)}
+          >
+            {face}
+          </LinearGradient>
         </LinearGradient>
-      </LinearGradient>
+      )}
     </Pressable>
   );
 }
@@ -1071,9 +1144,9 @@ export function PinDots({ filled }: { filled: number }) {
         <View
           key={i}
           style={{
-            width: 15,
-            height: 15,
-            borderRadius: 8,
+            width: 25,
+            height: 25,
+            borderRadius: 50,
             overflow: "hidden",
             backgroundColor: i < filled ? undefined : "rgba(199,204,209,0.22)",
           }}
@@ -1413,53 +1486,107 @@ export function PrimaryButton({
 }
 
 /**
- * Outlined action with an optional leading badge — the "fund wallet" shape.
- * Reads quieter than MetallicButton, so it can sit right under a balance
- * without competing with it.
+ * Outlined action with an optional leading badge, in two tones.
+ *
+ * `brand` is the "fund wallet" shape — a gold hairline over `C.card`, tracked
+ * uppercase mono. It reads quieter than `MetallicButton`, so it can sit right
+ * under a balance without competing with it, but it is still a filled surface.
+ *
+ * `auth` is the sign-in reference's KingsChat row: an auth-scale pill with NO
+ * FILL AT ALL, so the canvas runs straight through it and the only thing on
+ * screen is the line and the label. That is what lets it recede beside the
+ * `MetalButton` it is stacked with while still reading as a control — a dark
+ * filled face on true black gives you one solid button and one smudge. It is
+ * drawn by `AuthPill` (tone `outline`), not here; see the note on `BEVEL`.
+ *
+ * `brand` is the default, so the existing funding call site keeps its shape
+ * without having to say anything.
  */
 export function OutlineButton({
   label,
   onPress,
   icon,
-  height = 54,
+  tone = "brand",
+  height,
   radius = PILL,
   color = C.brandSoft,
+  loading = false,
+  disabled = false,
+  style,
 }: {
   label: string;
   onPress?: () => void;
   icon?: React.ReactNode;
+  /** `brand` is the gold funding shape; `auth` is the sign-in outline pill. */
+  tone?: "brand" | "auth";
   height?: number;
   radius?: number;
+  /** Stroke and ink. The gold is deliberately both. `auth` ignores it. */
   color?: string;
+  /** Swaps the label for the falling mark and blocks presses. */
+  loading?: boolean;
+  disabled?: boolean;
+  style?: ViewStyle;
 }) {
+  const inert = loading || disabled;
+
+  // The auth tone IS an auth pill, so it is built by the thing that builds auth
+  // pills. Reimplementing that box here is what put its mark and its label a
+  // couple of points off the `MetalButton` directly underneath it.
+  if (tone === "auth") {
+    return (
+      <AuthPill
+        tone="outline"
+        label={label}
+        icon={icon}
+        onPress={onPress}
+        height={height}
+        loading={loading}
+        disabled={disabled}
+        style={style}
+      />
+    );
+  }
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={{
-        height,
-        borderRadius: radius,
-        borderWidth: 1,
-        borderColor: color,
-        backgroundColor: C.card,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-      }}
+      accessibilityState={{ disabled: inert, busy: loading }}
+      style={({ pressed }) => [
+        {
+          height: height ?? 54,
+          borderRadius: radius,
+          borderWidth: 1,
+          borderColor: color,
+          backgroundColor: C.card,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          opacity: disabled && !loading ? 0.4 : pressed && !inert ? 0.7 : 1,
+        },
+        style,
+      ]}
     >
-      {icon}
-      <Text
-        style={{
-          fontFamily: F.monoSemibold,
-          fontSize: 13,
-          letterSpacing: 1.6,
-          color,
-        }}
-      >
-        {label.toUpperCase()}
-      </Text>
+      {loading ? (
+        <Spinner color={color} />
+      ) : (
+        <>
+          {icon}
+          <Text
+            style={{
+              fontFamily: F.monoSemibold,
+              fontSize: 13,
+              letterSpacing: 1.6,
+              color,
+            }}
+          >
+            {label.toUpperCase()}
+          </Text>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -1613,5 +1740,79 @@ export function SectionRule({
         marginHorizontal: inset,
       }}
     />
+  );
+}
+
+/**
+ * A two-state switch, drawn rather than platform-native.
+ *
+ * RN's `Switch` renders the OS control — iOS grey-green over white, Android's
+ * Material thumb — and neither belongs on this canvas next to a brand-green
+ * CTA. This is the same affordance in the app's own palette: brand fill when
+ * on, the card wash when off, with the knob sliding between them.
+ */
+export function Toggle({
+  value,
+  onValueChange,
+  disabled = false,
+  accessibilityLabel,
+}: {
+  value: boolean;
+  onValueChange?: (next: boolean) => void;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+}) {
+  const W = 52;
+  const H = 30;
+  const KNOB = 24;
+  const travel = W - KNOB - 6;
+
+  const x = useRef(new Animated.Value(value ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(x, {
+      toValue: value ? 1 : 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [value, x]);
+
+  return (
+    <Pressable
+      onPress={disabled ? undefined : () => onValueChange?.(!value)}
+      accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ checked: value, disabled }}
+      hitSlop={8}
+      style={{
+        width: W,
+        height: H,
+        borderRadius: H / 2,
+        padding: 3,
+        justifyContent: "center",
+        backgroundColor: value ? C.brand : C.card,
+        borderWidth: 1,
+        borderColor: value ? "transparent" : C.border,
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <Animated.View
+        style={{
+          width: KNOB,
+          height: KNOB,
+          borderRadius: KNOB / 2,
+          // Ink-dark on the brand fill so the knob reads as a cut in the track
+          // rather than a second bright object beside the label.
+          backgroundColor: value ? C.brandInk : C.silver,
+          transform: [
+            {
+              translateX: x.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, travel],
+              }),
+            },
+          ],
+        }}
+      />
+    </Pressable>
   );
 }

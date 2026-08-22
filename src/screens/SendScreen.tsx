@@ -163,7 +163,7 @@ function Panel({
         {
           backgroundColor: C.raised,
           borderWidth: 1,
-          borderColor: accent ? "rgba(227,182,47,0.32)" : C.hairline,
+          borderColor: accent ? "rgba(131,190,96,0.32)" : C.hairline,
           borderRadius: 20,
           overflow: "hidden",
         },
@@ -185,7 +185,7 @@ function Tile({ text, accent }: { text: string; accent?: boolean }) {
         borderRadius: accent ? 21 : 14,
         backgroundColor: accent ? C.brandGlow : C.inset,
         borderWidth: 1,
-        borderColor: accent ? "rgba(227,182,47,0.28)" : C.hairline,
+        borderColor: accent ? "rgba(131,190,96,0.28)" : C.hairline,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -591,7 +591,7 @@ export default function SendScreen({
                 borderRadius: 21,
                 backgroundColor: C.brandGlow,
                 borderWidth: 1,
-                borderColor: "rgba(227,182,47,0.34)",
+                borderColor: "rgba(131,190,96,0.34)",
                 alignItems: "center",
                 justifyContent: "center",
               }}

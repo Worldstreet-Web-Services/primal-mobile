@@ -2,19 +2,35 @@ import React from "react";
 import { View, Pressable } from "react-native";
 import { C } from "../theme/tokens";
 import Svg, { Path, Circle } from "react-native-svg";
-import { MetallicButton, Display, Body } from "../components/ui";
+import { MetallicButton, Display, Body, Label } from "../components/ui";
 
+/**
+ * The last step of setup: biometric unlock for the app itself.
+ *
+ * What this screen sets up is the LOCAL app lock — `expo-local-authentication`,
+ * the same Face ID that opens a banking app. It is not Decane's passkey tier,
+ * which is a WebAuthn credential gating TEE signing, and it authorises nothing
+ * on-chain. The copy used to describe the second while the button did the
+ * first, which promised a security property this step does not provide.
+ */
 export default function PasskeyScreen({
   onEnable,
   onSkip,
   enabling = false,
   label = "Face ID",
+  placeholder = false,
 }: {
   onEnable?: () => void;
   onSkip?: () => void;
   enabling?: boolean;
   /** What this device actually offers — Face ID, Touch ID, Fingerprint. */
   label?: string;
+  /**
+   * The prompt behind that button is the DEV stand-in, not the real thing.
+   * Said out loud on screen: a build whose lock always opens must never look
+   * like a build whose lock is closed.
+   */
+  placeholder?: boolean;
 }) {
   return (
     <View
@@ -25,6 +41,11 @@ export default function PasskeyScreen({
         paddingBottom: 30,
       }}
     >
+      {/* Numbered to match the PIN step before it, so the sequence reads as a
+          sequence: sign in, PIN, this. */}
+      <View style={{ paddingTop: 10, paddingHorizontal: 2 }}>
+        <Label>Step 3 of 3</Label>
+      </View>
       <View
         style={{
           flex: 1,
@@ -58,16 +79,26 @@ export default function PasskeyScreen({
             <Circle cx={15} cy={10} r={0.9} fill={C.accent} />
           </Svg>
         </View>
-        <Display size={26}>Add a passkey</Display>
+        <Display size={26}>Unlock with {label}</Display>
         <Body
           size={13.5}
           color={C.sub}
           style={{ textAlign: "center", lineHeight: 22 }}
         >
-          Unlock Paradigm and sign transactions with {label}. Your key is split
-          across this device, Decane, and recovery — no one can sign without
-          you.
+          Open Paradigm with {label} instead of typing your PIN every time. Your
+          PIN still stands behind it, and it is still what authorises money
+          leaving.
         </Body>
+        {placeholder ? (
+          <Body
+            size={11.5}
+            color={C.dim}
+            style={{ textAlign: "center", lineHeight: 18 }}
+          >
+            This device has no {label} available, so the prompt is simulated and
+            always succeeds. Development builds only.
+          </Body>
+        ) : null}
       </View>
       <View style={{ gap: 10 }}>
         <MetallicButton
@@ -89,7 +120,7 @@ export default function PasskeyScreen({
           </Body>
         </Pressable>
         <Body size={11} color={C.dim} style={{ textAlign: "center" }}>
-          New devices need email step-up before money can leave.
+          Your PIN always works, whether or not you turn this on.
         </Body>
       </View>
     </View>

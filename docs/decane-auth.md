@@ -52,6 +52,57 @@ One project can hold several keys; a web app and this app need different
 callback URLs, which is why two keys on one `appId` is the normal arrangement.
 Same `appId` means the same person gets the **same wallet** on web and mobile.
 
+## Running with no credentials — the placeholder identity
+
+`__DEV__` only. Without `EXPO_PUBLIC_DECANE_APP_ID` and
+`EXPO_PUBLIC_DECANE_API_KEY` the SDK cannot initialise at all, so a dev build
+falls back to stand-ins for **both** halves of the identity stack:
+
+| Real | Stand-in |
+|---|---|
+| Decane wallet | `src/lib/auth/placeholder.ts` — a persisted `0xdead…` wallet, minted fresh per sign-in |
+| `api.tsion.io` | `src/lib/gateway/placeholder.ts` — answers `client.ts`'s one `fetch` on-device |
+| Face ID / fingerprint | `src/lib/auth/biometrics.ts` — a simulated prompt, when the device has none |
+
+The biometric stand-in engages only when a real check is impossible here: no
+enrolled biometric, or iOS Expo Go (whose binary carries no
+`NSFaceIDUsageDescription`, so reaching for Face ID terminates the process —
+`getCapability()` now reports that device as having none, which closes the crash
+for every caller). Anything it touches carries `placeholder: true`, and the
+setup screen says so on its face.
+
+**Nothing is skipped.** The app performs its real sequence — SIWE handshake,
+entitlement probe, subscription create, payment poll, entitlement re-probe —
+and every gate still has to be satisfied; only the server on the other end has
+changed. The full walk is:
+
+```
+sign in → set PIN → enable biometric unlock → pay → welcome aboard → home
+```
+
+The placeholder payment moves `AWAITING_TRANSFER → PROCESSING → SETTLED` over
+12s (`EXPO_PUBLIC_DEV_PLACEHOLDER_SETTLE_MS`), and settling is what grants
+entitlement — decided in the stand-in for the server, never by the app, exactly
+as the real rule requires.
+
+The app lock is real either way: the PIN is a salted SHA-256 in the keychain,
+and the biometric preference is now honoured at unlock — a user who answers
+"Maybe later" gets the keypad, where before they got a Face ID sheet on every
+launch regardless of what they chose.
+
+Signing out drops the placeholder wallet, so the next sign-in is a new account
+and walks the whole sequence again. Membership is keyed to the wallet, so a
+relaunch restores a paid account the way a real one is restored.
+
+Two things it deliberately will not do: the deposit address is the zero address
+(a fake checkout must not display anywhere a person could send money), and any
+route outside sign-in, entitlement and the membership checkout answers 501 and
+says so once in the log.
+
+It switches itself off the moment the Decane credentials above are set. Set
+`EXPO_PUBLIC_DEV_PLACEHOLDER_AUTH=0` to refuse the fallback and see the real
+failure instead. See `src/lib/devMode.ts`.
+
 ## Unlock tiers
 
 The device share is encrypted at rest, and the SDK probes tiers in order

@@ -24,9 +24,7 @@ const STAGGER = 150;
 export function Splash({
   animated = true,
   markSize = 96,
-  // Sentence case, matching the welcome lockup. Tracked caps were the old
-  // wordmark's treatment and read as a different brand beside it.
-  wordmark = "Paradigm",
+  wordmark = "KashPlus",
   hold = 420,
   onDone,
 }: {
@@ -90,7 +88,7 @@ export function Splash({
       }}
     >
       <Animated.View style={lift(mark)}>
-        <Logo variant="gold" height={markSize} accessibilityLabel={wordmark} />
+        <Logo height={markSize} accessibilityLabel={wordmark} />
       </Animated.View>
 
       <Animated.Text

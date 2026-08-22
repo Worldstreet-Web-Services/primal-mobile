@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -10,17 +10,41 @@ import { C } from "@/theme/tokens";
 
 export default function CopyTrading() {
   const [funding, setFunding] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  /**
+   * Pull to refresh.
+   *
+   * There is nothing behind it yet: Worldstreet owns the copy-trading feed (PRD
+   * §F6) and every figure on this screen comes from `src/data/traders.ts`, so
+   * this turns the spinner over and puts it away. It is wired end to end so the
+   * gesture is real — replace the body with the read when the endpoint lands,
+   * and nothing above it has to change.
+   */
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 700);
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <PageHeader title="Copy Trading" onBack={() => router.back()} />
 
       <CopyTradingScreen
-        onFund={() => setFunding(true)}
+        refreshing={refreshing}
+        onRefresh={refresh}
+        onDeposit={() => setFunding(true)}
+        onOpenTrader={(id) => router.push(`/copy-trading/${id}`)}
+        // Mirroring is Worldstreet's call (PRD §F6). Until that endpoint lands,
+        // Copy opens the leader's profile — the confirm belongs on the page that
+        // states what you would be copying, not on a tap in a list.
         onCopy={(id) => router.push(`/copy-trading/${id}`)}
+        // `onSeeAll` and `onOpenPositions` stay unwired until the full
+        // leaderboard and the positions screen exist. Passing a handler that
+        // goes nowhere is what makes a screen feel broken.
       />
 
-      {/* Summoned by the Fund action, so it is dismissible — drag it down, tap
+      {/* Summoned by the Deposit action, so it is dismissible — drag it down, tap
           the scrim, or Android back. `GlassDrawer` is the wrong tool here: it
           is fixed chrome that slides in once and stays.
 

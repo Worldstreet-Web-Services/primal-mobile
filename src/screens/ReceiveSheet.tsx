@@ -251,7 +251,7 @@ export default function ReceiveSheet({
                     backgroundColor: C.raised,
                     borderWidth: 1,
                     borderColor:
-                      copied === "va" ? "rgba(240,199,90,0.4)" : C.border,
+                      copied === "va" ? "rgba(124,231,176,0.4)" : C.border,
                     borderRadius: 20,
                     paddingVertical: 16,
                   }}
@@ -373,7 +373,7 @@ export default function ReceiveSheet({
                     backgroundColor: C.card,
                     borderWidth: 1,
                     borderColor:
-                      copied === "addr" ? "rgba(240,199,90,0.4)" : C.border,
+                      copied === "addr" ? "rgba(124,231,176,0.4)" : C.border,
                     borderRadius: 16,
                     paddingVertical: 14,
                     paddingHorizontal: 16,

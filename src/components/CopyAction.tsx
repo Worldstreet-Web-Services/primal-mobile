@@ -182,7 +182,7 @@ export function CopyField({
             gap: 12,
             backgroundColor: C.card,
             borderWidth: 1,
-            borderColor: copied ? "rgba(240,199,90,0.4)" : C.border,
+            borderColor: copied ? "rgba(124,231,176,0.4)" : C.border,
             borderRadius: 16,
             paddingVertical: 14,
             paddingHorizontal: 16,

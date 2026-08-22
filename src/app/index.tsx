@@ -20,14 +20,24 @@ import { C } from "@/theme/tokens";
  * resolves, so a returning user never sees the welcome pitch flash past on the
  * way to being redirected.
  *
- * **Membership is gated BEFORE onboarding.** Paradigm costs USD 1,000 a month,
- * so the paywall is the door, not a thing discovered later by walking into a
- * 403: sign in, then pay, and only then set a PIN. Setting up an app lock for
- * an account that has not been paid for is asking someone to furnish a room
- * they have not rented.
+ * **The order is sign in → app lock → membership → welcome aboard**, and it is
+ * decided here, in one file, because it is the only place that can see all
+ * three answers at once.
  *
- * This is the ONLY route into /pin and /passkey, which is what makes the gate
- * enforceable in one place.
+ * The app lock comes first because it is the only step that protects the phone
+ * in front of you. A PIN and a biometric unlock cost nothing, take a moment,
+ * and are what stand between a borrowed handset and everything behind it — so
+ * they are asked for while the person is already setting things up, not left
+ * until after a payment. (This is a reversal: membership used to be gated ahead
+ * of onboarding, on the reasoning that an app lock for an unpaid account is
+ * furnishing a room you have not rented. The room is the phone, and it is
+ * already theirs.)
+ *
+ * Membership then gates everything past it, and it is a real gate rather than a
+ * thing discovered later by walking into a 403.
+ *
+ * This is the ONLY route into /pin and /passkey, which is what makes the whole
+ * sequence enforceable in one place.
  */
 export default function Index() {
   const [finished, setFinished] = useState(false);
@@ -40,7 +50,15 @@ export default function Index() {
   if (status === "signedOut") return <Redirect href="/welcome" />;
   if (status === "locked") return <Redirect href="/unlock" />;
 
-  // Signed in — Decane is satisfied. Whether Paradigm is, is a separate
+  // The app lock, before anything the gateway has an opinion about. Both steps
+  // are local — a PIN hashed into the keychain, a biometric preference — so
+  // neither waits on the SIWE handshake that is running behind this screen, and
+  // by the time they are done the entitlement answer has usually landed.
+  if (status === "onboarding") {
+    return <Redirect href={step === "passkey" ? "/passkey" : "/pin"} />;
+  }
+
+  // Signed in and locked down. Whether Paradigm is satisfied is a separate
   // question, and it belongs to the gateway.
   if (primal.state === "session_expired") return <Redirect href={SIGN_IN_ROUTE} />;
 
@@ -80,8 +98,5 @@ export default function Index() {
     if (!skipPaywall) return <Redirect href={SUBSCRIPTION_ROUTE} />;
   }
 
-  if (status === "onboarding") {
-    return <Redirect href={step === "passkey" ? "/passkey" : "/pin"} />;
-  }
   return <Redirect href="/home" />;
 }

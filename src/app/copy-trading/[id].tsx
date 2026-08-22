@@ -1,34 +1,52 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { PageHeader } from "@/components/PageHeader";
-import TradeDetailScreen from "@/screens/TradeDetailScreen";
-import { tradeDetail } from "@/data/trades";
-import { C, F } from "@/theme/tokens";
+import { MoreIcon } from "@/components/icons";
+import { Body } from "@/components/ui";
+import { traderById } from "@/data/traders";
+import TraderProfileScreen from "@/screens/TraderProfileScreen";
+import { C } from "@/theme/tokens";
 
-export default function TradeDetail() {
+/**
+ * One leader's profile. Everything that opens a trader on the copy-trading
+ * feed — the rail card, the ranked row, and the Copy pill inside both — lands
+ * here, because the confirm belongs on the page that states what you would be
+ * copying rather than on a tap in a list.
+ */
+export default function TraderProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const detail = id ? tradeDetail(id) : undefined;
+  const trader = id ? traderById(id) : undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <PageHeader title="Copy Trading" onBack={() => router.back()} />
+      <PageHeader
+        title="Trader Profile"
+        align="left"
+        onBack={() => router.back()}
+        right={
+          // Drawn but inert: report, share and mute all belong behind it and
+          // none of them exist yet.
+          <Pressable hitSlop={10} disabled accessibilityElementsHidden>
+            <MoreIcon size={20} color={C.text} />
+          </Pressable>
+        }
+      />
 
-      {detail ? (
-        <TradeDetailScreen
-          detail={detail}
-          onDismiss={() => router.back()}
+      {trader ? (
+        <TraderProfileScreen
+          trader={trader}
           // Mirroring is Worldstreet's call (PRD §F6) — until that endpoint
           // lands, confirming just returns to the feed.
-          onCopy={() => router.back()}
+          onStartCopying={() => router.back()}
         />
       ) : (
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <Text style={{ fontFamily: F.body, fontSize: 14, color: C.sub }}>
-            That position is no longer open.
-          </Text>
+          <Body size={14} color={C.sub}>
+            That trader is no longer listed.
+          </Body>
         </View>
       )}
     </View>

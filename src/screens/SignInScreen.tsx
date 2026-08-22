@@ -1,18 +1,38 @@
-import { useEffect, useRef } from "react";
-import { Animated, Easing, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
-import { GoogleMark, KingsChatMark } from "@/components/icons";
+import { ArtSlot } from "@/components/home";
+import { KingsChatMark } from "@/components/icons";
 import { ParadigmMark } from "@/components/ParadigmMark";
-import { MetalButton, QuietButton } from "@/components/ui";
+import { MetalButton, OutlineButton } from "@/components/ui";
 import { C, F } from "@/theme/tokens";
+
+/** The screen's gutter. */
+const PAD = 26;
+
+/** Air between the foot of the lockup and the top of the diagram's box. */
+const FIELD_GAP = 8;
 
 /**
  * Envelope for the email row. Local because it exists for exactly this one
  * placement — promote it into `icons.tsx` the day a second caller appears.
  */
-function MailMark({ size = 19, color = C.text }: { size?: number; color?: string }) {
+function MailMark({
+  size = 19,
+  color = C.text,
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size * 0.78} viewBox="0 0 24 19" fill="none">
       <Path
@@ -32,21 +52,262 @@ function MailMark({ size = 19, color = C.text }: { size?: number; color?: string
   );
 }
 
-/**
- * The three ways in, all on the surface. This screen exists to ask exactly one
- * question — which identity — so every answer to it is visible without a
- * disclosure step. KingsChat takes the metal tier because it is the
- * differentiator for this audience; the other two are quiet.
+/* ── The orbit field ──────────────────────────────────────────────────────
  *
- * Apple is not here on purpose. Decane's `AuthMethod` is google | email |
- * kingschat — Apple would need an external provider registered in the
- * dashboard, and offering a button that can only apologise is worse than not
- * offering it.
+ * The upper two thirds of the screen: four product objects floating on faint
+ * concentric rings. It is the same argument the headline then puts into words —
+ * one system, several ways to use it — so the rings are not decoration, they
+ * are the diagram.
+ *
+ * Everything here is a FRACTION OF THE FIELD'S WIDTH, never a point value. The
+ * field is full-bleed (it runs under the screen's gutters on purpose, so the
+ * bottom-left object is clipped by the edge exactly as it is in the reference),
+ * and a composition pinned to points would come apart between an SE and a Pro
+ * Max. Sized off width alone, it scales as one object.
+ */
+
+/**
+ * Ring radii, as fractions of the field width. The middle two carry objects;
+ * the innermost and the outermost are empty on purpose — the outer one is wider
+ * than the screen (0.6 against a 0.5 half-width), and running off both gutters
+ * is what makes the system read as bigger than the frame rather than as a
+ * target painted on it.
+ */
+const RINGS = [0.24, 0.4, 0.49, 0.6];
+
+/** Centre of the ring system, as a fraction of the field width. */
+const ORBIT_CX = 0.5;
+const ORBIT_CY = 0.42;
+
+/**
+ * Field height, again as a fraction of its width: far enough to clear the
+ * outermost ring at the foot, and deliberately NOT far enough to clear it at
+ * the head — the top arc runs off the screen, which is what stops the diagram
+ * reading as a self-contained badge.
+ */
+const ORBIT_H = 0.97;
+
+type Satellite = {
+  id: string;
+  /**
+   * Index into `RINGS`. `-1` parks the object at the centre of the system,
+   * which is the one position that is not on a ring.
+   */
+  ring: number;
+  /** Degrees anticlockwise from east — where on its ring the object sits. */
+  angle: number;
+  /** Diameter, as a fraction of the field width. */
+  size: number;
+  /**
+   * PLACEHOLDER SLOT. Drop the supplied render in —
+   * `art: require("../../assets/images/orbit/earn.png")` — and `ArtSlot` swaps
+   * its glass stand-in for the artwork with no other change. Until then the
+   * layout is already final, which is the whole point of leaving it undefined.
+   */
+  art?: number;
+  /** Tint of the stand-in, so the four don't read as one repeated object. */
+  tint: string;
+  /** Read out in place of the artwork. */
+  label: string;
+};
+
+const SATELLITES: Satellite[] = [
+  {
+    id: "earn",
+    ring: 1,
+    angle: 130,
+    size: 0.135,
+    tint: C.green,
+    label: "Earn",
+  },
+  {
+    id: "games",
+    ring: -1,
+    angle: 0,
+    size: 0.125,
+    tint: C.silver,
+    label: "Games",
+  },
+  {
+    id: "trade",
+    ring: 1,
+    angle: 0,
+    size: 0.125,
+    tint: C.green,
+    label: "Trade",
+  },
+  {
+    id: "markets",
+    ring: 2,
+    angle: 221,
+    size: 0.12,
+    tint: C.silver,
+    label: "Markets",
+  },
+];
+
+/** Where a satellite lands, in fractions of the field width. */
+function place(s: Satellite) {
+  if (s.ring < 0) return { x: ORBIT_CX, y: ORBIT_CY };
+  const r = RINGS[s.ring];
+  const t = (s.angle * Math.PI) / 180;
+  // Screen y grows downward, so the sine subtracts rather than adds.
+  return { x: ORBIT_CX + r * Math.cos(t), y: ORBIT_CY - r * Math.sin(t) };
+}
+
+/**
+ * One object in its halo. The halo is the reason a placeholder does not read as
+ * a hole: a lit object on true black needs something around it to stand in, or
+ * it reads as a sticker laid on the glass.
+ */
+function Orbiter({
+  satellite,
+  width,
+  drift,
+}: {
+  satellite: Satellite;
+  /** Field width in points — everything below is a fraction of it. */
+  width: number;
+  /** 0→1 driver for the idle float. Each object reads it at its own phase. */
+  drift: Animated.Value;
+}) {
+  const { x, y } = place(satellite);
+  const d = satellite.size * width;
+
+  return (
+    <Animated.View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={satellite.label}
+      style={{
+        position: "absolute",
+        left: x * width - d / 2,
+        top: y * width - d / 2,
+        width: d,
+        height: d,
+        borderRadius: d / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: C.card,
+        borderWidth: 1,
+        borderColor: C.hairline,
+        transform: [
+          {
+            translateY: drift.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, -d * 0.06, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <ArtSlot source={satellite.art} size={d * 0.68} tint={satellite.tint} />
+    </Animated.View>
+  );
+}
+
+function OrbitField({ width }: { width: number }) {
+  const height = width * ORBIT_H;
+
+  // One driver per object so they float out of phase; a shared one makes four
+  // objects bob in lockstep, which reads as the whole screen breathing.
+  const drifts = useRef(SATELLITES.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const loops = drifts.map((drift, i) =>
+      Animated.loop(
+        Animated.timing(drift, {
+          toValue: 1,
+          // Deliberately uneven durations: the four never resynchronise into a
+          // pulse, which is the difference between drift and a heartbeat.
+          duration: 5200 + i * 900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [drifts]);
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{ width, height, overflow: "hidden" }}
+      accessible={false}
+    >
+      <Svg width={width} height={height}>
+        {RINGS.map((r) => (
+          <Circle
+            key={r}
+            cx={ORBIT_CX * width}
+            cy={ORBIT_CY * width}
+            r={r * width}
+            stroke={C.hairline}
+            strokeWidth={1}
+            fill="none"
+          />
+        ))}
+      </Svg>
+      {SATELLITES.map((s, i) => (
+        <Orbiter key={s.id} satellite={s} width={width} drift={drifts[i]} />
+      ))}
+      {/* The field does not end, it dissolves. Without this the lowest ring
+          crosses the headline and the two compete; with it the diagram sinks
+          into the ground the words are set on. */}
+      <LinearGradient
+        colors={["transparent", C.canvas]}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: height * 0.34,
+        }}
+      />
+    </View>
+  );
+}
+
+/* ── The screen ──────────────────────────────────────────────────────────── */
+
+/**
+ * The headline, as segments rather than strings, because two of its words carry
+ * the accent and a `<Text>` cannot change colour halfway through without being
+ * split. Set centred and tight under the diagram: the words name what the
+ * objects above them are.
+ */
+const HEADLINE: { t: string; accent?: boolean }[][] = [
+  [{ t: "One " }, { t: "Paradigm.", accent: true }],
+  [{ t: "Multiple ways to put" }],
+  [{ t: "Money", accent: true }, { t: " to work." }],
+];
+
+/**
+ * The two ways in.
+ *
+ * KingsChat leads on the OUTLINE tier — a stroke around nothing, the canvas
+ * showing straight through it — and email follows on the metal one. That is the
+ * reverse of the old arrangement and deliberate: the reference gives the loud
+ * silver pill to the method that always works, and lets the differentiator sit
+ * first in reading order without shouting.
+ *
+ * Outline rather than the bevelled `QuietButton`: on true black a dark
+ * bevelled face has nothing to be dark against, so the pair read as one solid
+ * button and one smudge. Drawn as a line instead, the first row recedes without
+ * disappearing, which is exactly what the reference shows.
+ *
+ * Google is not on this screen. Decane still supports it and `/signin` still
+ * handles `google` verbatim, so restoring it is one row here and nothing else —
+ * but the reference offers two doors, and a third quiet row directly under the
+ * first made the pair read as a list rather than as a choice.
+ *
+ * Apple is absent for a harder reason: Decane's `AuthMethod` is
+ * google | email | kingschat, so an Apple button could only apologise.
  */
 const METHODS = [
-  { id: "kingschat", label: "Continue with KingsChat", tone: "metal" },
-  { id: "google", label: "Continue with Google", tone: "quiet" },
-  { id: "email", label: "Continue with email", tone: "quiet" },
+  { id: "kingschat", label: "Continue with KingsChat", tone: "outline" },
+  { id: "email", label: "Continue with email", tone: "metal" },
 ] as const;
 
 /**
@@ -59,9 +320,11 @@ const METHODS = [
  * Shamir shares) on every use after. A registration door would lead to this
  * exact room, so the honest fix is one line of copy saying so.
  *
- * Left-aligned and un-drawered on purpose: the pitch got the composed,
- * centered treatment one screen back. This one is a decision, and a decision
- * reads best set like a page.
+ * Centred and composed, per the 2026-08-21 reference. It used to be set like a
+ * page — left-aligned, headline hard against the gutter — on the argument that
+ * a decision reads best that way. The reference puts a diagram above the words,
+ * and a centred lockup over a left-set headline is two grids on one screen, so
+ * the whole column is centred now.
  */
 export default function SignInScreen({
   onSignIn,
@@ -76,6 +339,18 @@ export default function SignInScreen({
 }) {
   const busy = pending !== null;
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  /**
+   * Measured height of the lockup row, which is all the absolutely-placed
+   * diagram needs in order to hang directly under it. Zero until first layout;
+   * the entrance fade covers that frame.
+   *
+   * Measured rather than a constant because the lockup is type, and type grows
+   * with the reader's text-size setting — a hardcoded offset would slide the
+   * whole diagram under the wordmark on exactly the devices least able to
+   * afford it.
+   */
+  const [lockup, setLockup] = useState(0);
 
   // One driver for the page; each block reads a different slice of it, which is
   // what makes them arrive staggered off a single animation.
@@ -113,107 +388,153 @@ export default function SignInScreen({
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        paddingTop: insets.top + 14,
-        paddingHorizontal: 26,
-        paddingBottom: Math.max(insets.bottom, 24) + 6,
-      }}
-    >
-      {/* Lockup: the flat vector mark, not the gold hero. The hero is the
-          welcome screen's subject; here the brand is just a signature. */}
+    // Two layers. The outer one is the stage and carries NO padding, which is
+    // what lets the diagram be positioned against the screen itself: an
+    // absolute child of a padded parent is inset by that padding, so anchoring
+    // the art to a padded box would quietly hand it the gutters back. The
+    // padded column is the inner one.
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      {/* The diagram is a LAYER, not a row: absolutely placed, full-bleed, hung
+          off the bottom of the lockup, and first in document order so it paints
+          behind everything. Out of the flex flow entirely — it no longer takes
+          space from the copy, and the copy no longer sizes it. Where the two
+          meet on a short screen, the field's own fade to canvas is what keeps
+          the headline off the rings. */}
       <Animated.View
+        pointerEvents="none"
         style={[
-          { flexDirection: "row", alignItems: "center", gap: 10 },
-          step(0),
+          {
+            position: "absolute",
+            left: 0,
+            top: insets.top + 75 + lockup + FIELD_GAP,
+          },
+          step(1),
         ]}
       >
-        <ParadigmMark height={26} color={C.text} />
-        <Text
-          style={{
-            fontFamily: F.display,
-            fontSize: 27,
-            letterSpacing: -0.4,
-            color: C.text,
-          }}
-        >
-          Paradigm
-        </Text>
+        <OrbitField width={width} />
       </Animated.View>
 
-      {/* The headline carries the screen on its own — set large, left, and in
-          one colour. An accent on the third line turns a statement into a
-          slogan, and this audience reads the restraint as the confidence. */}
-      <View style={{ flex: 1, justifyContent: "center" }}>
-        <Animated.View style={step(1)}>
-          {["One Platform.", "Every Strategy.", "No Compromise."].map((line) => (
+      <View
+        style={{
+          flex: 1,
+          paddingTop: insets.top + 14,
+          paddingHorizontal: PAD,
+          paddingBottom: Math.max(insets.bottom, 24) + 6,
+          alignItems: "center",
+        }}
+      >
+        {/* Lockup: the flat vector mark, not the gold hero. The hero is the
+            welcome screen's subject; here the brand is just a signature. */}
+        <Animated.View
+          onLayout={(e) => setLockup(e.nativeEvent.layout.height)}
+          style={[
+            { flexDirection: "row", alignItems: "center", gap: 10 },
+            step(0),
+          ]}
+        >
+          <ParadigmMark height={30} color={C.text} />
+          <Text
+            style={{
+              fontFamily: F.displayBold,
+              fontSize: 31,
+              letterSpacing: -0.6,
+              color: C.text,
+            }}
+          >
+            KashPlus
+          </Text>
+        </Animated.View>
+
+        {/* Where the diagram used to sit. It is a layer now, so what is left here
+          is the space it occupies — this is what holds the copy down at the
+          foot of the screen. */}
+        <View style={{ flex: 1 }} />
+
+        <Animated.View style={[{ marginBottom: 34 }, step(2)]}>
+          {HEADLINE.map((line, i) => (
             <Text
-              key={line}
+              key={i}
               style={{
                 fontFamily: F.displayBold,
-                fontSize: 44,
-                lineHeight: 53,
-                letterSpacing: -1,
+                fontSize: 32,
+                lineHeight: 37,
+                letterSpacing: -0.8,
                 color: C.text,
+                textAlign: "center",
               }}
             >
-              {line}
+              {line.map((seg, j) => (
+                <Text
+                  key={j}
+                  style={seg.accent ? { color: C.green } : undefined}
+                >
+                  {seg.t}
+                </Text>
+              ))}
             </Text>
           ))}
         </Animated.View>
-      </View>
 
-      {METHODS.map((m, i) => {
-        const Pill = m.tone === "metal" ? MetalButton : QuietButton;
-        const ink = m.tone === "metal" ? C.metalInk : C.text;
-        return (
-          <Animated.View
-            key={m.id}
-            style={[{ marginTop: i === 0 ? 0 : 12 }, step(i + 2)]}
+        {METHODS.map((m, i) => {
+          const metal = m.tone === "metal";
+          const ink = metal ? C.metalInk : C.text;
+          // Both tiers get the same height, radius and label spec, so the pair
+          // reads as one control with two answers rather than as two buttons.
+          const common = {
+            label: m.label,
+            icon: metal ? (
+              <MailMark color={ink} />
+            ) : (
+              <KingsChatMark color={ink} />
+            ),
+            onPress: () => onSignIn?.(m.id),
+            loading: pending === m.id,
+            disabled: busy && pending !== m.id,
+          };
+          return (
+            <Animated.View
+              key={m.id}
+              style={[
+                { alignSelf: "stretch", marginTop: i === 0 ? 0 : 14 },
+                step(i + 3),
+              ]}
+            >
+              {metal ? (
+                <MetalButton {...common} />
+              ) : (
+                <OutlineButton tone="auth" {...common} />
+              )}
+            </Animated.View>
+          );
+        })}
+
+        {/* Not in the reference, and kept anyway: the reference has no legal line
+          because a mock does not have to have one. Dropping the consent notice
+          is a legal call, not a layout one — set it small, dim and centred so
+          it sits under the pair without competing, and let the owner say the
+          word if it goes. */}
+        <Animated.View style={[{ marginTop: 18 }, step(5)]}>
+          <Text
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              lineHeight: 16,
+              color: C.dim,
+              textAlign: "center",
+            }}
           >
-            <Pill
-              label={m.label}
-              icon={
-                m.id === "kingschat" ? (
-                  <KingsChatMark color={ink} />
-                ) : m.id === "google" ? (
-                  <GoogleMark />
-                ) : (
-                  <MailMark color={ink} />
-                )
-              }
-              onPress={() => onSignIn?.(m.id)}
-              loading={pending === m.id}
-              disabled={busy && pending !== m.id}
-            />
-          </Animated.View>
-        );
-      })}
-
-      <Animated.View style={[{ marginTop: 22 }, step(6)]}>
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 11.5,
-            lineHeight: 17,
-            color: C.dim,
-          }}
-        >
-          {creatingWallet ? (
-            "Creating your wallet — this takes a few seconds. Keep the app open."
-          ) : (
-            <>
-              By continuing you agree to Paradigm&apos;s{" "}
-              <Text style={{ color: C.sub }}>Terms</Text> and{" "}
-              <Text style={{ color: C.sub }}>Privacy Policy</Text>. A smart
-              wallet is created on your behalf — Paradigm can never move your
-              funds.
-            </>
-          )}
-        </Text>
-      </Animated.View>
+            {creatingWallet ? (
+              "Creating your wallet — this takes a few seconds. Keep the app open."
+            ) : (
+              <>
+                By continuing you agree to KashPlus&apos;s{" "}
+                <Text style={{ color: C.sub }}>Terms</Text> and{" "}
+                <Text style={{ color: C.sub }}>Privacy Policy</Text>.
+              </>
+            )}
+          </Text>
+        </Animated.View>
+      </View>
     </View>
   );
 }

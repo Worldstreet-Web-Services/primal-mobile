@@ -184,10 +184,13 @@ function BenefitCard({
       accessibilityLabel={benefit.title}
     >
       {/* The artwork is a cut-out on transparency, so the card has to supply its
-          own ground. Warmed rather than neutral: gold sitting on plain charcoal
-          goes muddy, gold on a warmed black keeps its lit edge. */}
+          own ground. Cast toward the brand rather than neutral: the accent
+          sitting on plain charcoal goes muddy, on a green-biased black it keeps
+          its lit edge. Re-cast off the gold 2026-08-22 with the brand; kept a
+          hair darker than the old #3A3222 so the text tiers measured against
+          this slab in `C` only gain contrast. */}
       <LinearGradient
-        colors={["#3A3222", "#151412"]}
+        colors={["#26331C", "#121410"]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}

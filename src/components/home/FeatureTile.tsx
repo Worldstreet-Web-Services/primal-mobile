@@ -39,7 +39,14 @@ function StatusChip({ status }: { status: Exclude<FeatureStatus, "live"> }) {
       }}
     >
       {/* 9pt is the floor `dim` was re-derived against — 4.67:1 on `inset`. */}
-      <Text style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1.1, color: C.dim }}>
+      <Text
+        style={{
+          fontFamily: F.mono,
+          fontSize: 9,
+          letterSpacing: 1.1,
+          color: C.dim,
+        }}
+      >
         {status === "preview" ? "PREVIEW" : "SOON"}
       </Text>
     </View>
@@ -56,7 +63,7 @@ function StatusChip({ status }: { status: Exclude<FeatureStatus, "live"> }) {
 export function FeatureTile({
   item,
   onPress,
-  artSize = 44,
+  artSize = 38,
 }: {
   item: FeatureTileItem;
   onPress?: (key: string) => void;
@@ -67,7 +74,10 @@ export function FeatureTile({
   const body = (
     <View
       style={{
-        aspectRatio: 1,
+        // Slightly wider than tall, per the reference. A square tile at three
+        // columns leaves a hole between the artwork and the label; this crops
+        // that hole out without shrinking either.
+        aspectRatio: 1.16,
         borderRadius: 18,
         backgroundColor: C.raised,
         borderWidth: 1,
@@ -75,19 +85,34 @@ export function FeatureTile({
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 8,
-        gap: 8,
+        gap: 10,
         overflow: "hidden",
         // A doorway that does not open reads as recessed rather than as broken.
         opacity: dead ? 0.55 : 1,
       }}
     >
-      <ArtSlot source={item.artwork} size={artSize} tint={C.brandSoft} />
+      {/* The artwork sits in a round well rather than free on the tile face.
+          These renders are lit glass objects photographed on nothing, so on a
+          flat panel they read as stickers; the well is the light they stand
+          in, and it is what makes six of them read as one set. */}
+      <View
+        style={{
+          width: artSize + 16,
+          height: artSize + 16,
+          borderRadius: (artSize + 16) / 2,
+          backgroundColor: C.inset,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ArtSlot source={item.artwork} size={artSize} tint={C.green} />
+      </View>
       <Text
         numberOfLines={2}
         style={{
           fontFamily: F.bodySemibold,
-          fontSize: 12.5,
-          lineHeight: 15,
+          fontSize: 13,
+          lineHeight: 16,
           letterSpacing: 0.1,
           color: C.text,
           textAlign: "center",
@@ -113,7 +138,9 @@ export function FeatureTile({
     <PressableScale
       onPress={() => onPress?.(item.key)}
       scale={0.96}
-      accessibilityLabel={item.status === "preview" ? `${item.title}, preview` : item.title}
+      accessibilityLabel={
+        item.status === "preview" ? `${item.title}, preview` : item.title
+      }
     >
       {body}
     </PressableScale>
@@ -137,7 +164,7 @@ export function FeatureTileGrid({
   onOpen,
   columns = 3,
   gap = 11,
-  artSize = 44,
+  artSize = 38,
 }: {
   items: FeatureTileItem[];
   onOpen?: (key: string) => void;

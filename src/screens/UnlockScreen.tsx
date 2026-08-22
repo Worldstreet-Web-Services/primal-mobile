@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import { View } from "react-native";
-import { Logo } from "../components/Logo";
-import { C } from "../theme/tokens";
+import { Logo } from "@/components/Logo";
 import {
-  MetallicButton,
-  Label,
   Body,
   Display,
-  PinDots,
   Keypad,
+  Label,
+  MetallicButton,
+  PinDots,
   Spinner,
-} from "../components/ui";
+} from "@/components/ui";
+import { C } from "@/theme/tokens";
+import { useState } from "react";
+import { View } from "react-native";
 
 // Design 3e: app unlock — metallic brand block, Face ID / passkey, PIN fallback.
 export default function UnlockScreen({
@@ -72,13 +72,10 @@ export default function UnlockScreen({
             elevation: 8,
           }}
         >
-          {/* Sized by height only — `Logo` derives the width from the
-              artwork's own ratio, so the mark can't be cropped or stretched.
-              A square box with contentFit="cover" cut its head and foot off. */}
           <Logo height={104} />
         </View>
         <Display size={36} style={{ letterSpacing: 0.5 }}>
-          Paradigm
+          KashPlus
         </Display>
         <Body
           size={14}

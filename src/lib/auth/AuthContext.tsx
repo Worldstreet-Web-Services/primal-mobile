@@ -27,6 +27,7 @@ import * as wire from "@/lib/auth/wire";
 import * as gatewayAuth from "@/lib/gateway/auth";
 import * as entitlement from "@/lib/gateway/entitlement";
 import { clearPayoutState } from "@/lib/gateway/linkpay";
+import { usingPlaceholderGateway } from "@/lib/gateway/placeholder";
 import { clearVasState } from "@/lib/gateway/services";
 import * as gatewaySession from "@/lib/gateway/session";
 import {
@@ -60,6 +61,15 @@ interface AuthState {
   session: DecaneSession | null;
   /** Which sign-in method is mid-flight. */
   pending: AuthMethod | null;
+  /**
+   * The user asked for biometric unlock, and it is set up.
+   *
+   * Separate from `capability`, which only says what the DEVICE can do. Both
+   * have to be true before the lock screen offers a biometric: a phone with
+   * Face ID enrolled and a user who answered "Maybe later" must get the keypad,
+   * or the choice the onboarding step collected meant nothing.
+   */
+  biometricsEnabled: boolean;
   /** True during first-time key generation — seconds long, needs progress UI. */
   creatingWallet: boolean;
 }
@@ -166,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     step: "pin",
     session: null,
     pending: null,
+    biometricsEnabled: false,
     creatingWallet: false,
   });
   const [capability, setCapability] =
@@ -199,9 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const [session, pinSet, cap] = await Promise.all([
+      const [session, pinSet, biometricsSet, cap] = await Promise.all([
         decane.restoreSession(),
         storage.hasPin(),
+        storage.isBiometricsEnabled(),
         biometrics.getCapability(),
       ]);
       if (cancelled) return;
@@ -214,6 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: "signedOut",
           step: "pin",
           session: null,
+          biometricsEnabled: false,
         }));
         return;
       }
@@ -223,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         status: pinSet ? "locked" : "onboarding",
         step: pinSet ? "complete" : "pin",
         session,
+        biometricsEnabled: biometricsSet,
       }));
     })();
 
@@ -365,9 +379,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (state.status !== "ready" && state.status !== "onboarding") return;
 
-    // Web and credential-less builds have no real wallet to sign with; the
-    // gateway layer stays inert rather than failing a handshake on "0xMOCK".
-    if (decane.usingMockAuth) {
+    // A stand-in wallet cannot produce a signature the real gateway would
+    // accept, so the gateway layer stays inert rather than failing a handshake
+    // it was never going to win — UNLESS the gateway is a stand-in too, in
+    // which case the two halves match and the handshake is exactly what should
+    // run. That is the whole difference between a credential-less build that
+    // stops at the sign-in screen and one that walks the entire flow.
+    if (decane.usingMockAuth && !usingPlaceholderGateway) {
       setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
       return;
     }
@@ -463,7 +481,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /** Retry the handshake after a failure the user has since fixed. */
   const linkPrimal = useCallback(async () => {
     const address = state.session?.addresses.evm;
-    if (!address || decane.usingMockAuth) return;
+    if (!address || (decane.usingMockAuth && !usingPlaceholderGateway)) return;
     // Same gate as the automatic handshake below: signing raises a biometric
     // prompt on the passkey and enclave tiers, and behind the lock screen that
     // is a prompt the user cannot explain. A caller retrying by hand must not
@@ -522,14 +540,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("[decane] connected but getAccessToken() returned null");
     }
 
-    // A returning user who still has a PIN skips straight past onboarding.
-    const pinSet = await storage.hasPin();
+    // A returning user who still has a PIN skips straight past onboarding, and
+    // brings their biometric preference with them — it is stored per device, so
+    // signing in again is not a reason to re-ask or to quietly forget it.
+    const [pinSet, biometricsSet] = await Promise.all([
+      storage.hasPin(),
+      storage.isBiometricsEnabled(),
+    ]);
     setState((s) => ({
       ...s,
       status: pinSet ? "ready" : "onboarding",
       step: pinSet ? "complete" : "pin",
       session,
       pending: null,
+      biometricsEnabled: biometricsSet,
       creatingWallet: false,
     }));
   }, []);
@@ -604,6 +628,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       step: "pin",
       session: null,
       pending: null,
+      // `storage.clearAll()` above has already unset the stored preference; this
+      // is the same fact in the copy the screens read.
+      biometricsEnabled: false,
       creatingWallet: false,
     });
   }, []);
@@ -646,14 +673,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const outcome = await biometrics.authenticate("Enable biometric unlock");
     if (outcome.ok) {
       await storage.setBiometricsEnabled(true);
-      setState((s) => ({ ...s, status: "ready", step: "complete" }));
+      setState((s) => ({
+        ...s,
+        status: "ready",
+        step: "complete",
+        biometricsEnabled: true,
+      }));
     }
     return outcome;
   }, []);
 
   const skipBiometrics = useCallback(async () => {
     await storage.setBiometricsEnabled(false);
-    setState((s) => ({ ...s, status: "ready", step: "complete" }));
+    setState((s) => ({
+      ...s,
+      status: "ready",
+      step: "complete",
+      biometricsEnabled: false,
+    }));
   }, []);
 
   const value = useMemo<AuthApi>(

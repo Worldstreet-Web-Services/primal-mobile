@@ -1,7 +1,7 @@
 import { router, type Href } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
+  TABS,
   useBalanceMasked,
   type FeatureStatus,
   type FeatureTileItem,
@@ -9,10 +9,11 @@ import {
   type MoneyLeg,
   type PortfolioView,
 } from "@/components/home";
-import { features as catalogue } from "@/data/home";
+import { features as catalogue, sampleActivity } from "@/data/home";
 import { user } from "@/data/mock";
 import { useCryptoPortfolio } from "@/hooks/useCryptoPortfolio";
 import { useFiatBalance, type FiatBalanceState } from "@/hooks/useLinkpay";
+import { sampleActivity as showSampleActivity } from "@/lib/devMode";
 import { formatMoney, isZeroMoney } from "@/lib/gateway/money";
 import { firstNameOf, greetingFor } from "@/lib/greeting";
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
@@ -44,6 +45,15 @@ const MEDIA_ROUTES: Record<string, Href> = {
   podcast: "/podcast",
   news: "/news",
 };
+
+/**
+ * Where the tab bar goes. Read off `TABS` rather than written out again, so a
+ * tab can never exist on the bar without a destination here or vice versa —
+ * a tab with no `href` is deliberately unbuilt and the bar draws it inert.
+ */
+const TAB_ROUTES: Record<string, Href> = Object.fromEntries(
+  TABS.filter((t) => t.href).map((t) => [t.key, t.href as Href]),
+);
 
 function open(table: Record<string, Href>, key: string) {
   const href = table[key];
@@ -90,7 +100,11 @@ type LegRead =
  */
 function nairaLeg(fiat: FiatBalanceState): LegRead {
   const label = "Naira";
-  const missing = (note: string, action?: string, onAction?: () => void): LegRead => ({
+  const missing = (
+    note: string,
+    action?: string,
+    onAction?: () => void,
+  ): LegRead => ({
     kind: "missing",
     missing: { key: "naira", label, note, action, onAction },
   });
@@ -99,8 +113,10 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
     case "loading":
       return { kind: "loading" };
     case "signed_out":
-      return missing("Sign in and your naira balance comes back with you.", "Sign in", () =>
-        router.push("/signin"),
+      return missing(
+        "Sign in and your naira balance comes back with you.",
+        "Sign in",
+        () => router.push("/signin"),
       );
     case "unentitled":
       return missing(
@@ -124,8 +140,10 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
         () => router.push("/kyc"),
       );
     case "provisioning":
-      return missing("The bank is still opening your naira account.", "See where it is", () =>
-        router.push("/kyc"),
+      return missing(
+        "The bank is still opening your naira account.",
+        "See where it is",
+        () => router.push("/kyc"),
       );
     case "provision_failed":
       return missing(
@@ -144,7 +162,11 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
         fiat.reload,
       );
     case "error":
-      return missing(fiat.error ?? "Something went wrong reaching Paradigm.", "Try again", fiat.reload);
+      return missing(
+        fiat.error ?? "Something went wrong reaching Paradigm.",
+        "Try again",
+        fiat.reload,
+      );
     default: {
       // Account is ACTIVE. The balance is its own request with its own answer:
       // a figure, a stated refusal to guess at one, or still in the air.
@@ -169,7 +191,8 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
           zero,
         };
       }
-      if (fiat.balanceError) return missing(fiat.balanceError, "Try again", fiat.reload);
+      if (fiat.balanceError)
+        return missing(fiat.balanceError, "Try again", fiat.reload);
       return { kind: "loading" };
     }
   }
@@ -195,7 +218,8 @@ function cryptoLeg(crypto: ReturnType<typeof useCryptoPortfolio>): LegRead {
       },
     };
   }
-  if (crypto.loading && crypto.holdings.length === 0) return { kind: "loading" };
+  if (crypto.loading && crypto.holdings.length === 0)
+    return { kind: "loading" };
   return {
     kind: "figure",
     leg: {
@@ -248,13 +272,20 @@ const NO_RATE =
  * em dash with the reason the missing leg is missing (`blocked`). A partial
  * total presented as "Total Portfolio" would be a lie, and so would a zero.
  */
-function portfolioView(fiat: FiatBalanceState, crypto: ReturnType<typeof useCryptoPortfolio>): PortfolioView {
+function portfolioView(
+  fiat: FiatBalanceState,
+  crypto: ReturnType<typeof useCryptoPortfolio>,
+): PortfolioView {
   const reads = [nairaLeg(fiat), cryptoLeg(crypto)];
   if (reads.some((r) => r.kind === "loading")) return { state: "loading" };
 
-  const figures = reads.filter((r): r is Extract<LegRead, { kind: "figure" }> => r.kind === "figure");
+  const figures = reads.filter(
+    (r): r is Extract<LegRead, { kind: "figure" }> => r.kind === "figure",
+  );
   const missing = reads
-    .filter((r): r is Extract<LegRead, { kind: "missing" }> => r.kind === "missing")
+    .filter(
+      (r): r is Extract<LegRead, { kind: "missing" }> => r.kind === "missing",
+    )
     .map((r) => r.missing);
 
   const legs = figures.map((f) => f.leg);
@@ -283,30 +314,27 @@ function portfolioView(fiat: FiatBalanceState, crypto: ReturnType<typeof useCryp
  * the total is made of instead — which is sourced, and stays true.
  */
 export default function Home() {
-  const insets = useSafeAreaInsets();
   const fiat = useFiatBalance();
   const crypto = useCryptoPortfolio();
   const [masked, toggleMasked] = useBalanceMasked();
 
   return (
     <HomeScreen
-      top={insets.top + 10}
       greeting={greetingFor()}
       name={firstNameOf(user.name)}
-      // No `unread`. The reference draws a dot on the bell, and a dot is a
-      // claim — "something is waiting for you" — with nothing behind it: there
-      // is no notifications store, no unread count and no endpoint for one, and
-      // /pulse renders a hardcoded feed. A dot that is always lit teaches the
-      // member to ignore it, which is worse than no dot. Pass `unread` the day
-      // something can answer the question.
       portfolio={portfolioView(fiat, crypto)}
       masked={masked}
       onToggleMasked={toggleMasked}
       features={TILES}
+      activity={showSampleActivity ? sampleActivity : []}
+      tab="home"
+      onSelectTab={(key) => open(TAB_ROUTES, key)}
       onOpenFeature={(key) => open(FEATURE_ROUTES, key)}
       onOpenMedia={(key) => open(MEDIA_ROUTES, key)}
       onNotifications={() => router.push("/pulse")}
       onOpenProfile={() => router.push("/profile")}
+      onDeposit={() => router.push("/fund")}
+      onTransfer={() => router.push("/send")}
     />
   );
 }

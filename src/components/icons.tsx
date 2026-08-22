@@ -500,6 +500,137 @@ export function KingsChatMark({
   );
 }
 
+/** Paper plane — "send this somewhere", the Transfer action on the hero card. */
+export function SendIcon({
+  size = 19,
+  color = C.text,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M21.2 3.4 2.9 10.1c-.8.3-.8 1.4 0 1.7l7.2 2.5 2.5 7.2c.3.8 1.4.8 1.7 0l6.7-18.3a.9.9 0 0 0-1.1-1.1Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+        fill={color === "none" ? "none" : "transparent"}
+      />
+      <Path
+        d="m10.1 14.3 4.2-4.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** Folded newspaper — the News tab. */
+export function NewsIcon({
+  size = 22,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 5.4h11.4a1 1 0 0 1 1 1v12.2H5a1 1 0 0 1-1-1V5.4Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M16.4 9.2h2.6a1 1 0 0 1 1 1v7.2a1.2 1.2 0 0 1-2.4 0"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M6.9 8.7h6.6M6.9 12h6.6M6.9 15.3h4"
+        stroke={color}
+        strokeWidth={strokeWidth - 0.2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Cogwheel — the Settings tab. Twelve teeth drawn as one path rather than a
+ * dozen rotated rects: at 22pt the rects land on fractional pixels and the
+ * wheel reads lopsided on Android.
+ *
+ * SIZED TO THE ROW, NOT TO THE BOX. The tab bar puts this beside `HomeIcon`,
+ * `NewsIcon` and `MicIcon` at one point size, and what a viewer compares is
+ * how big each MARK looks — not how big its viewBox is. Drawn at its natural
+ * extent this wheel filled 78% of the box against Home's 71% and the first cut
+ * of the newspaper's 55%, so the row read as three different icon sizes and no
+ * amount of centring could fix it. The outline is therefore scaled to 17 of 24,
+ * centred on 12, which is Home's extent to the unit.
+ */
+export function GearIcon({
+  size = 22,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3.5L13.54 5.22L15.8 4.68L16.43 6.94L18.6 7.84L18.06 10.1L19.6 11.82L18.06 13.54L18.6 15.8L16.43 16.7L15.8 18.96L13.54 18.42L12 20.5L10.46 18.78L8.2 19.32L7.57 17.06L5.4 16.16L5.94 13.9L4.4 12L5.94 10.28L5.4 8.02L7.57 7.12L8.2 4.86L10.46 5.4Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Circle
+        cx={12}
+        cy={12}
+        r={2.9}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Microphone on its stand — the Podcast tab.
+ *
+ * Sized to the row and not to the box, for the reason spelled out on
+ * `GearIcon`: the mark spans 17 of 24 centred on 12, which is what `HomeIcon`
+ * and `NewsIcon` occupy, so the four tabs read as one size.
+ */
+export function MicIcon({
+  size = 22,
+  color = C.silver,
+  filled,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3.5a2.6 2.6 0 0 1 2.6 2.6v5.4a2.6 2.6 0 0 1-5.2 0V6.1A2.6 2.6 0 0 1 12 3.5Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+        fill={filled ? color : "none"}
+        fillOpacity={filled ? 0.22 : 0}
+      />
+      <Path
+        d="M6.6 11a5.4 5.4 0 0 0 10.8 0"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M12 16.4v4.1"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 /** Solid play triangle — the affordance on a media card. */
 export function PlayIcon({ size = 18, color = C.text }: IconProps) {
   return (
@@ -531,6 +662,113 @@ export function TrendDownIcon({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+/**
+ * Filled star — the rating mark beside a trader's name. Solid rather than
+ * outlined: at 13pt an outlined star closes up into a blob on Android.
+ */
+export function StarIcon({ size = 13, color = C.amber }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 2.6l2.94 5.96 6.56.96-4.75 4.63 1.12 6.55L12 17.6l-5.87 3.1 1.12-6.55L2.5 9.52l6.56-.96L12 2.6Z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Two figures — a COUNT of people. `PersonIcon` is the single account (the
+ * profile page, reached from the greeting portrait); this one is "the traders you copy", which is a set.
+ */
+export function UsersIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle
+        cx={9.4}
+        cy={8.2}
+        r={3.4}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M3.6 19.2c0-3.1 2.6-5.1 5.8-5.1s5.8 2 5.8 5.1"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M16.4 5.2a3.4 3.4 0 0 1 0 6M17.6 14.4c2.1.5 3.4 2.2 3.4 4.4"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** The disclosure chevron on a row that opens something. */
+export function ChevronRightIcon({
+  size = 18,
+  color = C.silver,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="m9.5 6 6 6-6 6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Shield with a tick — "you are protected". Used on the reassurance note under
+ * a commitment, never as a status: it says the guard exists, not that it fired.
+ */
+export function ShieldCheckIcon({
+  size = 18,
+  color = C.brand,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2.8 4.8 5.6v5.9c0 4.2 2.9 8 7.2 9.7 4.3-1.7 7.2-5.5 7.2-9.7V5.6L12 2.8Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="m8.9 11.9 2.2 2.2 4-4.3"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Overflow affordance — the header's "more" target. */
+export function MoreIcon({ size = 20, color = C.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={5} cy={12} r={1.85} fill={color} />
+      <Circle cx={12} cy={12} r={1.85} fill={color} />
+      <Circle cx={19} cy={12} r={1.85} fill={color} />
     </Svg>
   );
 }

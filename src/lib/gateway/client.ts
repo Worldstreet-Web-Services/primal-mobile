@@ -25,6 +25,7 @@
 
 import * as Crypto from "expo-crypto";
 
+import * as placeholder from "./placeholder";
 import * as session from "./session";
 import { isExpired } from "./time";
 import {
@@ -217,12 +218,27 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
 
   let response: Response;
   try {
-    response = await fetch(req.url, {
-      method: req.method,
-      headers,
-      body: req.bodyText ?? undefined,
-      signal: controller.signal,
-    });
+    // The one place the app talks to the gateway — and therefore the one place
+    // a stand-in can replace it without any caller knowing. Everything either
+    // side of this line (bearer, refresh, retries, error mapping, tracing) runs
+    // identically against the placeholder, which is what makes a credential-less
+    // build exercise the real flow rather than a simplified one. `__DEV__` only;
+    // see `placeholderAuth` in src/lib/devMode.ts.
+    response = placeholder.usingPlaceholderGateway
+      ? await placeholder.respond({
+          method: req.method,
+          path: req.path,
+          bodyText: req.bodyText,
+          token,
+          correlationId: req.correlationId,
+          signal: controller.signal,
+        })
+      : await fetch(req.url, {
+          method: req.method,
+          headers,
+          body: req.bodyText ?? undefined,
+          signal: controller.signal,
+        });
   } catch (error) {
     if (req.signal?.aborted) throw new AbortedError();
     throw new NetworkError({

@@ -8,7 +8,7 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 import { C, F } from "../theme/tokens";
 import { ParadigmLoader } from "./ParadigmMark";
 
-const CROWN = require("../../assets/images/golden_crown.png");
+const CROWN = require("@/assets/images/crown.png");
 /** The artwork's own ratio (563x418) — width drives, height follows. */
 const CROWN_ASPECT = 563 / 418;
 

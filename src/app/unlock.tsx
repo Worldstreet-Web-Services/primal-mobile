@@ -1,4 +1,3 @@
-import Constants, { ExecutionEnvironment } from "expo-constants";
 import { router } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,23 +11,21 @@ import { C } from "@/theme/tokens";
 const MAX_PIN_ATTEMPTS = 5;
 
 /**
- * Expo Go runs its own binary, so the `faceIDPermission` we set on the
- * `expo-local-authentication` config plugin in app.json is never applied —
- * config plugins only take effect in a prebuild. iOS terminates a process that
- * reaches for Face ID with no `NSFaceIDUsageDescription`, and it does so
- * without a JS error or a Metro log line, which reads as "the app loads to 100%
- * then closes". Firing that at mount, before the user has touched anything,
- * makes the whole app unopenable in Expo Go.
- *
- * So the automatic prompt is dev-build only. The button still offers Face ID in
- * Expo Go for anyone whose client does carry the key, and the PIN keypad is
- * already on screen as the fallback either way.
+ * The Expo Go carve-out that used to live here has moved into
+ * `lib/auth/biometrics.ts`, which is the module that actually knows: iOS Expo
+ * Go carries no `NSFaceIDUsageDescription`, so reaching for Face ID there kills
+ * the process. `getCapability()` now reports that device as having no usable
+ * biometric at all, which closes the same hole for every caller instead of only
+ * the one that remembered to check.
  */
-const IS_EXPO_GO =
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
 export default function Unlock() {
-  const { unlockWithPin, unlockWithBiometrics, signOut, capability } = useAuth();
+  const {
+    unlockWithPin,
+    unlockWithBiometrics,
+    signOut,
+    capability,
+    biometricsEnabled,
+  } = useAuth();
   const toast = useToast();
 
   const [checking, setChecking] = useState(false);
@@ -62,14 +59,22 @@ export default function Unlock() {
     }
   }, [unlockWithBiometrics, done, toast]);
 
-  // Offer biometrics immediately on landing, the way every banking app does —
-  // the ref guards against the effect re-running and stacking OS prompts.
+  /**
+   * Offer biometrics immediately on landing, the way every banking app does —
+   * the ref guards against the effect re-running and stacking OS prompts.
+   *
+   * Gated on the user's own preference as well as the device's capability. It
+   * was gated on the device alone, which meant someone who answered "Maybe
+   * later" during setup was met by a Face ID sheet on every launch anyway: the
+   * onboarding step collected a decision the app then ignored. Turning it on is
+   * `/passkey`, or Profile later.
+   */
   useEffect(() => {
-    if (IS_EXPO_GO) return; // see IS_EXPO_GO — an unguarded prompt kills the app
-    if (promptedOnMount.current || !capability?.available) return;
+    if (promptedOnMount.current) return;
+    if (!biometricsEnabled || !capability?.available) return;
     promptedOnMount.current = true;
     void runBiometrics();
-  }, [capability, runBiometrics]);
+  }, [biometricsEnabled, capability, runBiometrics]);
 
   const onPin = async (pin: string) => {
     setChecking(true);
@@ -105,7 +110,9 @@ export default function Unlock() {
         onPin={onPin}
         onBiometrics={runBiometrics}
         checking={checking}
-        biometricsAvailable={!!capability?.available && !biometricsLocked}
+        biometricsAvailable={
+          biometricsEnabled && !!capability?.available && !biometricsLocked
+        }
         biometricLabel={capability?.label ?? "Face ID"}
       />
     </SafeAreaView>

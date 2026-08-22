@@ -537,7 +537,7 @@ export default function KycScreen({
             borderRadius: 31,
             backgroundColor: C.upBg,
             borderWidth: 1,
-            borderColor: "rgba(240,199,90,0.35)",
+            borderColor: "rgba(124,231,176,0.35)",
             alignItems: "center",
             justifyContent: "center",
           }}

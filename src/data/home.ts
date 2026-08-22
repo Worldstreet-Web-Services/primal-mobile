@@ -1,4 +1,9 @@
-import type { Feature, MediaItem, Space } from "@/components/home";
+import type {
+  ActivityItem,
+  Feature,
+  MediaItem,
+  Space,
+} from "@/components/home";
 
 /**
  * Home shelf content: the doorways and the editorial rail. Artwork ships with
@@ -107,5 +112,33 @@ export const media: MediaItem[] = [
     byline: "Paradigm Desk",
     duration: "4 min read",
     artwork: require("../../assets/images/media/hot-news.png"),
+  },
+];
+
+/**
+ * SAMPLE ROWS — NOT DATA. Nothing here has happened to anybody.
+ *
+ * Rendered only when `EXPO_PUBLIC_DEV_SAMPLE_ACTIVITY` is set in a dev build
+ * (see `src/lib/devMode.ts`), so the home screen can be compared against the
+ * design reference with its activity card populated. The real card is fed by a
+ * ledger endpoint that does not exist yet; until it does, a member sees the
+ * card's empty sentence instead of these.
+ *
+ * Wired to nothing. If you find yourself importing this outside the dev gate,
+ * that is the bug — the same one that once put "$10,383.42" in this file.
+ */
+export const sampleActivity: ActivityItem[] = [
+  {
+    key: "allocation",
+    title: "Capital Allocation Modified",
+    note: "Capital allocation increased by +$500.00 USD.",
+    when: "10m ago",
+    fresh: true,
+  },
+  {
+    key: "avax",
+    title: "Duplicated Order: AVAX/USDT",
+    note: "Bought 12 AVAX at $26.10 USD.",
+    when: "1d ago",
   },
 ];

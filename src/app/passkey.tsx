@@ -18,10 +18,13 @@ export default function Passkey() {
   const finish = () => router.replace("/");
 
   const onEnable = async () => {
+    // Only reachable on a real device with nothing enrolled: in a dev build the
+    // stand-in reports itself as available, so the step can be completed rather
+    // than only skipped.
     if (!capability?.available) {
       toast.warning(
         "No biometrics enrolled",
-        "Add Face ID or a fingerprint in system settings, then enable it in Profile.",
+        "Add Face ID or a fingerprint in your device settings, then come back.",
       );
       return;
     }
@@ -30,7 +33,12 @@ export default function Passkey() {
     try {
       const outcome = await enableBiometrics();
       if (outcome.ok) {
-        toast.success(`${capability.label} enabled`, "Use it to unlock Paradigm.");
+        toast.success(
+          `${capability.label} enabled`,
+          capability.placeholder
+            ? "Simulated — this build has no real biometric to check."
+            : "Use it to unlock Paradigm.",
+        );
         finish();
         return;
       }
@@ -47,7 +55,10 @@ export default function Passkey() {
 
   const onSkip = async () => {
     await skipBiometrics();
-    toast.info("Skipped for now", "Turn on biometric unlock any time in Profile.");
+    // Deliberately does not promise a Profile toggle: there is no wired control
+    // there yet, and the lock screen now honours this choice, so "any time in
+    // Profile" would be the one instruction the app cannot carry out.
+    toast.info("Skipped", "Your PIN unlocks Paradigm.");
     finish();
   };
 
@@ -58,6 +69,7 @@ export default function Passkey() {
         onSkip={onSkip}
         enabling={enabling}
         label={capability?.label ?? "Face ID"}
+        placeholder={capability?.placeholder ?? false}
       />
     </SafeAreaView>
   );

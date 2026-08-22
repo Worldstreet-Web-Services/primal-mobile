@@ -8,14 +8,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
+import { ParadigmMark } from "@/components/ParadigmMark";
 import { BrandLoading } from "../components/BrandLoading";
 import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
 
-const RAYS = require("../../assets/images/star_behind.png");
-const CROWN = require("../../assets/images/golden_crown.png");
+const RAYS = require("@/assets/images/star_behind.png");
+const CROWN = require("@/assets/images/crown.png");
 /** The crown artwork's own ratio (563x418) — width drives, height follows. */
 const CROWN_ASPECT = 563 / 418;
 /** The ray artwork's own ratio — it is drawn tall and bleeds off the bottom. */
@@ -37,53 +37,6 @@ const EYE_ON_SCREEN = 0.3;
  */
 const RAYS_OVERSCAN = 1.35;
 
-/**
- * The light the crown stands in. A rendered gold object on a near-flat ground
- * reads as a sticker without one; the middle stop is what keeps the falloff
- * from looking like a spotlight.
- */
-function Glow({
-  size,
-  color,
-  opacity,
-}: {
-  size: number;
-  color: string;
-  opacity: number;
-}) {
-  return (
-    <Svg width={size} height={size} style={{ position: "absolute" }}>
-      <Defs>
-        <RadialGradient id="aboard-crown-glow" cx="50%" cy="50%" rx="50%" ry="50%">
-          <Stop offset="0" stopColor={color} stopOpacity={opacity} />
-          <Stop offset="0.55" stopColor={color} stopOpacity={opacity * 0.34} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Ellipse
-        cx={size / 2}
-        cy={size / 2}
-        rx={size / 2}
-        ry={size / 2}
-        fill="url(#aboard-crown-glow)"
-      />
-    </Svg>
-  );
-}
-
-/**
- * The arrival beat.
- *
- * It is shown once, after the account exists, and it does exactly one thing:
- * tell a new member they are in. No summary, no next steps, no tour — those
- * belong to the app, and stacking them here would turn a moment into a form.
- *
- * The rays are the whole ornament. They are laid at 9% alpha in the artwork,
- * which on charcoal is a whisper, so the image is drawn twice over itself: two
- * passes bring the light up to roughly 18% without a second export and without
- * a gradient standing in for it. The eye of the burst is parked above the copy
- * so the words sit in the light rather than beside it.
- */
 export default function WelcomeAboardScreen({
   onContinue,
   /**
@@ -113,17 +66,8 @@ export default function WelcomeAboardScreen({
   };
 
   /** Crown width. Capped so it stays an object on the screen, not a backdrop. */
-  const crownW = Math.min(width * 0.62, 260);
-
-  // One driver for the whole stack; each element reads a different slice of it,
-  // which is what makes them arrive staggered off a single animation.
+  const crownW = Math.min(width * 0.92, 350);
   const enter = useRef(new Animated.Value(0)).current;
-  /**
-   * The crown has its own driver rather than a slice of `enter`, because it
-   * moves differently: it settles DOWN into place with a slight scale while
-   * everything below rises up into place. Sharing one curve would force both to
-   * travel the same way.
-   */
   const crown = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -171,22 +115,14 @@ export default function WelcomeAboardScreen({
   };
 
   return (
-    // No padding on the root: the rays have to reach all four edges, and an
-    // absolutely-positioned child is still offset by its parent's padding, so
-    // padding here would inset the ground. The content carries its own instead.
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      {/* The wrapper is load-bearing: expo-image does not reliably forward
-          `pointerEvents` to its native view, so a full-bleed copy laid straight
-          into the tree swallows every tap on the CTA beneath it and the button
-          looks dead. A plain View honours it, which keeps the rays
-          decorative. */}
+      {/* BACKGROUND RAY */}
       <View pointerEvents="none" style={raysBox}>
         <Image
           source={RAYS}
           contentFit="fill"
-          style={{ width: raysW, height: raysH }}
+          style={{ width: raysW, height: raysH, opacity: 0.4 }}
         />
-        {/* Second pass, exactly registered on the first — see the note above. */}
         <Image
           source={RAYS}
           contentFit="fill"
@@ -206,11 +142,33 @@ export default function WelcomeAboardScreen({
           paddingHorizontal: 26,
           paddingTop: insets.top,
           paddingBottom: Math.max(insets.bottom, 26) + 8,
+          alignItems: "center",
         }}
       >
+        <Animated.View
+          style={[
+            { flexDirection: "row", alignItems: "center", gap: 10 },
+            step(0),
+          ]}
+        >
+          <ParadigmMark height={30} color={C.text} />
+          <Text
+            style={{
+              fontFamily: F.displayBold,
+              fontSize: 31,
+              letterSpacing: -0.6,
+              color: C.text,
+            }}
+          >
+            KashPlus
+          </Text>
+        </Animated.View>
+
         {/* The crown owns the upper frame — it is the thing being awarded, so it
             arrives first and alone, and the sentence lands underneath it. */}
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <Animated.View
             style={{
               alignItems: "center",
@@ -234,12 +192,11 @@ export default function WelcomeAboardScreen({
               ],
             }}
           >
-            <Glow size={crownW * 2} color={C.brand} opacity={0.2} />
             <Image
               source={CROWN}
               contentFit="contain"
               style={{ width: crownW, height: crownW / CROWN_ASPECT }}
-              accessibilityLabel="Paradigm membership"
+              accessibilityLabel="KashPlus membership"
             />
           </Animated.View>
         </View>
@@ -247,22 +204,22 @@ export default function WelcomeAboardScreen({
         <Animated.View style={[{ alignItems: "center" }, step(0)]}>
           <Text
             style={{
-              fontFamily: F.displayBold,
               fontSize: 30,
               lineHeight: 38,
               letterSpacing: -0.4,
-              color: C.text,
+              color: C.silver,
               textAlign: "center",
             }}
+            className="font-medium"
           >
-            Welcome to <Text style={{ color: C.silver }}>Paradigm!</Text>
+            Welcome to{" "}
+            <Text style={{ color: C.text }} className="font-bold">
+              KashPlus
+            </Text>
           </Text>
         </Animated.View>
 
         <Animated.View style={[{ alignItems: "center" }, step(1)]}>
-          {/* Held to a width that breaks the sentence into two lines on every
-              handset we ship to. A hard newline would break it into three on
-              the small ones. */}
           <Text
             style={{
               fontFamily: F.body,
@@ -271,19 +228,19 @@ export default function WelcomeAboardScreen({
               color: C.sub,
               textAlign: "center",
               marginTop: 12,
-              maxWidth: 300,
+              maxWidth: 240,
             }}
           >
-            You&apos;ve earned your place among the few who see things
+            You&apos;ve earned your place among the 1% who see things
             differently.
           </Text>
         </Animated.View>
 
         {/* Air between the sentence and the way out, so the copy reads as the
             screen and the button as the exit — not as one block. */}
-        <View style={{ height: 46 }} />
+        <View style={{ height: 100 }} />
 
-        <Animated.View style={step(2)}>
+        <Animated.View style={step(2)} className={"self-stretch"}>
           <MetalButton label="Continue" onPress={onContinue} loading={busy} />
         </Animated.View>
       </View>

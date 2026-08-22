@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Easing,
@@ -11,12 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CopyMark, useCopy } from "@/components/CopyAction";
 import { ParadigmLoader } from "@/components/ParadigmMark";
-import {
-  AlertIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  CloseIcon,
-} from "@/components/icons";
+import { AlertIcon, CheckIcon, ChevronDownIcon } from "@/components/icons";
 import {
   BackChevron,
   Body,
@@ -79,7 +80,7 @@ import { C, F } from "@/theme/tokens";
 const SCRIM = "rgba(10,10,11,0.5)";
 const DANGER_TINT = "rgba(246,165,165,0.10)";
 const DANGER_EDGE = "rgba(246,165,165,0.32)";
-const BRAND_EDGE = "rgba(227,182,47,0.42)";
+const BRAND_EDGE = "rgba(131,190,96,0.42)";
 /** Amber, at the danger pair's alphas: a locked wallet is a precondition the
  *  user has not met yet, not something that has gone wrong. */
 const HOLD_TINT = "rgba(245,184,61,0.10)";
@@ -121,7 +122,8 @@ function isGrossedUp(
   if (!asset || asset.symbol !== "USDC") return false;
   try {
     return (
-      toBigInt(payment.originAmount) > toBigInt(payment.requiredSettlementAmount)
+      toBigInt(payment.originAmount) >
+      toBigInt(payment.requiredSettlementAmount)
     );
   } catch {
     return false;
@@ -153,11 +155,19 @@ function Notice({
       <Body size={12.5} semibold color={C.down}>
         {notice.title}
       </Body>
-      <Body size={12} color={C.silver} style={{ marginTop: 4, lineHeight: 17.5 }}>
+      <Body
+        size={12}
+        color={C.silver}
+        style={{ marginTop: 4, lineHeight: 17.5 }}
+      >
         {notice.detail}
       </Body>
       {notice.correlationId ? (
-        <Mono size={9.5} color={C.dim} style={{ marginTop: 8, letterSpacing: 1 }}>
+        <Mono
+          size={9.5}
+          color={C.dim}
+          style={{ marginTop: 8, letterSpacing: 1 }}
+        >
           REF {notice.correlationId}
         </Mono>
       ) : null}
@@ -334,8 +344,12 @@ export default function CheckoutSheet({
   const status = payment?.status ?? "UNKNOWN";
   const terminal = payment ? subs.isTerminalPayment(status) : false;
   const quote = useMemo(() => subs.readOriginQuote(payment), [payment]);
-  const expiryMs = useMemo(() => toMillis(payment?.expiresAt ?? null), [payment]);
-  const network = subs.networkFor(chainId) ?? subs.networkFor(subs.DEFAULT_ORIGIN_CHAIN_ID)!;
+  const expiryMs = useMemo(
+    () => toMillis(payment?.expiresAt ?? null),
+    [payment],
+  );
+  const network =
+    subs.networkFor(chainId) ?? subs.networkFor(subs.DEFAULT_ORIGIN_CHAIN_ID)!;
   const asset = network.assets[0];
 
   const handleSessionLoss = useCallback((error: unknown): boolean => {
@@ -355,14 +369,17 @@ export default function CheckoutSheet({
     (async () => {
       try {
         const checkout = subscriptionId
-          ? await subs.loadCheckout(subscriptionId, { signal: controller.signal })
+          ? await subs.loadCheckout(subscriptionId, {
+              signal: controller.signal,
+            })
           : await subs.resumeCheckout({ signal: controller.signal });
         if (!alive.current) return;
         if (checkout) {
           setSubscription(checkout.subscription);
           setPayment(checkout.payment);
           const live = checkout.payment?.originChainId;
-          if (typeof live === "number" && subs.networkFor(live)) setChainId(live);
+          if (typeof live === "number" && subs.networkFor(live))
+            setChainId(live);
         }
         setStage("ready");
       } catch (error) {
@@ -426,7 +443,9 @@ export default function CheckoutSheet({
       }
 
       const base = subs.nextPollDelayMs({ visible: appIsActive(), failures });
-      const delay = expiresAt ? subs.pollDelayBeforeExpiry(base, expiresAt) : base;
+      const delay = expiresAt
+        ? subs.pollDelayBeforeExpiry(base, expiresAt)
+        : base;
       timer = setTimeout(() => void poll(), delay);
     };
 
@@ -498,7 +517,9 @@ export default function CheckoutSheet({
     const ask = async () => {
       if (cancelled) return;
       try {
-        const entitled = await subs.checkEntitled({ signal: controller.signal });
+        const entitled = await subs.checkEntitled({
+          signal: controller.signal,
+        });
         if (cancelled) return;
         if (entitled) {
           exits.current.onEntitled();
@@ -657,9 +678,6 @@ export default function CheckoutSheet({
           Crypto Checkout
         </Display>
       </View>
-      <CircleAction onPress={close} size={38} accessibilityLabel="Close">
-        <CloseIcon size={16} color={C.silver} />
-      </CircleAction>
     </View>
   );
 
@@ -668,18 +686,18 @@ export default function CheckoutSheet({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 14,
+        gap: 16,
         backgroundColor: C.raised,
         borderWidth: 1,
         borderColor: C.hairline,
-        borderRadius: 16,
+        borderRadius: 18,
         padding: 16,
       }}
     >
       <View style={{ flex: 1 }}>
         {/* The client's artwork reads "PRIMAL PARAGM" / "Montly" — both are
             typos in the mockup, and a paywall is the last place to ship one. */}
-        <Label>Paradigm</Label>
+        <Label>Kash+</Label>
         <Display size={18} style={{ marginTop: 6 }}>
           Monthly Subscription
         </Display>
@@ -752,7 +770,11 @@ export default function CheckoutSheet({
               <Display size={19} style={{ marginTop: 14, textAlign: "center" }}>
                 Payment confirmed.
               </Display>
-              <Display size={19} color={C.brand} style={{ textAlign: "center" }}>
+              <Display
+                size={19}
+                color={C.brand}
+                style={{ textAlign: "center" }}
+              >
                 Enabling your account.
               </Display>
               <View
@@ -775,8 +797,8 @@ export default function CheckoutSheet({
               style={{ marginTop: 16, lineHeight: 18, textAlign: "center" }}
             >
               Your transfer has settled. Access switches on from Primal's side,
-              which usually takes a few seconds — nothing else is needed from you,
-              and nothing will be charged again.
+              which usually takes a few seconds — nothing else is needed from
+              you, and nothing will be charged again.
             </Body>
           </View>
         ),
@@ -799,13 +821,19 @@ export default function CheckoutSheet({
               }}
             >
               <Display size={18}>Your payment landed</Display>
-              <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
+              <Body
+                size={12.5}
+                color={C.silver}
+                style={{ marginTop: 8, lineHeight: 19 }}
+              >
                 Primal has the money but has not switched your access on yet.
                 Nothing is owed and nothing needs paying again — this is ours to
                 finish. Quote these to support and they can find it in one look.
               </Body>
               <TraceRow label="Subscription" value={subscription?.id ?? "—"} />
-              {payment?.id ? <TraceRow label="Payment" value={payment.id} /> : null}
+              {payment?.id ? (
+                <TraceRow label="Payment" value={payment.id} />
+              ) : null}
               <TraceRow label="Reference" value={trace} />
             </View>
           </View>
@@ -842,22 +870,32 @@ export default function CheckoutSheet({
                 padding: 18,
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 9 }}
+              >
                 <AlertIcon size={17} color={C.down} />
                 <Body size={13.5} semibold color={C.down}>
                   {expired ? "Payment window closed" : "Payment failed"}
                 </Body>
               </View>
-              <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
+              <Body
+                size={12.5}
+                color={C.silver}
+                style={{ marginTop: 10, lineHeight: 19 }}
+              >
                 {expired
                   ? "This deposit address is no longer watched. Do not send anything to it — start a fresh checkout and you will be given a new one."
                   : "Primal could not settle this payment. If anything left your wallet it refunds to the address you started from."}
               </Body>
             </View>
-            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {notice ? (
+              <Notice notice={notice} onDismiss={() => setNotice(null)} />
+            ) : null}
           </View>
         ),
-        footer: <MetalButton label="Back to membership" onPress={onBack ?? close} />,
+        footer: (
+          <MetalButton label="Back to membership" onPress={onBack ?? close} />
+        ),
       };
     }
 
@@ -878,13 +916,19 @@ export default function CheckoutSheet({
                 padding: 18,
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 9 }}
+              >
                 <AlertIcon size={17} color={C.down} />
                 <Body size={13.5} semibold color={C.down}>
                   Do not send anything
                 </Body>
               </View>
-              <Body size={12.5} color={C.silver} style={{ marginTop: 10, lineHeight: 19 }}>
+              <Body
+                size={12.5}
+                color={C.silver}
+                style={{ marginTop: 10, lineHeight: 19 }}
+              >
                 This checkout was quoted on a route this app does not recognise,
                 so it cannot tell you what to send or where. Nothing has been
                 charged. Quote the reference below to support.
@@ -898,7 +942,9 @@ export default function CheckoutSheet({
             </View>
           </View>
         ),
-        footer: <MetalButton label="Back to membership" onPress={onBack ?? close} />,
+        footer: (
+          <MetalButton label="Back to membership" onPress={onBack ?? close} />
+        ),
       };
     }
 
@@ -984,7 +1030,9 @@ export default function CheckoutSheet({
           <View>
             {planCard}
             {routeBlock}
-            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {notice ? (
+              <Notice notice={notice} onDismiss={() => setNotice(null)} />
+            ) : null}
           </View>
         ),
         footer: (
@@ -1022,7 +1070,11 @@ export default function CheckoutSheet({
                   <Body size={12.5} semibold color={C.amber}>
                     {signedOut ? "Sign in to continue" : "Wallet locked"}
                   </Body>
-                  <Body size={12.5} color={C.sub} style={{ marginTop: 4, lineHeight: 18 }}>
+                  <Body
+                    size={12.5}
+                    color={C.sub}
+                    style={{ marginTop: 4, lineHeight: 18 }}
+                  >
                     {signedOut
                       ? "Paradigm needs your wallet address before it can take a payment — it is where the provider refunds you if the route fails."
                       : "Unlock your wallet first — a payment needs somewhere to refund to if the route fails."}
@@ -1146,13 +1198,21 @@ export default function CheckoutSheet({
               this one.
             </Body>
             <Mono size={14} style={{ marginTop: 14, lineHeight: 24 }}>
-              <Mono size={14} color={C.brand} style={{ fontFamily: F.monoSemibold }}>
+              <Mono
+                size={14}
+                color={C.brand}
+                style={{ fontFamily: F.monoSemibold }}
+              >
                 {edges.head}
               </Mono>
               <Mono size={14} color={C.text}>
                 {edges.middle}
               </Mono>
-              <Mono size={14} color={C.brand} style={{ fontFamily: F.monoSemibold }}>
+              <Mono
+                size={14}
+                color={C.brand}
+                style={{ fontFamily: F.monoSemibold }}
+              >
                 {edges.tail}
               </Mono>
             </Mono>
@@ -1182,7 +1242,9 @@ export default function CheckoutSheet({
         <Label>Send exactly</Label>
         <Pressable
           onPress={() =>
-            quote.amountPlain ? void copy("amount", quote.amountPlain) : undefined
+            quote.amountPlain
+              ? void copy("amount", quote.amountPlain)
+              : undefined
           }
           disabled={!quote.amountPlain}
           accessibilityRole="button"
@@ -1202,7 +1264,11 @@ export default function CheckoutSheet({
         >
           <View style={{ flex: 1 }}>
             {/* The exact `originAmount`, at the trusted table's decimals. */}
-            <Mono size={24} color={C.text} style={{ fontFamily: F.displayBold }}>
+            <Mono
+              size={24}
+              color={C.text}
+              style={{ fontFamily: F.displayBold }}
+            >
               {quote.amountText}
             </Mono>
             <Body size={12} color={C.sub} style={{ marginTop: 4 }}>
@@ -1214,10 +1280,14 @@ export default function CheckoutSheet({
           </View>
         </Pressable>
         {grossed ? (
-          <Body size={11} color={C.dim} style={{ marginTop: 9, lineHeight: 16 }}>
-            More than the {settlement} that has to settle — the difference is the
-            route's fee, already worked in. Send the figure above, not the plan
-            price.
+          <Body
+            size={11}
+            color={C.dim}
+            style={{ marginTop: 9, lineHeight: 16 }}
+          >
+            More than the {settlement} that has to settle — the difference is
+            the route's fee, already worked in. Send the figure above, not the
+            plan price.
           </Body>
         ) : null}
       </View>
@@ -1265,12 +1335,14 @@ export default function CheckoutSheet({
               }}
             >
               <Body size={12.5} color={C.silver} style={{ lineHeight: 18 }}>
-                The payment window has closed. Do not send anything to the address
-                you were given. If you sent before it closed, check once more —
-                Primal decides whether it counted, not this app.
+                The payment window has closed. Do not send anything to the
+                address you were given. If you sent before it closed, check once
+                more — Primal decides whether it counted, not this app.
               </Body>
             </View>
-            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {notice ? (
+              <Notice notice={notice} onDismiss={() => setNotice(null)} />
+            ) : null}
           </View>
         ),
         footer: (
@@ -1295,7 +1367,9 @@ export default function CheckoutSheet({
             {statusStrip}
             {amountBlock}
             {addressBlock}
-            {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {notice ? (
+              <Notice notice={notice} onDismiss={() => setNotice(null)} />
+            ) : null}
             {/* Stays in the scroll: it is the tail of the status narrative, and
                 the Close it mentions is pinned directly below it. */}
             <Body
@@ -1320,7 +1394,9 @@ export default function CheckoutSheet({
           {amountBlock}
           {addressBlock}
           {warning}
-          {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+          {notice ? (
+            <Notice notice={notice} onDismiss={() => setNotice(null)} />
+          ) : null}
         </View>
       ),
       footer: (
@@ -1339,7 +1415,9 @@ export default function CheckoutSheet({
   })();
 
   return (
-    <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: SCRIM }}>
+    <View
+      style={{ flex: 1, justifyContent: "flex-end", backgroundColor: SCRIM }}
+    >
       <Pressable
         style={{ flex: 1 }}
         onPress={close}

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
 
-const HERO = require("../../assets/images/paradigm_logo.png");
+const HERO = require("../../assets/images/logo.png");
 /** The gold artwork's own ratio — width drives, height follows. */
 const HERO_ASPECT = 1100 / 1326;
 /**
@@ -67,7 +67,7 @@ export default function WelcomeScreen({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  const heroW = Math.min(width * 0.54, 230);
+  const heroW = Math.min(width * 0.35, 180);
 
   const mark = useRef(new Animated.Value(0)).current;
   // One driver for the whole stack below the mark; each line reads a different
@@ -189,7 +189,7 @@ export default function WelcomeScreen({
               textAlign: "center",
             }}
           >
-            Paradigm
+            KashPlus
           </Text>
         </Animated.View>
       </View>

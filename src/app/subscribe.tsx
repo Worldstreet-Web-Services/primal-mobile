@@ -77,11 +77,11 @@ export default function Subscribe() {
         // Two different situations wear the same button.
         //
         // Mid-app (a naira screen 403'd and pushed here) Back means "return to
-        // what I was doing". But at the DOOR — signed in, onboarding not yet
-        // done, membership unpaid — there is nothing behind this screen: it is
-        // the gate. Falling back to /hub there would walk an unpaid user
-        // straight into the app the gate exists to hold, so the only honest
-        // exit is out of the account entirely.
+        // what I was doing". But at the DOOR — signed in, app lock set,
+        // membership unpaid — there is nothing behind this screen: it is the
+        // gate. Falling back to /home there would walk an unpaid user straight
+        // into the app the gate exists to hold, so the only honest exit is out
+        // of the account entirely.
         onBack={
           barred
             ? () => void signOut()

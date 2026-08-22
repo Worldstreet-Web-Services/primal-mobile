@@ -28,9 +28,6 @@ export default function RootLayout() {
     "Urbanist-SemiBold": require("@/assets/fonts/Urbanist-SemiBold.ttf"),
     "Urbanist-Bold": require("@/assets/fonts/Urbanist-Bold.ttf"),
     "Urbanist-ExtraBold": require("@/assets/fonts/Urbanist-ExtraBold.ttf"),
-    // Kept for figures only — see the note on `F.mono` in theme/tokens.
-    "GeistMono-Regular": require("@/assets/fonts/GeistMono-Regular.ttf"),
-    "GeistMono-SemiBold": require("@/assets/fonts/GeistMono-SemiBold.ttf"),
   });
 
   useEffect(() => {

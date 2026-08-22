@@ -18,7 +18,7 @@ module.exports = {
         // Money semantics stay green/red — never paint a gain in the brand color.
         up: { DEFAULT: "#7CE7B0", tint: "#7CE7B01F" },
         down: { DEFAULT: "#F6A5A5" },
-        canvas: { DEFAULT: "#0A0B0D", raised: "#141519", inset: "#1C1E24" },
+        canvas: { DEFAULT: "#000000", raised: "#141414", inset: "#1E1E20" },
         // Chart "now" marker — never a money semantic. See `C.highlight`.
         highlight: { DEFAULT: "#D9F24B", ink: "#12180A" },
         silver: { DEFAULT: "#C7CCD1", muted: "#8A9096", faint: "#4A4F56" },

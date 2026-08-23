@@ -3,7 +3,7 @@ import { Animated, Easing, View, type ViewStyle } from "react-native";
 import Svg, { G, Path } from "react-native-svg";
 
 /**
- * The Paradigm mark, as geometry rather than artwork.
+ * The KashPlus mark, as geometry rather than artwork.
  *
  * Three bars, tallest to shortest, drawn from the supplied 31x44 source. Being
  * vector rather than a PNG is what lets it be tinted to any ground, scaled to a
@@ -36,7 +36,7 @@ function box(width?: number, height?: number) {
  * The static mark. Size it by `width` OR `height` — the other follows the
  * artwork's ratio, so it can never be stretched by setting only one.
  */
-export function ParadigmMark({
+export function KashPlusMark({
   width,
   height,
   color = "#FFFFFF",
@@ -78,7 +78,7 @@ const HOLD = 620;
  * the native driver at the cost of the bars no longer sharing one coordinate
  * space, which is how a logo drifts out of alignment.
  */
-export function ParadigmLoader({
+export function KashPlusLoader({
   width,
   height = 44,
   color = "#FFFFFF",

@@ -19,6 +19,7 @@ export default function UnlockScreen({
   checking = false,
   biometricsAvailable = true,
   biometricLabel = "Face ID",
+  error = null,
 }: {
   /** Resolves false on a wrong PIN so the dots can clear for a retry. */
   onPin?: (pin: string) => Promise<boolean>;
@@ -26,8 +27,15 @@ export default function UnlockScreen({
   checking?: boolean;
   biometricsAvailable?: boolean;
   biometricLabel?: string;
+  /**
+   * Why the last attempt failed. Takes the place of the prompt above the dots
+   * rather than arriving as a toast — the answer belongs on the thing that was
+   * rejected, not in a banner over the top of the screen.
+   */
+  error?: string | null;
 }) {
   const [pin, setPin] = useState("");
+  const [shake, setShake] = useState(0);
 
   const handleKey = async (k: string) => {
     if (checking) return;
@@ -42,8 +50,12 @@ export default function UnlockScreen({
     if (next.length < 4) return;
 
     const ok = await onPin?.(next);
-    // Clear on failure so the next attempt starts from an empty keypad.
-    if (!ok) setPin("");
+    // Clear on failure so the next attempt starts from an empty keypad, and
+    // bump the nonce so the dots reject it whether or not the copy changed.
+    if (!ok) {
+      setPin("");
+      setShake((n) => n + 1);
+    }
   };
   return (
     <View
@@ -109,12 +121,19 @@ export default function UnlockScreen({
           <Label style={{ textAlign: "center" }}>Unlocking…</Label>
         </View>
       ) : (
-        <Label style={{ textAlign: "center", marginTop: 20 }}>
-          {biometricsAvailable ? "Or enter your PIN" : "Enter your PIN"}
+        <Label
+          style={{
+            textAlign: "center",
+            marginTop: 20,
+            color: error ? C.down : undefined,
+          }}
+        >
+          {error ??
+            (biometricsAvailable ? "Or enter your PIN" : "Enter your PIN")}
         </Label>
       )}
       <View style={{ marginTop: 14 }}>
-        <PinDots filled={pin.length} />
+        <PinDots filled={pin.length} shake={shake} />
       </View>
       {/* Dimmed, not unmounted: the keypad keeps its place so the screen does
           not jump, and `handleKey` already ignores presses while checking. */}

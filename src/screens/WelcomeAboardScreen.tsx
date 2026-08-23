@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ParadigmMark } from "@/components/ParadigmMark";
+import { KashPlusMark } from "@/components/KashPlusMark";
 import { BrandLoading } from "../components/BrandLoading";
 import { MetalButton } from "../components/ui";
 import { C, F } from "../theme/tokens";
@@ -151,7 +151,7 @@ export default function WelcomeAboardScreen({
             step(0),
           ]}
         >
-          <ParadigmMark height={30} color={C.text} />
+          <KashPlusMark height={30} color={C.text} />
           <Text
             style={{
               fontFamily: F.displayBold,

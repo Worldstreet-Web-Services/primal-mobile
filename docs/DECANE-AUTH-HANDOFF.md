@@ -39,7 +39,7 @@ setVaultSigner({
 Used by: `startGame()` / `wager(gameId)` / `claim()` on the King of Night
 vault (v4 proxy `0x202Af4dB1F742782709873040Afd6c99190E2684`, Base 8453).
 Plays are floored at **$50** (`PLAY_TARGET_USD` in `src/lib/vault/format.ts`)
-for Paradigm-started games.
+for KashPlus-started games.
 
 ## 2. Crypto — `src/lib/crypto/wallet.ts`
 

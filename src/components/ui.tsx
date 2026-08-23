@@ -3,11 +3,13 @@ import {
   isLiquidGlassAvailable,
   type GlassStyle,
 } from "expo-glass-effect";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Easing,
   Pressable,
   ScrollView,
   Text,
@@ -17,7 +19,7 @@ import {
 } from "react-native";
 import Svg, { Path, Polyline } from "react-native-svg";
 import { C, F } from "../theme/tokens";
-import { ParadigmLoader } from "./ParadigmMark";
+import { KashPlusLoader } from "./KashPlusMark";
 
 export function Screen({
   children,
@@ -580,7 +582,7 @@ type PillProps = {
  * loud member rather than as three unrelated buttons.
  */
 /**
- * Ark's beveled pill, ported to Paradigm.
+ * Ark's beveled pill, ported to KashPlus.
  *
  * Structure is Ark's spec verbatim (its `src/components/common/Button.tsx`,
  * dated 2026-07-31) because the client asked for the same button: TWO stacked
@@ -619,7 +621,7 @@ function AuthPill({
     // The mark falling into place rather than a platform spinner. This wait is
     // ours — a provider round-trip, sometimes key generation — and long enough
     // that a system spinner reads as a stall.
-    <ParadigmLoader height={22} color={skin.text} />
+    <KashPlusLoader height={22} color={skin.text} />
   ) : (
     <>
       {icon}
@@ -1137,26 +1139,109 @@ export function SegTabs({
   );
 }
 
-export function PinDots({ filled }: { filled: number }) {
+/** The empty bead's resting ground, and the one it is rejected in. */
+const DOT_EMPTY = "rgba(199,204,209,0.22)";
+/** `C.down` at the same weight — a wrong PIN colours the row it was typed into. */
+const DOT_REJECTED = "rgba(246,165,165,0.42)";
+
+/** Where each leg of the shake lands, in px, and how long a leg takes. */
+const SHAKE_LEGS = [-9, 9, -7, 7, -3, 0];
+const SHAKE_LEG_MS = 55;
+
+/**
+ * Four beads that fill as digits land — and the place a rejected PIN is felt.
+ *
+ * `shake` is a nonce rather than a boolean because the same PIN typed wrong
+ * twice is the same error state twice over, and a boolean would animate only
+ * the first of them. Bumping a number makes every rejection its own event, so
+ * the effect fires on the *change* rather than on the value.
+ *
+ * The three cues are deliberately one gesture: the row shakes, the device
+ * buzzes, and the empty beads take the down colour and let it go. The colour is
+ * what remains for anyone whose phone has no taptic engine or who has turned
+ * the haptic off — the rejection must not depend on being felt.
+ */
+export function PinDots({
+  filled,
+  shake = 0,
+}: {
+  filled: number;
+  /** Bump to reject the entry: the row shakes, buzzes and flushes red. */
+  shake?: number;
+}) {
+  const x = useMemo(() => new Animated.Value(0), []);
+  const flush = useMemo(() => new Animated.Value(0), []);
+  // Mounting is not a rejection — only a change to `shake` is one. Read in the
+  // effect only, which is where a ref is allowed to be looked at.
+  const seen = useRef(shake);
+
+  useEffect(() => {
+    if (shake === seen.current) return;
+    seen.current = shake;
+
+    // Fired with the first displacement rather than ahead of it, so the buzz
+    // and the movement read as one event. It rejects on web and on a device
+    // with the motor disabled, neither of which is a failure worth surfacing.
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+      () => {},
+    );
+
+    x.setValue(0);
+    flush.setValue(1);
+    Animated.parallel([
+      Animated.sequence(
+        SHAKE_LEGS.map((to) =>
+          Animated.timing(x, {
+            toValue: to,
+            duration: SHAKE_LEG_MS,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ),
+      ),
+      // Held for the length of the shake, then released. Its own driver because
+      // `backgroundColor` is not a transform and cannot go native.
+      Animated.timing(flush, {
+        toValue: 0,
+        duration: 520,
+        delay: SHAKE_LEGS.length * SHAKE_LEG_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [shake, x, flush]);
+
+  const ground = flush.interpolate({
+    inputRange: [0, 1],
+    outputRange: [DOT_EMPTY, DOT_REJECTED],
+  });
+
   return (
-    <View style={{ flexDirection: "row", justifyContent: "center", gap: 16 }}>
+    <Animated.View
+      style={{
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 16,
+        transform: [{ translateX: x }],
+      }}
+    >
       {[0, 1, 2, 3].map((i) => (
-        <View
+        <Animated.View
           key={i}
           style={{
             width: 25,
             height: 25,
             borderRadius: 50,
             overflow: "hidden",
-            backgroundColor: i < filled ? undefined : "rgba(199,204,209,0.22)",
+            backgroundColor: i < filled ? undefined : ground,
           }}
         >
           {/* Filled dots are milled beads, not white pips — same light source
               as every other metal face on the screen. */}
           {i < filled ? <MetalFill radius={8} shine={false} /> : null}
-        </View>
+        </Animated.View>
       ))}
-    </View>
+    </Animated.View>
   );
 }
 

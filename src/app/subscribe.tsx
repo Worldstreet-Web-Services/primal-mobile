@@ -56,6 +56,21 @@ export default function Subscribe() {
 
   const close = useCallback(() => setCheckout(null), []);
 
+  /**
+   * The only honest exit from the gate — see `barred` above.
+   *
+   * A plain sign-out: the app lock stays on the device, so someone who backed
+   * out at the paywall and later decides to pay signs in and is straight back
+   * here, rather than re-creating a PIN to reach a screen they have already
+   * seen. Navigating explicitly because nothing else will — this route has no
+   * redirect of its own, and without it signing out leaves the paywall on
+   * screen with no session behind it.
+   */
+  const leave = useCallback(async () => {
+    await signOut();
+    router.replace("/signin");
+  }, [signOut]);
+
   const entitled = useCallback(() => {
     // The gateway is the only authority on entitlement, so ask it again rather
     // than assuming a settled payment has propagated yet.
@@ -84,7 +99,7 @@ export default function Subscribe() {
         // of the account entirely.
         onBack={
           barred
-            ? () => void signOut()
+            ? () => void leave()
             : () => (router.canGoBack() ? router.back() : router.replace("/home"))
         }
         backLabel={barred ? "Sign out" : "Close"}

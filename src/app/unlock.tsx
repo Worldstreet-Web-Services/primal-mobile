@@ -30,6 +30,10 @@ export default function Unlock() {
 
   const [checking, setChecking] = useState(false);
   const [attempts, setAttempts] = useState(0);
+  // Shown above the dots by the screen itself. A wrong PIN used to raise a
+  // toast, which put the verdict at the top of the screen and the shake at the
+  // bottom; the screen now rejects the entry where the entry happened.
+  const [pinError, setPinError] = useState<string | null>(null);
   const [biometricsLocked, setBiometricsLocked] = useState(false);
   const promptedOnMount = useRef(false);
 
@@ -41,6 +45,7 @@ export default function Unlock() {
 
   const runBiometrics = useCallback(async () => {
     setChecking(true);
+    setPinError(null);
     try {
       const outcome = await unlockWithBiometrics();
       if (outcome.ok) {
@@ -80,6 +85,7 @@ export default function Unlock() {
     setChecking(true);
     try {
       if (await unlockWithPin(pin)) {
+        setPinError(null);
         done();
         return true;
       }
@@ -88,16 +94,20 @@ export default function Unlock() {
       setAttempts(used);
 
       if (used >= MAX_PIN_ATTEMPTS) {
-        toast.error("Too many attempts", "Sign in again to continue.");
-        await signOut();
-        router.replace("/welcome");
+        toast.error("Too many attempts", "Sign in again to set a new PIN.");
+        // `forget` — the one sign-out that must take the app lock with it.
+        // Whoever is holding the phone does not know this PIN, so keeping it
+        // would hand them back the same wall after they sign in, with no way
+        // through it. They re-authenticate and set a new one.
+        await signOut({ forget: true });
+        router.replace("/signin");
         return false;
       }
 
-      toast.error(
-        "Wrong PIN",
-        `${MAX_PIN_ATTEMPTS - used} ${MAX_PIN_ATTEMPTS - used === 1 ? "try" : "tries"} left.`,
-      );
+      const left = MAX_PIN_ATTEMPTS - used;
+      setPinError(`Wrong PIN · ${left} ${left === 1 ? "try" : "tries"} left`);
+      // `false` is what makes the dots shake — the screen bumps its own nonce
+      // on a rejected entry, so nothing here has to reach into the animation.
       return false;
     } finally {
       setChecking(false);
@@ -114,6 +124,7 @@ export default function Unlock() {
           biometricsEnabled && !!capability?.available && !biometricsLocked
         }
         biometricLabel={capability?.label ?? "Face ID"}
+        error={pinError}
       />
     </SafeAreaView>
   );

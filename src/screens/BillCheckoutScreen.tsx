@@ -389,7 +389,7 @@ export default function BillCheckoutScreen({
 
       {!fee ? (
         <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
-          Paradigm adds nothing to this. If the biller charges a fee it appears
+          KashPlus adds nothing to this. If the biller charges a fee it appears
           on this receipt the moment the purchase is placed.
         </Body>
       ) : null}
@@ -422,7 +422,7 @@ export default function BillCheckoutScreen({
           </Body>
           <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
             {error ??
-              "Bills need an active Paradigm plan. Your sign-in is fine — only the plan has lapsed."}
+              "Bills need an active KashPlus plan. Your sign-in is fine — only the plan has lapsed."}
           </Body>
           <Body size={11.5} color={C.dim} style={{ marginTop: 8, lineHeight: 17 }}>
             Nothing was taken. Renew, and this same purchase can be sent

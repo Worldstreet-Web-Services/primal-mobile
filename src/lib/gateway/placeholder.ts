@@ -148,9 +148,9 @@ const EMPTY: State = {
   canceled: false,
 };
 
-const KEY = "paradigm.gateway.placeholder_state";
+const KEY = "kashplus.gateway.placeholder_state";
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 const isWeb = Platform.OS === "web";

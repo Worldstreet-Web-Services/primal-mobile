@@ -328,7 +328,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             ? `Open a table · $${PLAY_TARGET_USD}`
             : `Take the crown · $${PLAY_TARGET_USD}`;
   // Joining an existing game floors at ITS minWager; starting one is where
-  // Paradigm applies the $50 product stake.
+  // KashPlus applies the $50 product stake.
   const primaryAction = live && featured ? handleJoin : handleStart;
   const minWagerEth = featured ? ethLabel(featured.minWager) : null;
 
@@ -752,7 +752,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             </Mono>
           )}
           <Body size={11} color={C.dim} style={{ textAlign: "center", marginTop: 4 }}>
-            Many pots, many clocks — Paradigm
+            Many pots, many clocks — KashPlus
           </Body>
         </View>
       </Screen>

@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ParadigmLoader, ParadigmMark } from "@/components/ParadigmMark";
+import { KashPlusLoader, KashPlusMark } from "@/components/KashPlusMark";
 import {
   Body,
   GhostButton,
@@ -147,7 +147,7 @@ function priceText(m: Money): string {
 function Lockup() {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <ParadigmMark height={26} color={C.text} />
+      <KashPlusMark height={26} color={C.text} />
       <Text
         style={{
           fontFamily: F.display,
@@ -156,7 +156,7 @@ function Lockup() {
           color: C.text,
         }}
       >
-        Paradigm
+        KashPlus
       </Text>
     </View>
   );
@@ -594,7 +594,7 @@ export default function SubscriptionScreen({
           <Lockup />
         </View>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ParadigmLoader height={38} color={C.brand} />
+          <KashPlusLoader height={38} color={C.brand} />
           <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
             Checking your membership
           </Body>
@@ -656,7 +656,7 @@ export default function SubscriptionScreen({
               marginTop: 12,
             }}
           >
-            {ending ? "Your membership is ending" : "You have Paradigm"}
+            {ending ? "Your membership is ending" : "You have KashPlus"}
           </Text>
 
           {/* Composed rather than interpolated, because the price is money and
@@ -862,11 +862,11 @@ export default function SubscriptionScreen({
               color: C.text,
             }}
           >
-            Get exclusive benefits with Paradigm subscription
+            Get exclusive benefits with KashPlus subscription
           </Text>
 
           <Body size={15} color={C.sub} style={{ marginTop: 14, lineHeight: 23 }}>
-            Get exclusive benefits with Paradigm Subscription{" "}
+            Get exclusive benefits with KashPlus Subscription{" "}
             {/* The figure goes through `Mono` for the tabular numerals, and
                 `monoSemibold` — the same cut `bodySemibold` resolves to — so it
                 keeps the weight the design gives it against the sentence. */}

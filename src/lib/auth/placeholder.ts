@@ -14,10 +14,14 @@
  *   recognisable on sight as a stand-in. Real shape matters because the address
  *   is what the SIWE message carries, what `refundTo` is validated against, and
  *   what the app compares to detect a wallet change.
- * - **Minted per sign-in.** Each sign-in is a NEW address, which is what makes
- *   it a new account: the placeholder gateway keys membership to the wallet, so
- *   signing out and back in walks the full onboarding sequence again rather
- *   than landing on a paid account nobody paid for.
+ * - **Minted once, then kept.** The address survives a sign-out, the way the
+ *   real SDK keeps its device key share: signing in with the same identity
+ *   gives you back the same wallet, and therefore the same membership. It used
+ *   to mint a fresh one on every sign-in, which made a dev build model a
+ *   DIFFERENT person signing in each time — so the one path that most needs
+ *   exercising, a returning user coming back to an account they already set up,
+ *   could not be reached at all. A genuinely new account is `signOut({ forget:
+ *   true })`, which is what "switch account" calls.
  * - **Persisted.** It survives a relaunch, so a returning user is restored the
  *   way a returning user is — locked, onboarded, and still a member.
  *
@@ -34,10 +38,10 @@ import { Platform } from "react-native";
 
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
 
-const KEY = "paradigm.auth.placeholder_wallet";
+const KEY = "kashplus.auth.placeholder_wallet";
 
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.auth",
+  keychainService: "kashplus.auth",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
@@ -51,6 +55,15 @@ interface StoredWallet {
   address: string;
   method: AuthMethod;
   createdAt: number;
+  /**
+   * Is there a live session on this wallet right now?
+   *
+   * The wallet outlives a sign-out; the SESSION must not. Without this flag,
+   * keeping the record would mean the next launch restored a user who had
+   * signed out. Absent on records written before this existed — read as `true`,
+   * which is what they meant.
+   */
+  connected: boolean;
 }
 
 /* ------------------------------------------------------------ random hex */
@@ -89,9 +102,8 @@ async function read(): Promise<StoredWallet | null> {
     const raw = await SecureStore.getItemAsync(KEY, OPTIONS);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredWallet;
-    return typeof parsed?.address === "string" && parsed.address !== ""
-      ? parsed
-      : null;
+    if (typeof parsed?.address !== "string" || parsed.address === "") return null;
+    return { ...parsed, connected: parsed.connected !== false };
   } catch {
     // Corrupt, or a keychain that will not open: sign in again.
     return null;
@@ -127,36 +139,56 @@ function toSession(wallet: StoredWallet, isNewUser: boolean): DecaneSession {
   };
 }
 
-/** Sign in: mint a fresh wallet, and with it a fresh account. */
+/**
+ * Sign in: reconnect the wallet this device already holds, or mint one.
+ *
+ * Reusing it is the whole point — it is what makes signing back in restore the
+ * same account, membership included, instead of standing up a stranger.
+ */
 export async function signIn(method: AuthMethod): Promise<DecaneSession> {
   // The real SDK takes a beat here — key generation, an unlock-tier probe, a
   // network round trip. Screens have progress states for it, and a stand-in
   // that returned instantly would leave them untested.
   await new Promise((resolve) => setTimeout(resolve, 900));
 
-  const wallet: StoredWallet = {
-    address: mintAddress(),
-    method,
-    createdAt: Date.now(),
-  };
+  const existing = await read();
+  const wallet: StoredWallet = existing
+    ? { ...existing, method, connected: true }
+    : { address: mintAddress(), method, createdAt: Date.now(), connected: true };
+
   await write(wallet);
-  return toSession(wallet, true);
+  // `isNewUser` tracks the WALLET, not the session: coming back to one that was
+  // already here is not a new user, and claiming otherwise would put the
+  // first-run beats in front of someone who has seen them.
+  return toSession(wallet, !existing);
 }
 
-/** Launch path: whatever was minted last, or `null` if sign-in is needed. */
+/** Launch path: the stored wallet, unless its session was signed out. */
 export async function restoreSession(): Promise<DecaneSession | null> {
   const wallet = await read();
-  return wallet ? toSession(wallet, false) : null;
+  return wallet?.connected ? toSession(wallet, false) : null;
 }
 
-export async function signOut(): Promise<void> {
-  memory = null;
-  if (isWeb) return;
+/**
+ * End the session. `forget` also destroys the wallet, which is the only way to
+ * get a genuinely different account out of this module — the stand-in gateway
+ * keys membership to the address, so a forgotten wallet is an unpaid one.
+ */
+export async function signOut({ forget = false }: { forget?: boolean } = {}): Promise<void> {
+  const wallet = forget ? null : await read();
+
+  if (isWeb) {
+    memory = wallet ? { ...wallet, connected: false } : null;
+    return;
+  }
+
   try {
-    await SecureStore.deleteItemAsync(KEY, OPTIONS);
+    if (wallet) await write({ ...wallet, connected: false });
+    else await SecureStore.deleteItemAsync(KEY, OPTIONS);
   } catch {
     // Nothing to do — the caller clears the rest of the local state regardless.
   }
+  memory = null;
 }
 
 /**

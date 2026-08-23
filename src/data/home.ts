@@ -109,7 +109,7 @@ export const media: MediaItem[] = [
     kind: "news",
     title: "The week the desk stopped",
     kicker: "Hot news",
-    byline: "Paradigm Desk",
+    byline: "KashPlus Desk",
     duration: "4 min read",
     artwork: require("../../assets/images/media/hot-news.png"),
   },

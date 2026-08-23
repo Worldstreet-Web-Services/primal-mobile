@@ -5,7 +5,7 @@ import { getCryptoWallet } from "@/lib/crypto/wallet";
 
 // Live portfolio for the wallet seam's addresses. Ark's store polls every
 // 60s; this one refreshes politely — on screen mount (`ensure`, stale-guarded)
-// and on manual refresh — because Paradigm has no signed-in wallets yet and
+// and on manual refresh — because KashPlus has no signed-in wallets yet and
 // hot-polling public RPCs from a demo build is noise. Ark's hard rule ports
 // intact: a fetch failure with no data flags error — never $0.00.
 

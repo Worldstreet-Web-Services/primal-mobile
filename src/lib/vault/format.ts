@@ -61,7 +61,7 @@ export function moneyFromWei(wei: string, usdPerEth: number): Money {
 }
 
 /**
- * Product floor for games started from Paradigm. The starter's stake becomes
+ * Product floor for games started from KashPlus. The starter's stake becomes
  * that game's minWager for every joiner, so a $50 start makes it a $50 game
  * for everyone. The contract-global minStartStake floor (~$0.37 today) is
  * Worldstreet's config, not ours — joining an EXTERNAL game floors at that

@@ -272,7 +272,7 @@ export default function FiatSpaceScreen({
         return (
           <StatePanel
             title="Sign in to use naira"
-            body="Your Paradigm account holds the naira balance. Sign in and it comes back with you."
+            body="Your KashPlus account holds the naira balance. Sign in and it comes back with you."
             action="Sign in"
             onAction={onNeedsSignIn}
           />
@@ -281,7 +281,7 @@ export default function FiatSpaceScreen({
         return (
           <StatePanel
             title="Subscription required"
-            body="Naira deposits, transfers and your account number are part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing."
+            body="Naira deposits, transfers and your account number are part of a KashPlus subscription. Your sign-in is fine — the subscription is what is missing."
             action="See the plan"
             onAction={onNeedsSubscription}
           />
@@ -296,8 +296,8 @@ export default function FiatSpaceScreen({
             title="Your payment is still on its way"
             body={
               watching
-                ? "Paradigm has your subscription and is waiting for the transfer to land. Nothing here needs paying twice — this screen is re-checking."
-                : "Paradigm has your subscription and is waiting for the transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing here needs paying twice."
+                ? "KashPlus has your subscription and is waiting for the transfer to land. Nothing here needs paying twice — this screen is re-checking."
+                : "KashPlus has your subscription and is waiting for the transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing here needs paying twice."
             }
             action="Check now"
             onAction={reload}
@@ -311,7 +311,7 @@ export default function FiatSpaceScreen({
             title="Switching your membership on"
             body={
               watching
-                ? "Your payment is in. Paradigm is waiting for the gateway to open the naira side, which usually takes a moment. Nothing needs paying again — this screen is re-checking."
+                ? "Your payment is in. KashPlus is waiting for the gateway to open the naira side, which usually takes a moment. Nothing needs paying again — this screen is re-checking."
                 : "Your payment is in and the gateway has not opened the naira side yet. It is taking longer than usual — check whenever you want the latest. Nothing needs paying again."
             }
             action="Check now"
@@ -322,7 +322,7 @@ export default function FiatSpaceScreen({
         return (
           <StatePanel
             title="Open your naira account"
-            body="A one-time check — your name, phone, email and BVN — opens an account number in your own name. Money sent to it lands in Paradigm."
+            body="A one-time check — your name, phone, email and BVN — opens an account number in your own name. Money sent to it lands in KashPlus."
             action="Start"
             onAction={onProvision}
           />
@@ -364,7 +364,7 @@ export default function FiatSpaceScreen({
           <StatePanel
             tone="warn"
             title={`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}`}
-            body="Paradigm does not recognise the state your account is in, so it is not showing you a balance it cannot vouch for. Try again in a moment."
+            body="KashPlus does not recognise the state your account is in, so it is not showing you a balance it cannot vouch for. Try again in a moment."
             action="Check again"
             onAction={reload}
           />
@@ -374,7 +374,7 @@ export default function FiatSpaceScreen({
           <StatePanel
             tone="bad"
             title="Could not load your account"
-            body={error ?? "Something went wrong reaching Paradigm."}
+            body={error ?? "Something went wrong reaching KashPlus."}
             action="Try again"
             onAction={reload}
           />
@@ -413,7 +413,7 @@ export default function FiatSpaceScreen({
               —
             </Display>
             <Body size={11.5} color={C.down} style={{ marginTop: 8, lineHeight: 17 }}>
-              {balanceError ?? "Paradigm could not read the balance the gateway sent."}
+              {balanceError ?? "KashPlus could not read the balance the gateway sent."}
             </Body>
             <Pressable
               onPress={reload}

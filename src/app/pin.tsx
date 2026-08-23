@@ -16,7 +16,7 @@ export default function Pin() {
     setSaving(true);
     try {
       await createPin(pin);
-      toast.success("PIN set", "You'll enter it every time money leaves Paradigm.");
+      toast.success("PIN set", "You'll enter it every time money leaves KashPlus.");
       router.replace("/passkey");
     } catch {
       toast.error("Couldn't save your PIN", "Try once more.");
@@ -27,13 +27,7 @@ export default function Pin() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
-      <CreatePinScreen
-        onDone={onDone}
-        onMismatch={() =>
-          toast.warning("PINs didn't match", "Start again with your new PIN.")
-        }
-        saving={saving}
-      />
+      <CreatePinScreen onDone={onDone} saving={saving} />
     </SafeAreaView>
   );
 }

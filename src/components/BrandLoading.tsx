@@ -6,7 +6,7 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { C, F } from "../theme/tokens";
-import { ParadigmLoader } from "./ParadigmMark";
+import { KashPlusLoader } from "./KashPlusMark";
 
 const CROWN = require("@/assets/images/crown.png");
 /** The artwork's own ratio (563x418) — width drives, height follows. */
@@ -102,7 +102,7 @@ function Glow({
  * through the 170ms exit, after which it renders nothing. Callers who would
  * rather mount it conditionally can: it fades in from zero either way, and
  * every animation it owns is stopped on unmount (the falling mark stops its own
- * loop in `ParadigmLoader`), so it is safe to put on a screen that mounts it
+ * loop in `KashPlusLoader`), so it is safe to put on a screen that mounts it
  * and tears it down a dozen times in a row.
  */
 export function BrandLoading({
@@ -226,7 +226,7 @@ export function BrandLoading({
               the bars land in the crown's own dark opening, so a disc behind
               them only smudged the gold it was supposed to be seating them
               against. */}
-          <ParadigmLoader
+          <KashPlusLoader
             height={markH}
             color={C.text}
             style={{ position: "absolute" }}

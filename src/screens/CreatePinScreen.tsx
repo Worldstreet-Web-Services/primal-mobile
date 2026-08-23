@@ -17,21 +17,24 @@ import {
  */
 export default function CreatePinScreen({
   onDone,
-  onMismatch,
   saving = false,
 }: {
   onDone?: (pin: string) => void;
-  onMismatch?: () => void;
   saving?: boolean;
 }) {
   const [pin, setPin] = useState("");
   const [first, setFirst] = useState<string | null>(null);
+  const [shake, setShake] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const confirming = first !== null;
 
   const onKey = (k: string) => {
     if (saving) return;
 
+    // Any new digit is a fresh attempt: the last verdict stops applying the
+    // moment the user starts answering it.
+    setError(null);
     if (k === "del") {
       setPin(pin.slice(0, -1));
       return;
@@ -53,10 +56,13 @@ export default function CreatePinScreen({
         onDone?.(next);
         return;
       }
-      // Mismatch: start over from the first entry, not the confirm.
+      // Mismatch: start over from the first entry, not the confirm. The dots
+      // shake and buzz where the digits were typed, so the correction reads as
+      // a rejection of *this* entry rather than a notice about the screen.
       setFirst(null);
       setPin("");
-      onMismatch?.();
+      setShake((n) => n + 1);
+      setError("Those didn’t match. Start again.");
     }, 220);
   };
 
@@ -84,14 +90,20 @@ export default function CreatePinScreen({
         >
           {confirming
             ? "Enter the same 4 digits again."
-            : "4 digits. You’ll enter it every time money leaves Paradigm."}
+            : "4 digits. You’ll enter it every time money leaves KashPlus."}
         </Body>
       </View>
       <View style={{ marginTop: 44 }}>
-        <PinDots filled={pin.length} />
+        <PinDots filled={pin.length} shake={shake} />
       </View>
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        {saving ? <Spinner color={C.silver} /> : null}
+        {saving ? (
+          <Spinner color={C.silver} />
+        ) : error ? (
+          <Body size={12.5} color={C.down}>
+            {error}
+          </Body>
+        ) : null}
       </View>
       <Keypad onKey={onKey} />
     </View>

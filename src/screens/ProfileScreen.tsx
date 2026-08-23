@@ -171,6 +171,7 @@ export default function ProfileScreen({
   top = 0,
   bottom = 40,
   onSignOut,
+  onSwitchAccount,
   signingOut = false,
   addresses,
 }: {
@@ -181,6 +182,13 @@ export default function ProfileScreen({
   /** Tail space — raise it when something overlays the bottom of the screen. */
   bottom?: number;
   onSignOut?: () => void;
+  /**
+   * Sign out AND forget this device's app lock, so the next person sets up
+   * their own PIN. Deliberately a separate, quieter action: an ordinary sign
+   * out keeps the PIN, and someone stepping away from their own phone must not
+   * have to re-run onboarding to come back to it.
+   */
+  onSwitchAccount?: () => void;
   signingOut?: boolean;
   /** Real Decane wallet addresses. Absent until a session exists. */
   addresses?: { evm?: string; solana?: string; tron?: string } | null;
@@ -356,14 +364,30 @@ export default function ProfileScreen({
         </View>
       </Card>
 
-      <View style={{ marginTop: 28 }}>
+      <View className="mt-7">
         <OutlineButton
           label={signingOut ? "Signing out…" : "Sign out"}
           color={C.down}
           height={50}
           onPress={signingOut ? undefined : onSignOut}
         />
+        <Text className="mt-3 text-center font-body text-[11.5px] leading-4 text-silver-muted">
+          Your PIN stays on this phone — sign back in and you’re straight in.
+        </Text>
       </View>
+
+      {onSwitchAccount ? (
+        <Pressable
+          onPress={signingOut ? undefined : onSwitchAccount}
+          accessibilityRole="button"
+          accessibilityLabel="Switch account"
+          className="mt-4 self-center px-3 py-2"
+        >
+          <Text className="font-body-medium text-[13px] text-silver underline">
+            Switch account
+          </Text>
+        </Pressable>
+      ) : null}
 
       <Text
         style={{
@@ -375,7 +399,7 @@ export default function ProfileScreen({
           marginTop: 18,
         }}
       >
-        PARADIGM · KEYS SPLIT THREE WAYS
+        KASHPLUS · KEYS SPLIT THREE WAYS
       </Text>
     </Screen>
   );

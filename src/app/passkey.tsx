@@ -37,7 +37,7 @@ export default function Passkey() {
           `${capability.label} enabled`,
           capability.placeholder
             ? "Simulated — this build has no real biometric to check."
-            : "Use it to unlock Paradigm.",
+            : "Use it to unlock KashPlus.",
         );
         finish();
         return;
@@ -58,7 +58,7 @@ export default function Passkey() {
     // Deliberately does not promise a Profile toggle: there is no wired control
     // there yet, and the lock screen now honours this choice, so "any time in
     // Profile" would be the one instruction the app cannot carry out.
-    toast.info("Skipped", "Your PIN unlocks Paradigm.");
+    toast.info("Skipped", "Your PIN unlocks KashPlus.");
     finish();
   };
 

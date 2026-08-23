@@ -458,7 +458,7 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "SIGN IN FIRST")}
         <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
-          Sign in to Paradigm and this account opens against your own identity.
+          Sign in to KashPlus and this account opens against your own identity.
         </Body>
         <View style={{ marginTop: 20 }}>
           <MetallicButton label="Sign in" onPress={onNeedsSignIn} />
@@ -472,7 +472,7 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "SUBSCRIPTION REQUIRED")}
         <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
-          A naira account is part of a Paradigm subscription. Nothing is wrong with your sign-in —
+          A naira account is part of a KashPlus subscription. Nothing is wrong with your sign-in —
           the subscription is what is missing.
         </Body>
         <View style={{ marginTop: 20 }}>
@@ -509,7 +509,7 @@ export default function KycScreen({
           </View>
           <Body size={12.5} color={C.sub} style={{ marginTop: 12, lineHeight: 19 }}>
             {paying
-              ? "Paradigm is waiting for your subscription transfer to land. A naira account opens the moment it does — nothing here needs paying twice."
+              ? "KashPlus is waiting for your subscription transfer to land. A naira account opens the moment it does — nothing here needs paying twice."
               : "Your payment is in and the gateway is still switching the naira side on. It usually takes a moment, and nothing needs paying again."}
           </Body>
           <SectionRule space={16} />
@@ -603,10 +603,10 @@ export default function KycScreen({
             {account?.status === "CUSTOMER_CREATED"
               ? watching
                 ? "You are on the bank's books and your account number is being issued. This screen is watching for it."
-                : "You are on the bank's books and your account number is being issued. It is taking longer than usual, so Paradigm has stopped asking on its own — check whenever you want the latest."
+                : "You are on the bank's books and your account number is being issued. It is taking longer than usual, so KashPlus has stopped asking on its own — check whenever you want the latest."
               : watching
                 ? "The bank is checking your BVN against the name you gave. It usually takes a minute or two, and nothing needs doing from here."
-                : "The bank is still checking your BVN against the name you gave. It is taking longer than usual, so Paradigm has stopped asking on its own — check whenever you want the latest."}
+                : "The bank is still checking your BVN against the name you gave. It is taking longer than usual, so KashPlus has stopped asking on its own — check whenever you want the latest."}
           </Body>
           <SectionRule space={16} />
           {/* The cadence is only claimed while it is actually running. The hook
@@ -687,7 +687,7 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "STATUS NOT RECOGNISED")}
         <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
-          {`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}. You already have an account, and this version of Paradigm does not recognise the state it is in — so this form stays closed. Opening a second one is not the fix.`}
+          {`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}. You already have an account, and this version of KashPlus does not recognise the state it is in — so this form stays closed. Opening a second one is not the fix.`}
         </Body>
         <View style={{ marginTop: 20 }}>
           <MetallicButton label="Check again" onPress={reload} />
@@ -701,7 +701,7 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "COULD NOT CHECK")}
         <Body size={13} color={C.down} style={{ marginTop: 24, lineHeight: 19 }}>
-          {accountError ?? "Something went wrong reaching Paradigm."}
+          {accountError ?? "Something went wrong reaching KashPlus."}
         </Body>
         <View style={{ marginTop: 20 }}>
           <MetallicButton label="Try again" onPress={reload} />
@@ -753,8 +753,8 @@ export default function KycScreen({
         <View style={{ marginTop: 14 }}>
           <Body size={11.5} color={C.dim} style={{ marginBottom: 10, lineHeight: 17 }}>
             {rereading
-              ? "Paradigm is checking what that first request actually did before offering to clear it."
-              : "Paradigm is still holding the first version of this request. Clear it and your next tap sends these details as a new one."}
+              ? "KashPlus is checking what that first request actually did before offering to clear it."
+              : "KashPlus is still holding the first version of this request. Clear it and your next tap sends these details as a new one."}
           </Body>
           <GhostButton
             label="Start it again"
@@ -808,7 +808,7 @@ export default function KycScreen({
         autoCapitalize="none"
         mono
         error={show("bvn")}
-        hint="Sent once to open the account. Paradigm does not store it on this device."
+        hint="Sent once to open the account. KashPlus does not store it on this device."
       />
 
       <View
@@ -843,8 +843,8 @@ export default function KycScreen({
 
       <Body size={11} color={C.dim} style={{ marginTop: 16, textAlign: "center", lineHeight: 16.5 }}>
         {rereading
-          ? "Checking with Paradigm whether an account has already been opened for you — one moment."
-          : "Tapping this once is enough. If it times out, Paradigm re-asks about the same request rather than sending a second one."}
+          ? "Checking with KashPlus whether an account has already been opened for you — one moment."
+          : "Tapping this once is enough. If it times out, KashPlus re-asks about the same request rather than sending a second one."}
       </Body>
     </Screen>
   );

@@ -22,7 +22,7 @@ const OPEN_WHILE_LOCKED = new Set([
  * The app-wide lock.
  *
  * `index.tsx` redirects a locked user to /unlock, but that only covers the one
- * route the user actually launches into. A deep link — `paradigm://fiat`, a
+ * route the user actually launches into. A deep link — `kashplus://fiat`, a
  * notification tap, a link out of KingsChat — mounts its route directly and
  * never passes through the entry screen, so before this existed a locked device
  * would render the fiat space, balance, account number and the payout flow with

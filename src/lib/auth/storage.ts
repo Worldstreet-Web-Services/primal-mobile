@@ -5,7 +5,15 @@
  * step. `decane.getAccessToken()` is the single source for the token.
  *
  * What lives here is what Decane has no opinion about: the **transaction PIN**
- * that gates money-out (PRD §2) and the app-lock biometric preference.
+ * that gates money-out (PRD §2), the app-lock biometric preference, and the
+ * account those two were set up for.
+ *
+ * All three OUTLIVE a sign-out on purpose. Signing out ends a session; it does
+ * not un-set up the device. Wiping them meant a returning user was walked back
+ * through PIN creation and the biometric question on every sign-in, which is
+ * onboarding a device that is already onboarded. They are cleared only by
+ * `clearAll()` — switching account, or a PIN lockout, where the credentials
+ * genuinely no longer belong to whoever is holding the phone.
  *
  * SecureStore is the Keychain on iOS and Keystore-encrypted SharedPreferences
  * on Android.
@@ -16,14 +24,15 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 const KEYS = {
-  pinHash: "paradigm.auth.pin_hash",
-  pinSalt: "paradigm.auth.pin_salt",
-  biometrics: "paradigm.auth.biometrics_enabled",
+  pinHash: "kashplus.auth.pin_hash",
+  pinSalt: "kashplus.auth.pin_salt",
+  biometrics: "kashplus.auth.biometrics_enabled",
+  account: "kashplus.auth.account",
 } as const;
 
 /** Groups our entries under one service so a sign-out can't miss any. */
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.auth",
+  keychainService: "kashplus.auth",
   // The device must be unlocked to read a session, and the entry never rides a
   // backup to a new device — a stolen iCloud backup shouldn't carry a session.
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
@@ -95,6 +104,40 @@ export async function savePin(pin: string): Promise<void> {
   await put(KEYS.pinHash, await hashPin(pin, salt));
 }
 
+/* ------------------------------------------------------- account binding */
+
+/**
+ * Which account the stored PIN and biometric preference belong to.
+ *
+ * Load-bearing now that those survive a sign-out. The PIN is one device-wide
+ * entry, so without a binding the next person to sign in on this handset would
+ * inherit the last one's app lock — either locked out of their own account, or
+ * (the real hazard) let into it by a PIN its owner never chose. Callers compare
+ * this against the wallet Decane actually reports and wipe on a mismatch.
+ *
+ * Stored lowercased: an EVM address carries an EIP-55 checksum that the SDK and
+ * the gateway do not always agree on, and a case difference is not a different
+ * wallet.
+ */
+export async function rememberAccount(address: string): Promise<void> {
+  await put(KEYS.account, address.trim().toLowerCase());
+}
+
+export async function getRememberedAccount(): Promise<string | null> {
+  return get(KEYS.account);
+}
+
+/**
+ * Has this device been set up before?
+ *
+ * The one question that separates "new install" from "signed out" — and so the
+ * question that decides whether a signed-out launch shows the pitch or the
+ * sign-in screen.
+ */
+export async function hasRememberedAccount(): Promise<boolean> {
+  return (await get(KEYS.account)) !== null;
+}
+
 export async function hasPin(): Promise<boolean> {
   return (await get(KEYS.pinHash)) !== null;
 }
@@ -118,7 +161,15 @@ export async function isBiometricsEnabled(): Promise<boolean> {
   return (await get(KEYS.biometrics)) === "1";
 }
 
-/** Full local wipe — sign-out, and the recovery path when storage is corrupt. */
+/**
+ * Full local wipe: forget the PIN, the biometric preference and the account
+ * they were bound to.
+ *
+ * NOT what an ordinary sign-out calls. This is for the cases where the stored
+ * credentials have stopped describing the person holding the phone — a
+ * deliberate account switch, a different wallet signing in, or a PIN lockout —
+ * after which the app lock has to be set up again from scratch.
+ */
 export async function clearAll(): Promise<void> {
-  await Promise.all([clearPin(), setBiometricsEnabled(false)]);
+  await Promise.all([clearPin(), setBiometricsEnabled(false), drop(KEYS.account)]);
 }

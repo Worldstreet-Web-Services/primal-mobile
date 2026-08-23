@@ -299,7 +299,7 @@ export default function BillsScreen({
     return (
       <Screen top={top} center>
         <Card style={{ width: "100%", padding: 20, alignItems: "center" }}>
-          <Label>Paradigm</Label>
+          <Label>KashPlus</Label>
           <Display size={22} style={{ marginTop: 10, textAlign: "center" }}>
             Bills need an active plan
           </Display>
@@ -308,7 +308,7 @@ export default function BillsScreen({
             color={C.sub}
             style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}
           >
-            Airtime, data, power and TV run on your Paradigm subscription. Your
+            Airtime, data, power and TV run on your KashPlus subscription. Your
             sign-in is fine — only the plan has lapsed.
           </Body>
           <View style={{ height: 18 }} />

@@ -36,7 +36,7 @@ const DRIFT_RANGE = 7;
  */
 export default function ContinueScreen({
   title = "Welcome to",
-  brand = "Paradigm",
+  brand = "KashPlus",
   tagline = "Unlock your",
   taglineAccent = "financial edge",
   label = "Continue",

@@ -164,12 +164,12 @@ export default function Bills() {
       // A sentence as well as the routing: `block` is only rendered by the
       // browse screen, and a 403 raised mid-checkout would otherwise put the
       // user back on an unchanged Confirm with nothing said at all.
-      return "Bills need an active Paradigm plan. Your sign-in is fine — only the plan has lapsed.";
+      return "Bills need an active KashPlus plan. Your sign-in is fine — only the plan has lapsed.";
     }
     if (NetworkError.is(e)) {
       return e.timedOut
-        ? "Paradigm took too long to answer."
-        : "Could not reach Paradigm. Check your connection.";
+        ? "KashPlus took too long to answer."
+        : "Could not reach KashPlus. Check your connection.";
     }
     if (ApiError.is(e)) {
       return e.statusCode >= 500
@@ -223,7 +223,7 @@ export default function Bills() {
     // offer the handshake again — a permanent skeleton is a lie.
     if (gate === "stalled") {
       setLoading(false);
-      setError(primal.error ?? "Could not reach Paradigm. Check your connection.");
+      setError(primal.error ?? "Could not reach KashPlus. Check your connection.");
       return;
     }
     // Nothing under /v1/linkpay/* will answer without an entitlement, so an

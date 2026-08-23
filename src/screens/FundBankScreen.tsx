@@ -371,7 +371,7 @@ export default function FundBankScreen({
           return (
             <Gate
               title="Sign in first"
-              body="Your account number belongs to your Paradigm identity, so it comes back when you sign in."
+              body="Your account number belongs to your KashPlus identity, so it comes back when you sign in."
               action="Sign in"
               onAction={onNeedsSignIn}
             />
@@ -380,7 +380,7 @@ export default function FundBankScreen({
           return (
             <Gate
               title="Subscription required"
-              body="Naira deposits are part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing."
+              body="Naira deposits are part of a KashPlus subscription. Your sign-in is fine — the subscription is what is missing."
               action="See the plan"
               onAction={onNeedsSubscription}
             />
@@ -395,8 +395,8 @@ export default function FundBankScreen({
               title="Your payment is still on its way"
               body={
                 watching
-                  ? "Paradigm is waiting for your subscription transfer to land. Your account number appears here once it does — nothing needs paying twice."
-                  : "Paradigm is waiting for your subscription transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing needs paying twice."
+                  ? "KashPlus is waiting for your subscription transfer to land. Your account number appears here once it does — nothing needs paying twice."
+                  : "KashPlus is waiting for your subscription transfer to land. It is taking longer than usual — check whenever you want the latest. Nothing needs paying twice."
               }
               action="Check now"
               onAction={reload}
@@ -419,7 +419,7 @@ export default function FundBankScreen({
           return (
             <Gate
               title="You need an account number first"
-              body="A one-time check opens a naira account in your own name. Money sent to it lands in Paradigm."
+              body="A one-time check opens a naira account in your own name. Money sent to it lands in KashPlus."
               action="Open my account"
               onAction={onProvision}
             />
@@ -461,7 +461,7 @@ export default function FundBankScreen({
             <Gate
               tone="warn"
               title={`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}`}
-              body="Paradigm does not recognise the state your account is in, and will not hand out a number it cannot vouch for."
+              body="KashPlus does not recognise the state your account is in, and will not hand out a number it cannot vouch for."
               action="Check again"
               onAction={reload}
             />
@@ -471,7 +471,7 @@ export default function FundBankScreen({
             <Gate
               tone="bad"
               title="Could not load your account"
-              body={accountError ?? "Something went wrong reaching Paradigm."}
+              body={accountError ?? "Something went wrong reaching KashPlus."}
               action="Try again"
               onAction={reload}
             />
@@ -692,7 +692,7 @@ export default function FundBankScreen({
       </Animated.View>
 
       <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
-        Transfers are credited once the provider confirms them. Paradigm does not ask you for an
+        Transfers are credited once the provider confirms them. KashPlus does not ask you for an
         exact figure — send whatever you mean to send.
       </Body>
 

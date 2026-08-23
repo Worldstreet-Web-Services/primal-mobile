@@ -496,9 +496,9 @@ export interface CheckoutIntent {
   subscriptionId: string | null;
 }
 
-const INTENT_KEY = "paradigm.gateway.checkout_intent";
+const INTENT_KEY = "kashplus.gateway.checkout_intent";
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 const isWeb = Platform.OS === "web";

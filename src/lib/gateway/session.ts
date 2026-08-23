@@ -22,12 +22,12 @@ import { Platform } from "react-native";
 
 import type { SessionResponse } from "./types";
 
-const KEY = "paradigm.gateway.session";
+const KEY = "kashplus.gateway.session";
 
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  /** Its own service, separate from `paradigm.auth` — Decane's state and the
+  /** Its own service, separate from `kashplus.auth` — Decane's state and the
    *  gateway's expire independently and must be clearable independently. */
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 

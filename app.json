@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "paradigm",
+    "scheme": "kashplus",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/logo.png",
-      "bundleIdentifier": "com.anonymous.paradigm"
+      "bundleIdentifier": "com.anonymous.kashplus"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
       ],
-      "package": "com.anonymous.paradigm"
+      "package": "com.anonymous.kashplus"
     },
     "web": {
       "output": "static",

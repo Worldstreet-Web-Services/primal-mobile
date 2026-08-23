@@ -345,7 +345,7 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
         color={C.dim}
         style={{ textAlign: "center", marginTop: 14, lineHeight: 16 }}
       >
-        Priced by the provider. Paradigm adds nothing on top.
+        Priced by the provider. KashPlus adds nothing on top.
       </Body>
     </Screen>
   );

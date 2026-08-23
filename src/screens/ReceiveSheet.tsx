@@ -68,7 +68,7 @@ function bankNotice(
     case "signed_out":
       return "Sign in to see your naira account number.";
     case "unentitled":
-      return "Your naira account number comes with a Paradigm subscription.";
+      return "Your naira account number comes with a KashPlus subscription.";
     case "no_account":
       return "No naira account yet — open one and the number appears here.";
     case "provisioning":
@@ -83,7 +83,7 @@ function bankNotice(
     case "unknown_status":
       return `Account status: ${accountStatusLabel(
         account?.status ?? "UNKNOWN",
-      )}. Paradigm will not hand out a number it cannot vouch for.`;
+      )}. KashPlus will not hand out a number it cannot vouch for.`;
     case "error":
       return error ?? "Could not load your account details.";
     default:
@@ -304,7 +304,7 @@ export default function ReceiveSheet({
                 style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
               >
                 Anyone can transfer to this number.{"\n"}It credits to your
-                Paradigm balance once the provider confirms it.
+                KashPlus balance once the provider confirms it.
               </Body>
             </View>
           ) : bankPhase === "loading" ? (

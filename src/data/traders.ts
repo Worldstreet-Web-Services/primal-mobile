@@ -215,7 +215,7 @@ export const rankedTraders: Trader[] = [
 
 /**
  * The trading wallet, as the reference states it. Preformatted for the same
- * reason as everything else here: there is no Paradigm balance behind copy
+ * reason as everything else here: there is no KashPlus balance behind copy
  * trading yet, so this is placeholder copy and not a figure the app vouches for.
  */
 export const copyTradingPortfolio = {

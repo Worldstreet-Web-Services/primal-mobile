@@ -7,7 +7,7 @@ native SDK shipped).
 ## What changed
 
 Decane shipped a headless React Native SDK, so the app talks to Decane directly.
-Gone with it: the hosted web page, the `paradigm://auth/callback` contract we
+Gone with it: the hosted web page, the `kashplus://auth/callback` contract we
 designed, `EXPO_PUBLIC_AUTH_URL`, and the KingsChat bridge issuer the PRD (§F1)
 put on the critical path — **KingsChat is a built-in `authMethod` now.**
 
@@ -43,7 +43,7 @@ bundle:
 
 ### Dashboard
 
-The API key's **callback URL must be exactly `paradigm://auth`** — matching
+The API key's **callback URL must be exactly `kashplus://auth`** — matching
 `scheme` in `app.json` and `REDIRECT_URI` in `src/lib/auth/decane.ts`. The
 backend redirects only to the registered value and ignores anything passed at
 call time, so a mismatch fails every Google and KingsChat sign-in.

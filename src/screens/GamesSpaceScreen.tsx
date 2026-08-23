@@ -398,7 +398,7 @@ export default function GamesSpaceScreen({
   const kicker = featured ? `FLAGSHIP · GAME #${featured.gameId}` : "FLAGSHIP";
 
   // A stake is only quoted when there is a game whose stake we have read. With
-  // no table open, the honest number is what Paradigm charges to open one.
+  // no table open, the honest number is what KashPlus charges to open one.
   const primaryLabel = featured
     ? `Enter the round · ${shortMoney(featured.minWager)}`
     : `Open a table · $${PLAY_TARGET_USD}`;
@@ -592,7 +592,7 @@ export default function GamesSpaceScreen({
               >
                 <Body size={12} color={C.dim} style={{ lineHeight: 18 }}>
                   {unreadable
-                    ? "Paradigm could not reach the vault, so there is no pot or clock to show. Open the room to try again."
+                    ? "KashPlus could not reach the vault, so there is no pot or clock to show. Open the room to try again."
                     : "No pot on the table right now. Open one and the clock starts with you."}
                 </Body>
               </View>

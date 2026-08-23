@@ -326,6 +326,8 @@ export default function SendConfirmScreen({
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
+  /** Bumped on a rejected PIN so the dots shake and buzz. See `PinDots`. */
+  const [pinShake, setPinShake] = useState(0);
   /** The record for the payout this screen is narrating, whichever one it is. */
   const [watched, setWatched] = useState<PendingWithdrawal | null>(null);
   /** `watched` belongs to an EARLIER payout, not to the draft on this screen. */
@@ -444,7 +446,7 @@ export default function SendConfirmScreen({
       if (SessionExpiredError.is(err)) {
         // Nothing has been sent yet, so this is safe to say plainly rather
         // than leaving the screen on a spinner that never resolves.
-        setError("Your Paradigm session ended. Sign in again, then try this transfer.");
+        setError("Your KashPlus session ended. Sign in again, then try this transfer.");
         setStage("error");
         return;
       }
@@ -452,7 +454,7 @@ export default function SendConfirmScreen({
         // The paywall callback is a toast, not a navigation — so the stage has
         // to resolve here too, or the screen sits on a spinner forever.
         paywall.current?.();
-        setError("Naira payouts need an active Paradigm subscription.");
+        setError("Naira payouts need an active KashPlus subscription.");
         setStage("error");
         return;
       }
@@ -504,7 +506,7 @@ export default function SendConfirmScreen({
         setStuck(true);
         setUnresolvedChecks((n) => n + 1);
         setError(
-          "Paradigm could not say what became of that transfer yet. Nothing here will send it again until it can.",
+          "KashPlus could not say what became of that transfer yet. Nothing here will send it again until it can.",
         );
         return;
       }
@@ -694,7 +696,7 @@ export default function SendConfirmScreen({
             setStuck(true);
             setUnresolvedChecks((n) => n + 1);
             setError(
-              "Paradigm could not say what became of that transfer yet. Nothing here will send it again until it can.",
+              "KashPlus could not say what became of that transfer yet. Nothing here will send it again until it can.",
             );
             return;
           }
@@ -840,7 +842,7 @@ export default function SendConfirmScreen({
         // this payout. The reserved key and the pending record both stay, and
         // reopening this screen after signing in resumes the same operation.
         setPin("");
-        setError("Your Paradigm session ended before this was sent. Sign in again and reopen it.");
+        setError("Your KashPlus session ended before this was sent. Sign in again and reopen it.");
         setStage("error");
         return;
       }
@@ -874,7 +876,7 @@ export default function SendConfirmScreen({
         paywall.current?.();
         setPin("");
         setError(
-          "Naira payouts need an active Paradigm subscription. Nothing has left your balance.",
+          "Naira payouts need an active KashPlus subscription. Nothing has left your balance.",
         );
         setStage("error");
         return;
@@ -903,6 +905,7 @@ export default function SendConfirmScreen({
       if (!ok) {
         setPin("");
         setPinError("That PIN is not right.");
+        setPinShake((n) => n + 1);
         return;
       }
       await submit();
@@ -966,7 +969,7 @@ export default function SendConfirmScreen({
     const note = done
       ? "That one is finished. Your new transfer has not been priced or sent yet — carry on below."
       : !confirmed
-        ? `Paradigm has not been able to confirm whether the bank took it.${
+        ? `KashPlus has not been able to confirm whether the bank took it.${
             unwatched ? " Nothing here is checking on it just now." : ""
           } Its key is still held, so this screen cannot send it a second time.`
         : unwatched
@@ -1004,7 +1007,7 @@ export default function SendConfirmScreen({
             // that ask can do and what follows if it does nothing — rather than
             // being left tapping a button with no stated end.
             <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
-              Check again — this one has a reference, and asking Paradigm for it by that reference
+              Check again — this one has a reference, and asking KashPlus for it by that reference
               can still come back with an answer. If it still cannot say, you will be able to set
               this one aside and carry on without it.
             </Body>
@@ -1097,7 +1100,7 @@ export default function SendConfirmScreen({
         <Body size={13} color={C.down} style={{ marginTop: 14, textAlign: "center", lineHeight: 19 }}>
           {withdrawal?.failureReason ??
             (reversed
-              ? "The bank sent it back. The money is in your Paradigm balance."
+              ? "The bank sent it back. The money is in your KashPlus balance."
               : "The bank turned it down. Nothing has left your balance.")}
         </Body>
         <Body size={12} color={C.dim} style={{ marginTop: 16, textAlign: "center", lineHeight: 18 }}>
@@ -1172,7 +1175,7 @@ export default function SendConfirmScreen({
                 ? // Nothing has been accepted yet, so this may not promise the
                   // transfer keeps going — only that the request does, which it
                   // does whether or not this screen is still here.
-                  "You can leave this screen. The request carries on without it, and if Paradigm takes it the fiat space shows where it got to."
+                  "You can leave this screen. The request carries on without it, and if KashPlus takes it the fiat space shows where it got to."
                 : "You can leave this screen. The transfer keeps going, and the fiat space shows where it got to."}
           </Body>
           {error ? (
@@ -1225,12 +1228,12 @@ export default function SendConfirmScreen({
         <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 26 }}>
           <Display size={19}>Could not complete that</Display>
           <Body size={13} color={C.down} style={{ marginTop: 12, lineHeight: 19 }}>
-            {error ?? "Something went wrong reaching Paradigm."}
+            {error ?? "Something went wrong reaching KashPlus."}
           </Body>
           <Body size={11.5} color={C.dim} style={{ marginTop: 16, lineHeight: 17.5 }}>
             {replaying
               ? "Trying again repeats the SAME request rather than starting a second one, so this cannot send the money twice."
-              : "Nothing has been sent. This only asks Paradigm to price the transfer again, and your PIN still releases it."}
+              : "Nothing has been sent. This only asks KashPlus to price the transfer again, and your PIN still releases it."}
           </Body>
           <View style={{ marginTop: 26 }}>
             <MetallicButton
@@ -1383,7 +1386,7 @@ export default function SendConfirmScreen({
               <Body size={12.5} color={C.down} style={{ textAlign: "center", lineHeight: 18 }}>
                 {insufficient
                   ? "The fee takes this past your balance. Go back and send a smaller amount."
-                  : "Paradigm could not read a price for this transfer, so it will not release it. Try again in a moment."}
+                  : "KashPlus could not read a price for this transfer, so it will not release it. Try again in a moment."}
               </Body>
               <View style={{ marginTop: 16 }}>
                 <GhostButton
@@ -1398,7 +1401,7 @@ export default function SendConfirmScreen({
                 {pinError ?? "Your PIN releases the transfer."}
               </Body>
               <View style={{ marginTop: 16, marginBottom: 18 }}>
-                <PinDots filled={pin.length} />
+                <PinDots filled={pin.length} shake={pinShake} />
               </View>
               <Keypad onKey={handleKey} />
             </>

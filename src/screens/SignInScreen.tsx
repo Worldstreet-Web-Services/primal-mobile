@@ -12,7 +12,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 import { ArtSlot } from "@/components/home";
 import { KingsChatMark } from "@/components/icons";
-import { ParadigmMark } from "@/components/ParadigmMark";
+import { KashPlusMark } from "@/components/KashPlusMark";
 import { MetalButton, OutlineButton } from "@/components/ui";
 import { C, F } from "@/theme/tokens";
 
@@ -278,7 +278,7 @@ function OrbitField({ width }: { width: number }) {
  * objects above them are.
  */
 const HEADLINE: { t: string; accent?: boolean }[][] = [
-  [{ t: "One " }, { t: "Paradigm.", accent: true }],
+  [{ t: "One " }, { t: "KashPlus.", accent: true }],
   [{ t: "Multiple ways to put" }],
   [{ t: "Money", accent: true }, { t: " to work." }],
 ];
@@ -432,7 +432,7 @@ export default function SignInScreen({
             step(0),
           ]}
         >
-          <ParadigmMark height={30} color={C.text} />
+          <KashPlusMark height={30} color={C.text} />
           <Text
             style={{
               fontFamily: F.displayBold,

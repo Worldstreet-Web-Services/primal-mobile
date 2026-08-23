@@ -170,7 +170,7 @@ export default function WelcomeScreen({
               height: heroW / HERO_ASPECT,
               transform: [{ translateX: -HERO_BIAS * heroW }],
             }}
-            accessibilityLabel="Paradigm"
+            accessibilityLabel="KashPlus"
           />
         </Animated.View>
 

@@ -25,7 +25,7 @@ const SOURCES: Record<
     height: 1326,
   },
   white: {
-    source: require("../../assets/images/paradigm_logo_small.png"),
+    source: require("../../assets/images/kashplus_logo_small.png"),
     width: 124,
     height: 174,
   },

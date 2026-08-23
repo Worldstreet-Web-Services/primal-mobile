@@ -7,7 +7,7 @@ import {
   type Chain,
 } from "viem/chains";
 
-// The fixed set of assets Paradigm reads on-chain, modeled on Ark's portfolio
+// The fixed set of assets KashPlus reads on-chain, modeled on Ark's portfolio
 // networks (eth/base/arb/opt/polygon + solana). A fixed catalog — versus
 // Alchemy's discover-everything scan — keeps balance reads plain viem calls
 // against public RPCs with no indexer dependency, at the cost of only seeing

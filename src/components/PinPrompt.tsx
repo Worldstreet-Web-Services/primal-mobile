@@ -54,6 +54,13 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
   const [pin, setPin] = useState("");
   const [first, setFirst] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Bumped beside every `setError`: the message explains the rejection, the
+  // nonce makes the dots perform it.
+  const [shake, setShake] = useState(0);
+  const rejectEntry = useCallback((message: string) => {
+    setError(message);
+    setShake((n) => n + 1);
+  }, []);
 
   // Held across renders because the SDK's await sits on the other end of it.
   const resolver = useRef<{
@@ -101,6 +108,8 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
   );
 
   const onKey = (k: string) => {
+    // A new digit is a new attempt — the last verdict stops applying.
+    if (error) setError(null);
     if (k === "del") {
       setPin((p) => p.slice(0, -1));
       return;
@@ -121,7 +130,7 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (next !== first) {
-          setError("Those didn't match. Start again.");
+          rejectEntry("Those didn't match. Start again.");
           setFirst("");
           setPin("");
           setPhase("enter");
@@ -137,7 +146,7 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
         finish(next);
         return;
       }
-      setError("Wrong PIN.");
+      rejectEntry("Wrong PIN.");
       setPin("");
     }, 180);
   };
@@ -151,7 +160,7 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
     : "Enter your PIN";
 
   const subtitle = creating
-    ? "It unlocks your wallet and approves money leaving Paradigm."
+    ? "It unlocks your wallet and approves money leaving KashPlus."
     : "Unlock your wallet to continue.";
 
   return (
@@ -180,7 +189,7 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
           </Body>
 
           <View style={{ marginTop: 40 }}>
-            <PinDots filled={pin.length} />
+            <PinDots filled={pin.length} shake={shake} />
           </View>
 
           <View

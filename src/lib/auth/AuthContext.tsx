@@ -72,6 +72,16 @@ interface AuthState {
   biometricsEnabled: boolean;
   /** True during first-time key generation — seconds long, needs progress UI. */
   creatingWallet: boolean;
+  /**
+   * This device has been set up before — there is a PIN (and a biometric
+   * answer) bound to an account, left behind by a previous session.
+   *
+   * Only meaningful while `signedOut`, where it is the difference between a
+   * fresh install and someone who signed out five minutes ago. The first gets
+   * the pitch; the second gets the sign-in screen, because they have already
+   * heard the pitch and already own the account.
+   */
+  returning: boolean;
 }
 
 /**
@@ -144,7 +154,15 @@ interface AuthApi extends AuthState {
   signIn: (method: Exclude<AuthMethod, "email">) => Promise<void>;
   startEmailSignIn: (email: string) => Promise<void>;
   verifyEmailCode: (email: string, code: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  /**
+   * End the session.
+   *
+   * `forget` also wipes the device's app lock — the PIN, the biometric answer
+   * and the account they were bound to. That is a SWITCH ACCOUNT, not a sign
+   * out: the default leaves the lock in place so the same person signing back
+   * in lands straight in the app instead of re-running onboarding.
+   */
+  signOut: (options?: { forget?: boolean }) => Promise<void>;
   createPin: (pin: string) => Promise<void>;
   unlockWithPin: (pin: string) => Promise<boolean>;
   unlockWithBiometrics: () => Promise<biometrics.BiometricOutcome>;
@@ -160,6 +178,53 @@ interface AuthApi extends AuthState {
   refreshEntitlement: () => Promise<void>;
   /** Retry the SIWE handshake after a network failure. */
   linkPrimal: () => Promise<void>;
+}
+
+/**
+ * Decide whether the app lock stored on this device belongs to the account
+ * that is signing in.
+ *
+ * The PIN and the biometric preference survive a sign-out (that is the whole
+ * point — a returning user should not re-run onboarding), which makes this the
+ * check that has to exist alongside them. One device holds one app lock, so
+ * without it the next account to sign in on this handset inherits the last
+ * one's PIN: locked out of their own money at best, and at worst let into it by
+ * a PIN its owner never chose.
+ *
+ * Returns what the caller should believe about the local lock. A `false`
+ * `pinSet` means onboarding, and by then the mismatched credentials are already
+ * gone.
+ */
+async function reconcileAppLock(
+  address: string | null,
+): Promise<{ pinSet: boolean; biometricsEnabled: boolean }> {
+  const [pinSet, biometricsEnabled, remembered] = await Promise.all([
+    storage.hasPin(),
+    storage.isBiometricsEnabled(),
+    storage.getRememberedAccount(),
+  ]);
+
+  if (!pinSet) return { pinSet: false, biometricsEnabled: false };
+
+  // A PIN set up before the binding existed. Adopt it rather than making an
+  // existing user redo onboarding for an upgrade they did not ask for.
+  if (!remembered) {
+    if (address) await storage.rememberAccount(address);
+    return { pinSet: true, biometricsEnabled };
+  }
+
+  // Nothing to compare against — Decane restored a session with no EVM address.
+  // Keep the lock: it still has to be entered, and refusing here would strand
+  // the owner behind a wipe on the strength of a missing field.
+  if (!address) return { pinSet: true, biometricsEnabled };
+
+  if (gatewayAuth.isSameWallet(remembered, address)) {
+    return { pinSet: true, biometricsEnabled };
+  }
+
+  // A different wallet. The stored lock describes someone else.
+  await storage.clearAll();
+  return { pinSet: false, biometricsEnabled: false };
 }
 
 const AuthContext = createContext<AuthApi | null>(null);
@@ -178,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     pending: null,
     biometricsEnabled: false,
     creatingWallet: false,
+    returning: false,
   });
   const [capability, setCapability] =
     useState<biometrics.BiometricCapability | null>(null);
@@ -210,10 +276,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const [session, pinSet, biometricsSet, cap] = await Promise.all([
+      const [session, cap] = await Promise.all([
         decane.restoreSession(),
-        storage.hasPin(),
-        storage.isBiometricsEnabled(),
         biometrics.getCapability(),
       ]);
       if (cancelled) return;
@@ -221,22 +285,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCapability(cap);
 
       if (!session) {
+        // No wallet session, but the device may still be set up — that is
+        // exactly what a sign-out leaves behind, and it is what tells the entry
+        // route to show sign-in rather than the first-run pitch.
+        const returning = await storage.hasRememberedAccount();
+        if (cancelled) return;
         setState((s) => ({
           ...s,
           status: "signedOut",
           step: "pin",
           session: null,
           biometricsEnabled: false,
+          returning,
         }));
         return;
       }
 
+      const lock = await reconcileAppLock(session.addresses.evm ?? null);
+      if (cancelled) return;
+
       setState((s) => ({
         ...s,
-        status: pinSet ? "locked" : "onboarding",
-        step: pinSet ? "complete" : "pin",
+        status: lock.pinSet ? "locked" : "onboarding",
+        step: lock.pinSet ? "complete" : "pin",
         session,
-        biometricsEnabled: biometricsSet,
+        biometricsEnabled: lock.biometricsEnabled,
+        returning: lock.pinSet,
       }));
     })();
 
@@ -543,18 +617,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // A returning user who still has a PIN skips straight past onboarding, and
     // brings their biometric preference with them — it is stored per device, so
     // signing in again is not a reason to re-ask or to quietly forget it.
-    const [pinSet, biometricsSet] = await Promise.all([
-      storage.hasPin(),
-      storage.isBiometricsEnabled(),
-    ]);
+    //
+    // `ready`, not `locked`: they have just proved who they are to the identity
+    // provider seconds ago, and asking for the PIN on top of that is the same
+    // gate twice. The PIN's job is the NEXT launch, and money-out.
+    //
+    // Reconciled rather than read straight, because the lock that survived the
+    // last sign-out may belong to a different account than the one that just
+    // signed in — see `reconcileAppLock`.
+    const lock = await reconcileAppLock(session.addresses.evm ?? null);
+
     setState((s) => ({
       ...s,
-      status: pinSet ? "ready" : "onboarding",
-      step: pinSet ? "complete" : "pin",
+      status: lock.pinSet ? "ready" : "onboarding",
+      step: lock.pinSet ? "complete" : "pin",
       session,
       pending: null,
-      biometricsEnabled: biometricsSet,
+      biometricsEnabled: lock.biometricsEnabled,
       creatingWallet: false,
+      returning: lock.pinSet,
     }));
   }, []);
 
@@ -593,7 +674,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [adopt],
   );
 
-  const signOut = useCallback(async () => {
+  /**
+   * `forget: true` is "switch account" — see the API doc above. Everything
+   * except the local app lock is torn down either way.
+   */
+  const signOut = useCallback(async ({ forget = false }: { forget?: boolean } = {}) => {
     // Order matters: revoke the token first so nothing in flight can keep using
     // it, then end the Decane session, then clear local state. Each step is
     // independent — a failure in one must not leave the user half signed out,
@@ -614,8 +699,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // position relative to `gatewayAuth.logout()` above does not matter.
     clearPayoutState();
     clearVasState();
-    await decane.signOut();
-    await storage.clearAll();
+    await decane.signOut({ forget });
+
+    // The app lock is NOT part of a sign-out. It is a property of this device —
+    // a PIN hashed into the keychain and a yes/no about Face ID — and wiping it
+    // here is what made a returning user re-run PIN creation and the biometric
+    // question every single time, which is onboarding a device that was already
+    // onboarded. It goes only when the credentials have stopped describing
+    // whoever is holding the phone: a deliberate account switch, or a PIN
+    // lockout. A different wallet signing in is caught by `reconcileAppLock`.
+    if (forget) await storage.clearAll();
+    const returning = forget ? false : await storage.hasRememberedAccount();
 
     primalSync.current = null;
     // Without this, signing straight back in on the SAME wallet would find the
@@ -628,17 +722,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       step: "pin",
       session: null,
       pending: null,
-      // `storage.clearAll()` above has already unset the stored preference; this
-      // is the same fact in the copy the screens read.
+      // The stored preference may well have survived (a plain sign-out keeps
+      // it), but there is no session for it to unlock. The next sign-in reads
+      // it back off disk through `reconcileAppLock`.
       biometricsEnabled: false,
       creatingWallet: false,
+      returning,
     });
   }, []);
 
   const createPin = useCallback(async (pin: string) => {
     await storage.savePin(pin);
-    setState((s) => ({ ...s, status: "onboarding", step: "passkey" }));
-  }, []);
+    // Bind it to the wallet that is setting it. Without this the PIN is a
+    // free-floating device secret, and the next account to sign in here would
+    // inherit it — see `reconcileAppLock`, which is the reader of this write.
+    const address = state.session?.addresses.evm;
+    if (address) await storage.rememberAccount(address);
+    setState((s) => ({ ...s, status: "onboarding", step: "passkey", returning: true }));
+  }, [state.session]);
 
   const unlockWithPin = useCallback(async (pin: string) => {
     const ok = await storage.verifyPin(pin);
@@ -657,7 +758,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlockWithBiometrics = useCallback(async () => {
-    const outcome = await biometrics.authenticate("Unlock Paradigm");
+    const outcome = await biometrics.authenticate("Unlock KashPlus");
     if (outcome.ok) {
       try {
         await decane.unlock();

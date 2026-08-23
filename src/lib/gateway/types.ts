@@ -508,7 +508,7 @@ export function readPage<T>(raw: unknown, map: (item: unknown) => T): Page<T> {
 /* -------------------------------------------------------------- app states */
 
 /**
- * The app's single read of "can this person use Paradigm right now", per the
+ * The app's single read of "can this person use KashPlus right now", per the
  * contract. Every one of these except `anonymous` means a Decane wallet exists.
  *
  * - `anonymous`            — no Decane session; show sign-in.

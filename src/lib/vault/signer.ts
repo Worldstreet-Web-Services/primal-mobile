@@ -10,7 +10,7 @@ import type { SignAuthorization } from "./wager";
  * authorization signature, and the bearer token the auth-gated bundler
  * proxy wants.
  *
- * Ark satisfies this with Privy's embedded wallet; Paradigm's auth isn't
+ * Ark satisfies this with Privy's embedded wallet; KashPlus's auth isn't
  * built yet, so the stub below holds the seat. When auth lands, implement
  * VaultSigner once and hand it to setVaultSigner — nothing else changes.
  */

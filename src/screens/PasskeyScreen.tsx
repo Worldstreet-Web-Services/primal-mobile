@@ -85,7 +85,7 @@ export default function PasskeyScreen({
           color={C.sub}
           style={{ textAlign: "center", lineHeight: 22 }}
         >
-          Open Paradigm with {label} instead of typing your PIN every time. Your
+          Open KashPlus with {label} instead of typing your PIN every time. Your
           PIN still stands behind it, and it is still what authorises money
           leaving.
         </Body>

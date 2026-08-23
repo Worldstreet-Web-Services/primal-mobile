@@ -1041,7 +1041,7 @@ interface PurchaseAttempt {
 const isWeb = Platform.OS === "web";
 
 const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
@@ -1054,7 +1054,7 @@ const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
  * purchase that is not theirs. The scope is a one-way hash of the user id, so
  * the account is not spelled out in a keychain key either.
  */
-const ATTEMPTS_KEY = "paradigm.linkpay.vas_attempts";
+const ATTEMPTS_KEY = "kashplus.linkpay.vas_attempts";
 
 const attemptsKeyFor = (scope: string): string => `${ATTEMPTS_KEY}.${scope}`;
 

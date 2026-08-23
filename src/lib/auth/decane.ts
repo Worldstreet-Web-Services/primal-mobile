@@ -57,7 +57,7 @@ const RP_ID = process.env.EXPO_PUBLIC_DECANE_RP_ID ?? "";
  * because the dashboard stores one literal string and the backend refuses
  * anything else.
  */
-export const REDIRECT_URI = "paradigm://auth";
+export const REDIRECT_URI = "kashplus://auth";
 
 /** Chains the wallet is provisioned for. Base carries the Worldstreet remit leg (PRD §F3). */
 const CHAINS: Chain[] = ["evm:8453", "evm:1", "solana:mainnet", "tron:mainnet"];
@@ -131,7 +131,7 @@ export async function getClient(): Promise<DecaneConnectNative> {
     // later edit can't reorder it by accident. Each tier is probed with a real
     // ceremony, so a device that claims passkey support but returns no PRF
     // output falls through rather than ending up with an unopenable wallet.
-    ...(RP_ID ? { rpId: RP_ID, rpName: "Paradigm" } : {}),
+    ...(RP_ID ? { rpId: RP_ID, rpName: "KashPlus" } : {}),
     unlockPreference: ["passkey", "secure-enclave", "pin"],
 
     promptPin: async () => {
@@ -298,14 +298,19 @@ export async function signMessage(
  * design, so signing in again restores the wallet without recovery. Wiping it
  * is `clearDeviceState`, which the SDK documents as a repair tool for shares
  * that can no longer be unlocked — not a logout.
+ *
+ * `forget` is "switch account". It changes nothing on the real path — the share
+ * is not a session and the SDK does not treat wiping it as one — and the app's
+ * account switch is enforced above this, by clearing the app lock and letting
+ * the next sign-in bring whatever identity it brings. The stand-in DOES need
+ * it: its wallet is minted locally rather than derived from an identity
+ * provider, so destroying it is the only way to produce a different account.
  */
-export async function signOut(): Promise<void> {
-  // The stand-in's whole session IS the stored wallet, so dropping it is the
-  // sign-out. Deliberately unlike the real path below, which keeps the device
-  // key share: there is no share here to make signing in again cheaper, and a
-  // wallet that outlived its sign-out would hand the next sign-in the previous
-  // account — membership included.
-  if (usingMockAuth) return placeholder.signOut();
+export async function signOut(options?: { forget?: boolean }): Promise<void> {
+  // The stand-in's whole session IS the stored wallet. It keeps the wallet and
+  // drops the session, mirroring the share-keeping behaviour below, so signing
+  // back in restores the same account instead of a stranger's.
+  if (usingMockAuth) return placeholder.signOut(options);
 
   const existing = client ?? (initialising ? await initialising.catch(() => null) : null);
 

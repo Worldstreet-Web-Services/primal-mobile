@@ -65,7 +65,7 @@ export function useVaultActions() {
         // and say what's actually wrong. Read failures don't block the play;
         // the send path surfaces its own errors. (Ark auto-swaps USDC → ETH
         // here in the same atomic batch; that ride-along needs the wsws trade
-        // stack, which Paradigm doesn't carry yet.)
+        // stack, which KashPlus doesn't carry yet.)
         if (value > 0n) {
           try {
             const balance = await basePublicClient().getBalance({ address });
@@ -211,8 +211,8 @@ export function useVaultActions() {
 
   /**
    * Open a fresh game. The stake becomes the new game's minWager for every
-   * joiner, so Paradigm floors it at the ETH worth of PLAY_TARGET_USD — a
-   * Paradigm-started game is a $50 game. `usdPerEth` comes from the
+   * joiner, so KashPlus floors it at the ETH worth of PLAY_TARGET_USD — a
+   * KashPlus-started game is a $50 game. `usdPerEth` comes from the
    * gateway's Money quotes; without one we refuse rather than silently
    * start a sub-dollar game at the chain floor (minStartStake — that global
    * floor is Worldstreet's config, not ours).

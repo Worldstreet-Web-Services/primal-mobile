@@ -25,7 +25,7 @@ const FADE_HEIGHT = 34;
  * stacks them into a masthead; the bell holds the right edge either way.
  */
 export function NavHeader({
-  wordmark = "PARADIGM",
+  wordmark = "KASHPLUS",
   tagline = "ECOSYSTEM",
   unread = false,
   direction = "row",

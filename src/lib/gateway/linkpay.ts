@@ -512,7 +512,7 @@ export async function listWithdrawals(
 const isWeb = Platform.OS === "web";
 
 const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
@@ -693,7 +693,7 @@ function parseWithdrawalSlot(
   return { stem, fingerprint, attempt: Number(attempt) };
 }
 
-const slotKey = (slot: string) => `paradigm.idem.${slot}`;
+const slotKey = (slot: string) => `kashplus.idem.${slot}`;
 
 async function readSlot(slot: string): Promise<string | null> {
   const memory = memoryKeys.get(slot);
@@ -839,7 +839,7 @@ interface WithdrawalAttempt {
  * key either. This is what replaced deleting the ledger at sign-out: nothing
  * has to be destroyed once nobody else can read it.
  */
-const ATTEMPTS_KEY = "paradigm.linkpay.withdrawal_attempts";
+const ATTEMPTS_KEY = "kashplus.linkpay.withdrawal_attempts";
 
 const attemptsKeyFor = (scope: string): string => `${ATTEMPTS_KEY}.${scope}`;
 
@@ -1140,7 +1140,7 @@ export interface PendingWithdrawal {
  * their own — which is why it used to be deleted at sign-out, and why scoping
  * it means it no longer has to be.
  */
-const PENDING_KEY = "paradigm.linkpay.pending_withdrawal";
+const PENDING_KEY = "kashplus.linkpay.pending_withdrawal";
 
 const pendingKeyFor = (scope: string): string => `${PENDING_KEY}.${scope}`;
 
@@ -2024,10 +2024,10 @@ export function describeLinkpayFailure(error: unknown): string {
   if (NetworkError.is(error)) {
     return error.timedOut
       ? "That took too long to answer. Check the status before trying again."
-      : "Could not reach Paradigm. Check your connection.";
+      : "Could not reach KashPlus. Check your connection.";
   }
   if (isEntitlementError(error)) {
-    return "Your Paradigm subscription is not active.";
+    return "Your KashPlus subscription is not active.";
   }
   if (ApiError.is(error)) {
     if (error.statusCode === 429) return "Too many requests. Give it a moment.";
@@ -2035,7 +2035,7 @@ export function describeLinkpayFailure(error: unknown): string {
       return "That request was already made with different details. Start it again.";
     }
     if (error.statusCode >= 500) {
-      return "Paradigm is temporarily unavailable. Try again shortly.";
+      return "KashPlus is temporarily unavailable. Try again shortly.";
     }
     return error.message;
   }

@@ -1,5 +1,5 @@
 /**
- * "Can this person use Paradigm right now?" — answered by the backend, never
+ * "Can this person use KashPlus right now?" — answered by the backend, never
  * by us.
  *
  * The rule the contract is emphatic about: entitlement is whatever the gateway
@@ -30,9 +30,9 @@ import {
 /** The cheapest entitled route: no provider round trip, guard runs regardless. */
 const PROBE_PATH = "/v1/linkpay/account";
 
-const SUBSCRIPTION_KEY = "paradigm.gateway.subscription_id";
+const SUBSCRIPTION_KEY = "kashplus.gateway.subscription_id";
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: "paradigm.gateway",
+  keychainService: "kashplus.gateway",
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 const isWeb = Platform.OS === "web";

@@ -41,13 +41,19 @@ import { C } from "@/theme/tokens";
  */
 export default function Index() {
   const [finished, setFinished] = useState(false);
-  const { status, step, primal, creatingWallet } = useAuth();
+  const { status, step, primal, creatingWallet, returning } = useAuth();
 
   if (!finished || status === "loading") {
     return <Splash animated onDone={() => setFinished(true)} />;
   }
 
-  if (status === "signedOut") return <Redirect href="/welcome" />;
+  // The pitch is for people who have never been here. A device that still
+  // carries an app lock has been set up already — its owner signed out, they
+  // did not uninstall — so they get the sign-in screen, not the sales page and
+  // a second tap to reach the same place.
+  if (status === "signedOut") {
+    return <Redirect href={returning ? SIGN_IN_ROUTE : "/welcome"} />;
+  }
   if (status === "locked") return <Redirect href="/unlock" />;
 
   // The app lock, before anything the gateway has an opinion about. Both steps
@@ -58,7 +64,7 @@ export default function Index() {
     return <Redirect href={step === "passkey" ? "/passkey" : "/pin"} />;
   }
 
-  // Signed in and locked down. Whether Paradigm is satisfied is a separate
+  // Signed in and locked down. Whether KashPlus is satisfied is a separate
   // question, and it belongs to the gateway.
   if (primal.state === "session_expired") return <Redirect href={SIGN_IN_ROUTE} />;
 
@@ -76,7 +82,7 @@ export default function Index() {
     return (
       <View style={{ flex: 1, backgroundColor: C.canvas }}>
         <BrandLoading
-          label={creatingWallet ? "Creating your wallet" : "Setting up Paradigm"}
+          label={creatingWallet ? "Creating your wallet" : "Setting up KashPlus"}
         />
       </View>
     );

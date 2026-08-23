@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CopyMark, useCopy } from "@/components/CopyAction";
-import { ParadigmLoader } from "@/components/ParadigmMark";
+import { KashPlusLoader } from "@/components/KashPlusMark";
 import { AlertIcon, CheckIcon, ChevronDownIcon } from "@/components/icons";
 import {
   BackChevron,
@@ -726,7 +726,7 @@ export default function CheckoutSheet({
       return {
         content: (
           <View style={{ alignItems: "center", paddingVertical: 54 }}>
-            <ParadigmLoader height={26} color={C.silver} />
+            <KashPlusLoader height={26} color={C.silver} />
             <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
               Opening your checkout
             </Body>
@@ -1076,7 +1076,7 @@ export default function CheckoutSheet({
                     style={{ marginTop: 4, lineHeight: 18 }}
                   >
                     {signedOut
-                      ? "Paradigm needs your wallet address before it can take a payment — it is where the provider refunds you if the route fails."
+                      ? "KashPlus needs your wallet address before it can take a payment — it is where the provider refunds you if the route fails."
                       : "Unlock your wallet first — a payment needs somewhere to refund to if the route fails."}
                   </Body>
                 </View>

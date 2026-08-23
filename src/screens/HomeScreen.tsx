@@ -90,8 +90,7 @@ export default function HomeScreen({
         onNotifications={onNotifications}
         onProfilePress={onOpenProfile}
       />
-      {/* The bar floats over this scroll and takes no space in it, so the
-          scroll has to end above where the bar lands. */}
+
       <Screen pad={GUTTER} top={top} bottom={TAB_BAR_CLEARANCE + 24}>
         <PortfolioCard
           view={portfolio}

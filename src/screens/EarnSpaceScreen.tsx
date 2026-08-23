@@ -149,7 +149,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
         </Body>
       </Card>
       <Body size={11.5} color={C.dim} style={{ marginTop: 12, lineHeight: 19 }}>
-        Points earn live as you trade, play, and remit across Paradigm. Every
+        Points earn live as you trade, play, and remit across KashPlus. Every
         Saturday 00:00 UTC they mint to KSH at the settlement price — points and
         KSH never mix.
       </Body>

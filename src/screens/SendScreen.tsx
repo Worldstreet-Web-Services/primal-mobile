@@ -39,7 +39,7 @@ import { C, F } from "../theme/tokens";
 /**
  * Design 4d, rewired: a naira payout to a Nigerian bank account.
  *
- * The mock build offered a second rail — @tag payments between Paradigm
+ * The mock build offered a second rail — @tag payments between KashPlus
  * accounts. There is no route on the gateway that moves money that way, so the
  * tab is gone rather than sitting there as a button that cannot work.
  *
@@ -265,7 +265,7 @@ export default function SendScreen({
         if (SessionExpiredError.is(err)) {
           // The app state moves elsewhere, but this screen must not sit on a
           // skeleton forever waiting for a list that is never coming.
-          setBanksError("Your Paradigm session ended. Sign in again to continue.");
+          setBanksError("Your KashPlus session ended. Sign in again to continue.");
           setBanksLoading(false);
           return;
         }
@@ -326,7 +326,7 @@ export default function SendScreen({
       setStep("review");
     } catch (err) {
       if (SessionExpiredError.is(err)) {
-        setResolveError("Your Paradigm session ended. Sign in again to continue.");
+        setResolveError("Your KashPlus session ended. Sign in again to continue.");
         return;
       }
       if (isEntitlementError(err)) {

@@ -5,7 +5,7 @@
 **Status:** Living document. Where it disagrees with `https://api.tsion.io/openapi.json`, the gateway wins.
 **Repo:** `Primal` (Expo SDK 57 · React Native 0.86 · expo-router · dev build, not Expo Go)
 
-> **On the name.** The client renamed the app **Paradigm** on 2026-08-14 — that is what ships, and what every screen says. The backend, its gateway and its docs still say **Primal**, so both names appear here on purpose: *Paradigm* is the product, *Primal* is the platform/API it talks to. Worth settling before launch copy is written.
+> **On the name.** The client renamed the app **KashPlus** on 2026-08-14 — that is what ships, and what every screen says. The backend, its gateway and its docs still say **Primal**, so both names appear here on purpose: *KashPlus* is the product, *Primal* is the platform/API it talks to. Worth settling before launch copy is written.
 
 ---
 
@@ -51,7 +51,7 @@ Two layers, and the distinction matters: **Decane owns the wallet, the gateway o
 
 **Layer 2 — Primal session (SIWE against `https://api.tsion.io`).** A wallet is not a session: `POST /v1/auth/challenge` → sign the **exact** message with the Decane EVM key → `POST /v1/auth/verify` → a short-lived access token plus a rotating refresh token. Refresh tokens rotate on every use, so the pair is replaced atomically and only ever one refresh is in flight. `GET /v1/auth/me` validates a restored session — a locally decoded JWT proves nothing.
 
-**Onboarding after auth:** profile → PIN → passkey → done. The transaction PIN and biometric app-lock are Paradigm's own gate; Decane has no opinion about them.
+**Onboarding after auth:** profile → PIN → passkey → done. The transaction PIN and biometric app-lock are KashPlus's own gate; Decane has no opinion about them.
 
 **Known gap:** `EXPO_PUBLIC_DECANE_RP_ID` is unset, so the passkey tier is off and wallets sit on the secure-enclave tier. Setting it (plus iOS associated domains) turns passkeys on.
 
@@ -70,7 +70,7 @@ Access costs **USD 1,000 per calendar month**, and it is enforced server-side: e
 - The account is provisioned through `POST /v1/linkpay/accounts` with KYC (name, phone, email, BVN, country, currency) and an **idempotency key that must survive retries** — the same key for the same attempt, a new key only for a genuinely new one. Statuses `PENDING_KYC` / `CUSTOMER_CREATED` are resumable, not terminal; `PROVISION_FAILED` carries a reason.
 - **BVN is never logged, persisted, or sent to analytics** — form state only, long enough to submit.
 - Read back with `GET /v1/linkpay/account`; balance from `GET /v1/linkpay/balance`. Money is integer **minor units as strings** (₦100.00 arrives as `"10000"`) — BigInt only, never float.
-- Surface: Receive screen shows account number + bank + copy and a real scannable QR; @tag handles for in-app P2P remain a Paradigm-side concept.
+- Surface: Receive screen shows account number + bank + copy and a real scannable QR; @tag handles for in-app P2P remain a KashPlus-side concept.
 - *(The idempotent-VA and retired-number lessons from LinkPay's own backend now live behind the gateway; the app no longer provisions accounts itself.)*
 ### F3 — Fiat account: deposit, withdrawal, cross-border
 
@@ -138,7 +138,7 @@ Ported from Ark's live implementation:
 ## 4. Platform & architecture
 
 - **App**: this repo (Expo 57, expo-router, NativeWind, React Compiler). `src/app` route groups: `(onboarding)`, `(auth)`, `(tabs)` [Home · Trade · Earn · Games · Profile].
-- **Backend**: the **Primal API Gateway** at `https://api.tsion.io` (contract: `/openapi.json`, which is authoritative over any document including this one). It fronts User Management, Subscription and LinkPay over private gRPC; the app never talks to those services, a database, a queue, or a provider directly. **Paradigm owns no backend of its own.**
+- **Backend**: the **Primal API Gateway** at `https://api.tsion.io` (contract: `/openapi.json`, which is authoritative over any document including this one). It fronts User Management, Subscription and LinkPay over private gRPC; the app never talks to those services, a database, a queue, or a provider directly. **KashPlus owns no backend of its own.**
 - **Auth**: native `decane-connect-kit-expo` in the app (wallet + signing), SIWE against the gateway for the session (§F1). No hosted web surface, no bridge service — both were designed around constraints that no longer exist.
 - **Providers, and who talks to them**: the gateway owns LinkPay (accounts, deposits, withdrawals, bills) and Dextopus (subscription checkout) with its own credentials. The app talks directly to the **Worldstreet/Ark rails** the gateway does not implement — perp, remit, earn, the King of Night vault (games) — and to public RPC/Alchemy for wallet balances.
 - **Not implemented on the gateway** (per its own docs): ARK and WorldStreet product routes. Those stay app-side until the backend exposes them.

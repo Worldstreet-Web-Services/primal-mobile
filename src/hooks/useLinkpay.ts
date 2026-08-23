@@ -93,7 +93,7 @@ const HANDSHAKE_GRACE_MS = 6_000;
 
 /** Written for a person, because it is the only thing they will be shown. */
 const HANDSHAKE_STALLED =
-  "Paradigm has not opened a session on this device yet. Try again — and if it keeps saying this, sign out and back in.";
+  "KashPlus has not opened a session on this device yet. Try again — and if it keeps saying this, sign out and back in.";
 
 /**
  * How often a provisioning account is re-asked about while someone is watching
@@ -620,7 +620,7 @@ export function useLinkpayAccount(): LinkpayAccountState {
 
 /** Said in place of the figure, in the same voice the em dash is drawn in. */
 const UNREADABLE_BALANCE =
-  "Paradigm could not read the balance the gateway sent, so it will not show you a figure it cannot vouch for.";
+  "KashPlus could not read the balance the gateway sent, so it will not show you a figure it cannot vouch for.";
 
 export interface FiatBalanceState extends LinkpayAccountState {
   balance: Balance | null;

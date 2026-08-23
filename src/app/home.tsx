@@ -33,7 +33,7 @@ const FEATURE_ROUTES: Record<string, Href> = {
  * Routed, but with nothing behind the route.
  *
  * Auto Earn and Copy Trading are ARK/WorldStreet surfaces: the screens exist
- * and render, and there is no Paradigm backend under either of them — no
+ * and render, and there is no KashPlus backend under either of them — no
  * gateway path, no store, nothing that could make a number on them true. The
  * tile still opens them, and says PREVIEW on the door so opening one is not
  * mistaken for a working feature. Take a key out of this set the day a real
@@ -120,7 +120,7 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
       );
     case "unentitled":
       return missing(
-        "Naira is part of a Paradigm subscription. Your sign-in is fine — the subscription is what is missing.",
+        "Naira is part of a KashPlus subscription. Your sign-in is fine — the subscription is what is missing.",
         "See the plan",
         () => router.push(SUBSCRIPTION_ROUTE),
       );
@@ -157,13 +157,13 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
       );
     case "unknown_status":
       return missing(
-        "Paradigm does not recognise the state your naira account is in, so it will not show a figure it cannot vouch for.",
+        "KashPlus does not recognise the state your naira account is in, so it will not show a figure it cannot vouch for.",
         "Check again",
         fiat.reload,
       );
     case "error":
       return missing(
-        fiat.error ?? "Something went wrong reaching Paradigm.",
+        fiat.error ?? "Something went wrong reaching KashPlus.",
         "Try again",
         fiat.reload,
       );
@@ -180,7 +180,7 @@ function nairaLeg(fiat: FiatBalanceState): LegRead {
           zero = isZeroMoney(available);
         } catch {
           return missing(
-            "The gateway sent a naira balance Paradigm could not read, so it will not show a figure it cannot vouch for.",
+            "The gateway sent a naira balance KashPlus could not read, so it will not show a figure it cannot vouch for.",
             "Try again",
             fiat.reload,
           );
@@ -212,7 +212,7 @@ function cryptoLeg(crypto: ReturnType<typeof useCryptoPortfolio>): LegRead {
       missing: {
         key: "crypto",
         label,
-        note: "Paradigm could not read your wallets on-chain, so it does not know what they hold.",
+        note: "KashPlus could not read your wallets on-chain, so it does not know what they hold.",
         action: "Try again",
         onAction: () => void crypto.refresh(),
       },
@@ -246,7 +246,7 @@ function cryptoLeg(crypto: ReturnType<typeof useCryptoPortfolio>): LegRead {
 /* -------------------------------------------------------------- the total */
 
 const NO_RATE =
-  "Your naira and your crypto are held in different currencies, and Paradigm has no exchange rate it can stand behind — so it shows both rather than adding them into one number.";
+  "Your naira and your crypto are held in different currencies, and KashPlus has no exchange rate it can stand behind — so it shows both rather than adding them into one number.";
 
 /**
  * "Total Portfolio", and the two reasons it often cannot be one.

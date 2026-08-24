@@ -23,6 +23,7 @@ import {
 } from "../components/crypto";
 import { useFiatOverview } from "../hooks/useLinkpay";
 import { formatMoney } from "../lib/gateway/money";
+import { cn } from "@/lib/cn";
 
 // Buy & hold — pick an asset, key in ₦, PIN to buy. Fiat balance funds it.
 const PIN_LENGTH = 4;
@@ -135,24 +136,14 @@ export default function BuyScreen({
 
   if (step === "done") {
     return (
-      <View
-        style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22 }}
-      >
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
+      <View className="flex-1 bg-canvas px-[22px]">
+        <View className="flex-1 items-center justify-center">
           <Settle distance={14}>
-            <View style={{ alignItems: "center" }}>
+            <View className="items-center">
               <View
+                className="w-[76px] h-[76px] rounded-[38px] bg-brand-glow border items-center justify-center"
                 style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 38,
-                  backgroundColor: C.brandGlow,
-                  borderWidth: 1,
                   borderColor: "rgba(131,190,96,0.35)",
-                  alignItems: "center",
-                  justifyContent: "center",
                 }}
               >
                 <Svg width={34} height={34} viewBox="0 0 24 24">
@@ -166,23 +157,19 @@ export default function BuyScreen({
                   />
                 </Svg>
               </View>
-              <Display size={26} style={{ marginTop: 24 }}>
+              <Display className="text-[26px] leading-[27.3px] mt-[24px]">
                 Bought and holding
               </Display>
-              <Mono size={13.5} color={C.up} style={{ marginTop: 12 }}>
+              <Mono className="text-[13.5px] text-up mt-[12px]">
                 {qty} {asset.sym} · ₦{withCommas(digits)}.00
               </Mono>
-              <Body
-                size={12.5}
-                color={C.dim}
-                style={{ marginTop: 10, textAlign: "center", lineHeight: 18 }}
-              >
+              <Body className="text-[12.5px] text-dim mt-[10px] text-center leading-[18px]">
                 It lands in your crypto holdings. Sell anytime.
               </Body>
             </View>
           </Settle>
         </View>
-        <View style={{ paddingBottom: 36 }}>
+        <View className="pb-[36px]">
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </View>
@@ -191,52 +178,50 @@ export default function BuyScreen({
 
   if (step === "amount") {
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
+      <View className="flex-1 bg-canvas">
+        <View className="px-[22px]">
           <BackHeader
             title={"Buy " + asset.sym}
             onBack={() => setStep("asset")}
           />
         </View>
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          <View style={{ alignItems: "center" }}>
+        <View className="flex-1 justify-center">
+          <View className="items-center">
             <Label>Buying</Label>
             <Display
               size={44}
-              color={noAmount ? C.placeholder : C.text}
-              style={{ marginTop: 12 }}
+
+              className={cn(
+                "mt-[12px]",
+                noAmount ? "text-placeholder" : "text-text",
+              )}
             >
               ₦{withCommas(digits || "0")}
             </Display>
             {noAmount ? (
               // Carries the meaning the ghost figure above deliberately cannot,
               // and replaces an "≈ 0.00 BTC" that was a quote for nothing.
-              <Body size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+              <Body className="text-[12.5px] text-sub mt-[10px]">
                 Enter an amount to buy
               </Body>
             ) : (
-              <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+              <Mono className="text-[12.5px] text-sub mt-[10px]">
                 ≈ {qty} {asset.sym}
               </Mono>
             )}
-            <View style={{ marginTop: 14 }}>
+            <View className="mt-[14px]">
               <MetaChip label={`1 ${asset.sym} = ${asset.priceLabel}`} />
             </View>
           </View>
         </View>
-        <View
-          style={{
-            paddingHorizontal: 22,
-            paddingBottom: 36,
-          }}
-        >
-          <Mono size={11.5} color={C.dim} style={{ marginBottom: 14 }}>
+        <View className="px-[22px] pb-[36px]">
+          <Mono className="text-[11.5px] text-dim mb-[14px]">
             {availableLabel
               ? `Pays from fiat · ${availableLabel}`
               : "Pays from your fiat balance"}
           </Mono>
           <Keypad onKey={handleAmountKey} />
-          <View style={{ marginTop: 16 }}>
+          <View className="mt-[16px]">
             {amt > 0 ? (
               <MetallicButton
                 label="Review buy"
@@ -253,8 +238,8 @@ export default function BuyScreen({
 
   if (step === "confirm") {
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
+      <View className="flex-1 bg-canvas">
+        <View className="px-[22px]">
           <BackHeader
             title="Confirm buy"
             onBack={() => {
@@ -264,15 +249,15 @@ export default function BuyScreen({
           />
         </View>
         <Settle>
-          <View style={{ marginTop: 26, alignItems: "center" }}>
+          <View className="mt-[26px] items-center">
             <Label>Buying</Label>
-            <Display size={40} style={{ marginTop: 10 }}>
+            <Display className="text-[40px] leading-[42px] mt-[10px]">
               ₦{withCommas(digits)}
-              <Display size={24} color={C.figureTail}>
+              <Display className="text-[24px] leading-[25.2px] text-figure-tail">
                 .00
               </Display>
             </Display>
-            <Mono size={12.5} color={C.sub} style={{ marginTop: 8 }}>
+            <Mono className="text-[12.5px] text-sub mt-[8px]">
               ≈ {qty} {asset.sym}
             </Mono>
           </View>
@@ -292,16 +277,15 @@ export default function BuyScreen({
           </QuoteCard>
         </Settle>
         <View
+          className="px-[22px] pb-[36px]"
           style={{
             marginTop: "auto",
-            paddingHorizontal: 22,
-            paddingBottom: 36,
           }}
         >
-          <View style={{ alignItems: "center" }}>
+          <View className="items-center">
             <Label>Enter PIN to buy</Label>
           </View>
-          <View style={{ marginTop: 16, marginBottom: 20 }}>
+          <View className="mt-[16px] mb-[20px]">
             <PinDots filled={pin.length} />
           </View>
           <Keypad onKey={handlePinKey} />
@@ -311,19 +295,19 @@ export default function BuyScreen({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <View style={{ flex: 1, paddingHorizontal: 22 }}>
+    <View className="flex-1 bg-canvas">
+      <View className="flex-1 px-[22px]">
         <BackHeader title="Buy" onBack={onBack} />
-        <View style={{ marginTop: 24 }}>
+        <View className="mt-[24px]">
           <SectionHead
             label="Pick an asset"
             right={
-              <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+              <Mono className="text-[9.5px] text-dim tracking-[1.3px]">
                 PRICE · 24H
               </Mono>
             }
           />
-          <View style={{ marginTop: 2 }}>
+          <View className="mt-[2px]">
             {assets.map((a, i) => (
               <InstrumentRow
                 key={a.sym}
@@ -346,9 +330,9 @@ export default function BuyScreen({
             ))}
           </View>
         </View>
-        <View style={{ flex: 1 }} />
-        <View style={{ alignItems: "center", gap: 12, paddingBottom: 34 }}>
-          <Body size={11.5} color={C.dim} style={{ textAlign: "center" }}>
+        <View className="flex-1" />
+        <View className="items-center gap-[12px] pb-[34px]">
+          <Body className="text-[11.5px] text-dim text-center">
             Bought assets settle into your crypto holdings.
           </Body>
           <MetaChip

@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Animated,
   Easing,
@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrandLoading } from "@/components/BrandLoading";
 import { KashPlusMark } from "@/components/KashPlusMark";
-import { BrandLoading } from "../components/BrandLoading";
-import { MetalButton } from "../components/ui";
-import { C, F } from "../theme/tokens";
+import { MetalButton } from "@/components/ui";
+import { C } from "@/theme/tokens";
 
 const RAYS = require("@/assets/images/star_behind.png");
 const CROWN = require("@/assets/images/crown.png");
@@ -67,8 +67,8 @@ export default function WelcomeAboardScreen({
 
   /** Crown width. Capped so it stays an object on the screen, not a backdrop. */
   const crownW = Math.min(width * 0.92, 350);
-  const enter = useRef(new Animated.Value(0)).current;
-  const crown = useRef(new Animated.Value(0)).current;
+  const enter = useMemo(() => new Animated.Value(0), []);
+  const crown = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     const anim = Animated.parallel([
@@ -115,7 +115,7 @@ export default function WelcomeAboardScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       {/* BACKGROUND RAY */}
       <View pointerEvents="none" style={raysBox}>
         <Image
@@ -137,42 +137,28 @@ export default function WelcomeAboardScreen({
       </View>
 
       <View
+        className="flex-1 px-[26px] items-center"
         style={{
-          flex: 1,
-          paddingHorizontal: 26,
           paddingTop: insets.top,
           paddingBottom: Math.max(insets.bottom, 26) + 8,
-          alignItems: "center",
         }}
       >
         <Animated.View
-          style={[
-            { flexDirection: "row", alignItems: "center", gap: 10 },
-            step(0),
-          ]}
+          className="flex-row items-center gap-[10px]"
+          style={step(0)}
         >
           <KashPlusMark height={30} color={C.text} />
-          <Text
-            style={{
-              fontFamily: F.displayBold,
-              fontSize: 31,
-              letterSpacing: -0.6,
-              color: C.text,
-            }}
-          >
+          <Text className="font-display-bold text-[31px] tracking-[-0.6px] text-text">
             KashPlus
           </Text>
         </Animated.View>
 
         {/* The crown owns the upper frame — it is the thing being awarded, so it
             arrives first and alone, and the sentence lands underneath it. */}
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
+        <View className="flex-1 items-center justify-center">
           <Animated.View
+            className="items-center justify-center"
             style={{
-              alignItems: "center",
-              justifyContent: "center",
               opacity: crown,
               transform: [
                 {
@@ -201,36 +187,15 @@ export default function WelcomeAboardScreen({
           </Animated.View>
         </View>
 
-        <Animated.View style={[{ alignItems: "center" }, step(0)]}>
-          <Text
-            style={{
-              fontSize: 30,
-              lineHeight: 38,
-              letterSpacing: -0.4,
-              color: C.silver,
-              textAlign: "center",
-            }}
-            className="font-medium"
-          >
+        <Animated.View className="items-center" style={step(0)}>
+          <Text className="text-center font-body-medium text-[30px] leading-[38px] tracking-[-0.4px] text-silver">
             Welcome to{" "}
-            <Text style={{ color: C.text }} className="font-bold">
-              KashPlus
-            </Text>
+            <Text className="font-display-bold text-text">KashPlus</Text>
           </Text>
         </Animated.View>
 
-        <Animated.View style={[{ alignItems: "center" }, step(1)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 14,
-              lineHeight: 21,
-              color: C.sub,
-              textAlign: "center",
-              marginTop: 12,
-              maxWidth: 240,
-            }}
-          >
+        <Animated.View className="items-center" style={step(1)}>
+          <Text className="font-body text-[14px] leading-[21px] text-sub text-center mt-[12px] max-w-[240px]">
             You&apos;ve earned your place among the 1% who see things
             differently.
           </Text>
@@ -238,7 +203,7 @@ export default function WelcomeAboardScreen({
 
         {/* Air between the sentence and the way out, so the copy reads as the
             screen and the button as the exit — not as one block. */}
-        <View style={{ height: 100 }} />
+        <View className="h-[100px]" />
 
         <Animated.View style={step(2)} className={"self-stretch"}>
           <MetalButton label="Continue" onPress={onContinue} loading={busy} />

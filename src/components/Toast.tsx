@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body } from "@/components/ui";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
 
 export type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -69,10 +69,30 @@ const VARIANTS: Record<
 > = {
   // Dollar-green owns "money in" semantics per the PRD, so success borrows the
   // gain token rather than the lime brand color — brand and success stay separate.
-  success: { accent: C.up, tint: "rgba(124,231,176,0.12)", glyph: "✓", role: "status" },
-  error: { accent: C.down, tint: "rgba(246,165,165,0.12)", glyph: "!", role: "alert" },
-  warning: { accent: C.amber, tint: "rgba(245,184,61,0.12)", glyph: "!", role: "alert" },
-  info: { accent: C.silver, tint: "rgba(199,204,209,0.12)", glyph: "i", role: "status" },
+  success: {
+    accent: C.up,
+    tint: "rgba(124,231,176,0.12)",
+    glyph: "✓",
+    role: "status",
+  },
+  error: {
+    accent: C.down,
+    tint: "rgba(246,165,165,0.12)",
+    glyph: "!",
+    role: "alert",
+  },
+  warning: {
+    accent: C.amber,
+    tint: "rgba(245,184,61,0.12)",
+    glyph: "!",
+    role: "alert",
+  },
+  info: {
+    accent: C.silver,
+    tint: "rgba(199,204,209,0.12)",
+    glyph: "i",
+    role: "status",
+  },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -95,7 +115,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const show = useCallback(
     ({ title, description, variant = "info", duration }: ToastOptions) => {
       clearTimer();
-      const ms = duration ?? (variant === "error" ? ERROR_DURATION : DEFAULT_DURATION);
+      const ms =
+        duration ?? (variant === "error" ? ERROR_DURATION : DEFAULT_DURATION);
       const id = nextId.current++;
       setToast({ id, title, description, variant, duration: ms });
 
@@ -115,10 +136,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     () => ({
       show,
       dismiss,
-      success: (title, description) => show({ title, description, variant: "success" }),
-      error: (title, description) => show({ title, description, variant: "error" }),
-      info: (title, description) => show({ title, description, variant: "info" }),
-      warning: (title, description) => show({ title, description, variant: "warning" }),
+      success: (title, description) =>
+        show({ title, description, variant: "success" }),
+      error: (title, description) =>
+        show({ title, description, variant: "error" }),
+      info: (title, description) =>
+        show({ title, description, variant: "info" }),
+      warning: (title, description) =>
+        show({ title, description, variant: "warning" }),
     }),
     [show, dismiss],
   );
@@ -126,14 +151,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      {toast ? <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} /> : null}
+      {toast ? (
+        <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} />
+      ) : null}
     </ToastContext.Provider>
   );
 }
 
-function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastCard({
+  toast,
+  onDismiss,
+}: {
+  toast: Toast;
+  onDismiss: () => void;
+}) {
   const insets = useSafeAreaInsets();
-  const anim = useRef(new Animated.Value(0)).current;
+  const anim = useMemo(() => new Animated.Value(0), []);
   const variant = VARIANTS[toast.variant];
 
   useEffect(() => {
@@ -149,16 +182,19 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
   return (
     <Animated.View
+      className="absolute left-[16px] right-[16px]"
       style={{
         // `pointerEvents` as a prop is deprecated; it belongs in style now.
         pointerEvents: "box-none",
-        position: "absolute",
         top: insets.top + 8,
-        left: 16,
-        right: 16,
         opacity: anim,
         transform: [
-          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) },
+          {
+            translateY: anim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [-24, 0],
+            }),
+          },
         ],
       }}
     >
@@ -166,17 +202,12 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         onPress={onDismiss}
         accessibilityRole={variant.role === "alert" ? "alert" : "text"}
         accessibilityLabel={
-          toast.description ? `${toast.title}. ${toast.description}` : toast.title
+          toast.description
+            ? `${toast.title}. ${toast.description}`
+            : toast.title
         }
+        className="flex-row items-start gap-[11px] p-[13px] rounded-[16px] bg-canvas-raised border border-border"
         style={{
-          flexDirection: "row",
-          alignItems: "flex-start",
-          gap: 11,
-          padding: 13,
-          borderRadius: 16,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.border,
           // Separation comes from the border first, the shadow second. On the
           // old near-black ground a wide 0.45 shadow was invisible as a shadow
           // and simply read as "edge"; on charcoal the same pool reads as dirt
@@ -190,27 +221,22 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         }}
       >
         <View
+          className="w-[22px] h-[22px] rounded-[11px] items-center justify-center mt-[1px]"
           style={{
-            width: 22,
-            height: 22,
-            borderRadius: 11,
             backgroundColor: variant.tint,
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 1,
           }}
         >
-          <Body size={12} color={variant.accent} semibold>
+          <Body className="text-[12px]" color={variant.accent} semibold>
             {variant.glyph}
           </Body>
         </View>
 
-        <View style={{ flex: 1 }}>
-          <Body size={13.5} semibold style={{ fontFamily: F.bodySemibold }}>
+        <View className="flex-1">
+          <Body className="text-[13.5px] font-body-semibold font-body-semibold">
             {toast.title}
           </Body>
           {toast.description ? (
-            <Body size={11.5} color={C.sub} style={{ marginTop: 3, lineHeight: 17 }}>
+            <Body className="text-[11.5px] text-sub mt-[3px] leading-[17px]">
               {toast.description}
             </Body>
           ) : null}

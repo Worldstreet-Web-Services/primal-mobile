@@ -1,6 +1,6 @@
 import { type GlassStyle } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Animated, Easing, View, type ViewStyle } from "react-native";
 
 import { C } from "../theme/tokens";
@@ -51,7 +51,7 @@ export function GlassDrawer({
   onHeightChange?: (height: number) => void;
   style?: ViewStyle;
 }) {
-  const y = useRef(new Animated.Value(0)).current;
+  const y = useMemo(() => new Animated.Value(0), []);
   const [measured, setMeasured] = useState(false);
   return (
     <Animated.View
@@ -71,11 +71,8 @@ export function GlassDrawer({
           useNativeDriver: true,
         }).start();
       }}
+      className="absolute left-[0px] right-[0px] bottom-[0px]"
       style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
         opacity: measured ? 1 : 0,
         transform: [{ translateY: y }],
       }}
@@ -89,6 +86,7 @@ export function GlassDrawer({
       />
 
       <View
+        className="border-t border-t-border"
         style={[
           {
             // Clips the glass and the prism to the curve — both layers fill
@@ -96,8 +94,6 @@ export function GlassDrawer({
             overflow: "hidden",
             borderTopLeftRadius: radius,
             borderTopRightRadius: radius,
-            borderTopWidth: 1,
-            borderTopColor: C.border,
           },
           style,
         ]}

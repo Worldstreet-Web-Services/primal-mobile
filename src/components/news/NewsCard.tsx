@@ -1,7 +1,6 @@
 import { View } from "react-native";
 
 import type { Article } from "../../data/news";
-import { C, F } from "../../theme/tokens";
 import { ArtSlot } from "../home";
 import { Body, PressableScale } from "../ui";
 import { ArticleMeta } from "./ArticleMeta";
@@ -22,11 +21,9 @@ export function NewsCard({
     <PressableScale scale={0.98} onPress={() => onPress?.(article.key)}>
       <View style={{ width }}>
         <View
+          className="rounded-[12px] overflow-hidden bg-canvas-raised"
           style={{
             height: imageHeight,
-            borderRadius: 12,
-            overflow: "hidden",
-            backgroundColor: C.raised,
           }}
         >
           <ArtSlot
@@ -38,14 +35,14 @@ export function NewsCard({
         </View>
 
         <Body
-          size={13.5}
+          className="text-[13.5px] font-body-semibold leading-[19px] mt-[12px]"
+
           numberOfLines={2}
-          style={{ fontFamily: F.bodySemibold, lineHeight: 19, marginTop: 12 }}
         >
           {article.title}
         </Body>
 
-        <View style={{ marginTop: 8 }}>
+        <View className="mt-[8px]">
           <ArticleMeta channel={article.channel} age={article.age} />
         </View>
       </View>

@@ -1,7 +1,8 @@
 import { Image, type ImageSource } from "expo-image";
 import { Pressable, Text, View, type ViewStyle } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { cn } from "../../lib/cn";
+import { useTokens } from "../../theme/tokens";
 import { BellIcon } from "../icons";
 import { CircleAction } from "../ui";
 
@@ -14,27 +15,23 @@ export function Avatar({
   source,
   initial,
   size = 38,
-  ring = C.brandSoft,
+  ringClassName = "border-brand-soft",
 }: {
   source?: ImageSource | number;
   /** Shown when `source` is missing — one character, uppercased. */
   initial?: string;
   size?: number;
-  ring?: string;
+  /** The 1.5pt ring around the portrait. */
+  ringClassName?: string;
 }) {
   return (
     <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: 1.5,
-        borderColor: ring,
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: C.inset,
-      }}
+      className={cn(
+        "items-center justify-center overflow-hidden border-[1.5px] bg-canvas-inset",
+        ringClassName,
+      )}
+      // Size drives the radius, so both stay numbers.
+      style={{ width: size, height: size, borderRadius: size / 2 }}
     >
       {source ? (
         <Image
@@ -44,10 +41,9 @@ export function Avatar({
         />
       ) : (
         <Text
+          className="font-display-bold text-silver"
           style={{
-            fontFamily: F.displayBold,
             fontSize: size * 0.42,
-            color: C.silver,
           }}
         >
           {(initial ?? "?").slice(0, 1).toUpperCase()}
@@ -84,47 +80,27 @@ export function ProfileHeader({
   right?: React.ReactNode;
   style?: ViewStyle;
 }) {
+  const tokens = useTokens();
   return (
-    <View
-      style={[
-        { flexDirection: "row", alignItems: "center", gap: 10 },
-        style,
-      ]}
-    >
+    <View className="flex-row items-center gap-[10px]" style={style}>
       <Pressable
         onPress={onPress}
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={onPress ? `${name}, open profile` : undefined}
-        style={{
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-        }}
+        className="flex-1 flex-row items-center gap-[10px]"
       >
         <Avatar source={avatar} initial={name} />
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <Text
             numberOfLines={1}
-            style={{
-              fontFamily: F.displayBold,
-              fontSize: 17,
-              letterSpacing: 0.3,
-              color: C.text,
-            }}
+            className="font-display-bold text-[17px] tracking-[0.3px] text-text"
           >
             {name.toUpperCase()}
           </Text>
           {tagline ? (
             <Text
               numberOfLines={1}
-              style={{
-                fontFamily: F.body,
-                fontSize: 11,
-                letterSpacing: 0.8,
-                color: C.sub,
-                marginTop: 1,
-              }}
+              className="font-body text-[11px] tracking-[0.8px] text-sub mt-[1px]"
             >
               {tagline.toUpperCase()}
             </Text>
@@ -136,9 +112,11 @@ export function ProfileHeader({
         <CircleAction
           onPress={onNotifications}
           badge={unread}
-          accessibilityLabel={unread ? "Notifications, unread" : "Notifications"}
+          accessibilityLabel={
+            unread ? "Notifications, unread" : "Notifications"
+          }
         >
-          <BellIcon size={19} color={C.text} />
+          <BellIcon size={19} color={tokens.text} />
         </CircleAction>
       )}
     </View>

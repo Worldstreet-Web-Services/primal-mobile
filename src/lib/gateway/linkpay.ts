@@ -75,7 +75,9 @@ function str(value: unknown): string | undefined {
 }
 
 function obj(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 /** Peel a one-key envelope (`{account: {...}}`) without assuming there is one. */
@@ -106,7 +108,9 @@ const MINOR_UNITS = /^-?\d+$/;
  */
 function minorUnits(raw: string, currency: string): Money | undefined {
   const trimmed = raw.trim();
-  return MINOR_UNITS.test(trimmed) ? { amountMinor: trimmed, currency } : undefined;
+  return MINOR_UNITS.test(trimmed)
+    ? { amountMinor: trimmed, currency }
+    : undefined;
 }
 
 /**
@@ -120,7 +124,10 @@ function minorUnits(raw: string, currency: string): Money | undefined {
  * so it reads as absent and the row renders an em dash instead of a lie. A
  * *string* gets the identical treatment, for the identical reason.
  */
-function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined {
+function readMoney(
+  value: unknown,
+  fallbackCurrency?: string,
+): Money | undefined {
   if (value === null || value === undefined) return undefined;
 
   if (typeof value === "string" || typeof value === "number") {
@@ -136,7 +143,8 @@ function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined
 
   const node = obj(value);
   const rawAmount = node.amountMinor ?? node.amount ?? node.value ?? node.minor;
-  const currency = str(node.currency) ?? str(node.currencyCode) ?? str(fallbackCurrency);
+  const currency =
+    str(node.currency) ?? str(node.currencyCode) ?? str(fallbackCurrency);
   if (!currency) return undefined;
 
   if (typeof rawAmount === "number") {
@@ -155,7 +163,10 @@ function readMoney(value: unknown, fallbackCurrency?: string): Money | undefined
  * handles both dialects, and a second `new Date(…)` in this file is exactly the
  * duplicate that gets one of them wrong.
  */
-function readTime(node: Record<string, unknown>, ...keys: string[]): WireTimestamp {
+function readTime(
+  node: Record<string, unknown>,
+  ...keys: string[]
+): WireTimestamp {
   for (const key of keys) {
     const value = node[key];
     if (value !== null && value !== undefined && value !== "") {
@@ -179,7 +190,8 @@ function readAccount(raw: unknown): LinkpayAccount {
   return {
     id: str(node.id) ?? str(node.accountId),
     status: asAccountStatus(node.status ?? node.accountStatus),
-    accountNumber: str(node.accountNumber) ?? str(node.nuban) ?? str(node.number),
+    accountNumber:
+      str(node.accountNumber) ?? str(node.nuban) ?? str(node.number),
     accountName: str(node.accountName) ?? str(node.name),
     bankName: str(node.bankName) ?? str(node.bank),
     bankCode: str(node.bankCode),
@@ -246,8 +258,7 @@ function readQuote(raw: unknown, currency: string): WithdrawalQuote {
   const node = unwrap(raw, "quote", "data");
   return {
     fee: readMoney(node.fee, currency) ?? { amountMinor: "0", currency },
-    totalDebit:
-      readMoney(node.totalDebit, currency) ??
+    totalDebit: readMoney(node.totalDebit, currency) ??
       readMoney(node.total, currency) ?? { amountMinor: "0", currency },
   };
 }
@@ -291,7 +302,9 @@ export function isAccountUsable(status: AccountStatus): boolean {
  * A 404 here is a real answer, not a failure: the entitlement guard runs ahead
  * of the lookup, so reaching a 404 at all means the gateway let us in.
  */
-export async function getAccount(call: Call = {}): Promise<LinkpayAccount | null> {
+export async function getAccount(
+  call: Call = {},
+): Promise<LinkpayAccount | null> {
   try {
     return readAccount(await get<unknown>("/v1/linkpay/account", call));
   } catch (error) {
@@ -356,7 +369,9 @@ export async function provisionAccount(
  * "unknown status" panel when what they actually need is the provisioning CTA.
  * Same answer for both shapes: there is no account here.
  */
-export function isBlankAccount(account: LinkpayAccount | null | undefined): boolean {
+export function isBlankAccount(
+  account: LinkpayAccount | null | undefined,
+): boolean {
   if (!account) return true;
   return (
     account.status === "UNKNOWN" &&
@@ -384,7 +399,10 @@ export async function listDeposits(
   return readPage(raw, readDeposit);
 }
 
-export async function getDeposit(id: string, call: Call = {}): Promise<Deposit> {
+export async function getDeposit(
+  id: string,
+  call: Call = {},
+): Promise<Deposit> {
   return readDeposit(
     await get<unknown>(`/v1/linkpay/deposits/${encodeURIComponent(id)}`, call),
   );
@@ -414,7 +432,9 @@ export async function listBanks(
   });
   // Rows with no uuid cannot be sent to `validate`, so they are dropped rather
   // than offered as a choice that fails at the next step.
-  const banks = readPage(raw, readBank).items.filter((bank) => bank.uuid !== "");
+  const banks = readPage(raw, readBank).items.filter(
+    (bank) => bank.uuid !== "",
+  );
   bankCache.set(key, { banks, at: Date.now() });
   return banks;
 }
@@ -435,7 +455,9 @@ export async function validateBankAccount(
   input: ValidateBankInput,
   call: Call = {},
 ): Promise<BankAccountResolution> {
-  return readResolution(await post<unknown>("/v1/linkpay/banks/validate", input, call));
+  return readResolution(
+    await post<unknown>("/v1/linkpay/banks/validate", input, call),
+  );
 }
 
 /* -------------------------------------------------------------- withdrawals */
@@ -490,9 +512,15 @@ export async function initiateWithdrawal(
   );
 }
 
-export async function getWithdrawal(id: string, call: Call = {}): Promise<Withdrawal> {
+export async function getWithdrawal(
+  id: string,
+  call: Call = {},
+): Promise<Withdrawal> {
   return readWithdrawal(
-    await get<unknown>(`/v1/linkpay/withdrawals/${encodeURIComponent(id)}`, call),
+    await get<unknown>(
+      `/v1/linkpay/withdrawals/${encodeURIComponent(id)}`,
+      call,
+    ),
   );
 }
 
@@ -646,7 +674,8 @@ const stemFor = (scope: string, fingerprint: string): string =>
  * before it left in the air. Minting one would put two accounts back on one
  * slot, which is the whole thing the scope exists to prevent.
  */
-const legacyStem = (fingerprint: string): string => `${WITHDRAWAL_SLOT}.${fingerprint}`;
+const legacyStem = (fingerprint: string): string =>
+  `${WITHDRAWAL_SLOT}.${fingerprint}`;
 
 /**
  * The idempotency slot for ONE ATTEMPT at one intended payout.
@@ -662,7 +691,8 @@ const slotFor = (stem: string, attempt: number): string => `${stem}.${attempt}`;
  * from the current account's stem: whoever ends an operation has to release the
  * slot it actually reserved.
  */
-const slotOf = (row: WithdrawalAttempt): string => slotFor(row.stem, row.attempt);
+const slotOf = (row: WithdrawalAttempt): string =>
+  slotFor(row.stem, row.attempt);
 
 /**
  * The stem, fingerprint and attempt a slot NAMES, or `null` when nothing
@@ -732,7 +762,9 @@ async function dropSlot(slot: string): Promise<void> {
 async function slotOccupied(slot: string): Promise<boolean> {
   if (isWeb) return memoryKeys.has(slot);
   try {
-    return (await SecureStore.getItemAsync(slotKey(slot), STORE_OPTIONS)) !== null;
+    return (
+      (await SecureStore.getItemAsync(slotKey(slot), STORE_OPTIONS)) !== null
+    );
   } catch {
     // A keychain that will not answer has not proved the key is gone, and this
     // question is only ever asked to decide whether a spent key could still be
@@ -865,9 +897,12 @@ let attemptMemory: AttemptRecord | null = null;
 
 function readAttemptRow(value: unknown): WithdrawalAttempt | null {
   const row = obj(value);
-  const fingerprint = typeof row.fingerprint === "string" ? row.fingerprint : "";
+  const fingerprint =
+    typeof row.fingerprint === "string" ? row.fingerprint : "";
   const attempt =
-    typeof row.attempt === "number" && Number.isInteger(row.attempt) && row.attempt >= 0
+    typeof row.attempt === "number" &&
+    Number.isInteger(row.attempt) &&
+    row.attempt >= 0
       ? row.attempt
       : null;
   if (fingerprint === "" || attempt === null) return null;
@@ -877,7 +912,10 @@ function readAttemptRow(value: unknown): WithdrawalAttempt | null {
     // unscoped stem, so that is where the key still is. Reading it back — never
     // minting it — is what lets an upgrade release the old key instead of
     // orphaning it in the keychain forever.
-    stem: typeof row.stem === "string" && row.stem !== "" ? row.stem : legacyStem(fingerprint),
+    stem:
+      typeof row.stem === "string" && row.stem !== ""
+        ? row.stem
+        : legacyStem(fingerprint),
     attempt,
   };
 }
@@ -885,7 +923,9 @@ function readAttemptRow(value: unknown): WithdrawalAttempt | null {
 function parseAttempts(raw: string): WithdrawalAttempt[] {
   const parsed: unknown = JSON.parse(raw);
   return Array.isArray(parsed)
-    ? parsed.map(readAttemptRow).filter((row): row is WithdrawalAttempt => row !== null)
+    ? parsed
+        .map(readAttemptRow)
+        .filter((row): row is WithdrawalAttempt => row !== null)
     : [];
 }
 
@@ -909,7 +949,10 @@ async function readAttempts(): Promise<AttemptRecord | null> {
     return attemptMemory;
   }
   try {
-    const raw = await SecureStore.getItemAsync(attemptsKeyFor(scope), STORE_OPTIONS);
+    const raw = await SecureStore.getItemAsync(
+      attemptsKeyFor(scope),
+      STORE_OPTIONS,
+    );
     attemptMemory = { scope, rows: raw === null ? [] : parseAttempts(raw) };
     return attemptMemory;
   } catch {
@@ -946,7 +989,9 @@ async function loadAttempts(): Promise<AttemptRecord> {
  * simply refills; the other order would leave a key with no row, which is the
  * one the next payout spends by mistake.
  */
-async function boundAttempts(rows: WithdrawalAttempt[]): Promise<WithdrawalAttempt[]> {
+async function boundAttempts(
+  rows: WithdrawalAttempt[],
+): Promise<WithdrawalAttempt[]> {
   if (rows.length <= ATTEMPT_LIMIT) return rows;
 
   let over = rows.length - ATTEMPT_LIMIT;
@@ -960,7 +1005,12 @@ async function boundAttempts(rows: WithdrawalAttempt[]): Promise<WithdrawalAttem
     // leave the key it is about to mint with no row pointing at it, which is the
     // one a later payout with the same details walks into.
     const writing = index === rows.length - 1;
-    if (over > 0 && !writing && !memoryKeys.has(slot) && !(await slotOccupied(slot))) {
+    if (
+      over > 0 &&
+      !writing &&
+      !memoryKeys.has(slot) &&
+      !(await slotOccupied(slot))
+    ) {
       dropped.push(row);
       over -= 1;
       continue;
@@ -980,7 +1030,10 @@ async function boundAttempts(rows: WithdrawalAttempt[]): Promise<WithdrawalAttem
   return kept;
 }
 
-async function saveAttempts(scope: string, rows: WithdrawalAttempt[]): Promise<void> {
+async function saveAttempts(
+  scope: string,
+  rows: WithdrawalAttempt[],
+): Promise<void> {
   const bounded = await boundAttempts(rows);
   attemptMemory = { scope, rows: bounded };
   if (isWeb) return;
@@ -1025,9 +1078,14 @@ async function attemptPersisted(
   attempt: number,
 ): Promise<boolean> {
   try {
-    const raw = await SecureStore.getItemAsync(attemptsKeyFor(scope), STORE_OPTIONS);
+    const raw = await SecureStore.getItemAsync(
+      attemptsKeyFor(scope),
+      STORE_OPTIONS,
+    );
     if (raw === null) return false;
-    const stored = parseAttempts(raw).find((row) => row.fingerprint === fingerprint);
+    const stored = parseAttempts(raw).find(
+      (row) => row.fingerprint === fingerprint,
+    );
     return stored !== undefined && stored.attempt >= attempt;
   } catch {
     return false;
@@ -1058,7 +1116,9 @@ async function advanceWithdrawalAttempt(slot: string): Promise<boolean> {
 
   const record = await readAttempts();
   if (!record) return false;
-  const row = record.rows.find((entry) => entry.fingerprint === derived.fingerprint) ?? null;
+  const row =
+    record.rows.find((entry) => entry.fingerprint === derived.fingerprint) ??
+    null;
   // A row that has drifted onto a different stem says nothing about the family
   // this slot belongs to, so no guarantee about it can be claimed.
   if (row && row.stem !== derived.stem) return false;
@@ -1152,12 +1212,18 @@ interface PendingRecord {
 
 let pendingMemory: PendingRecord | null = null;
 
-export async function savePendingWithdrawal(record: PendingWithdrawal): Promise<void> {
+export async function savePendingWithdrawal(
+  record: PendingWithdrawal,
+): Promise<void> {
   const scope = await currentScope();
   pendingMemory = { scope, record };
   if (isWeb) return;
   try {
-    await SecureStore.setItemAsync(pendingKeyFor(scope), JSON.stringify(record), STORE_OPTIONS);
+    await SecureStore.setItemAsync(
+      pendingKeyFor(scope),
+      JSON.stringify(record),
+      STORE_OPTIONS,
+    );
   } catch {
     // Memory copy carries the launch.
   }
@@ -1172,7 +1238,10 @@ export async function loadPendingWithdrawal(): Promise<PendingWithdrawal | null>
   if (pendingMemory) return pendingMemory.record;
   if (isWeb) return null;
   try {
-    const raw = await SecureStore.getItemAsync(pendingKeyFor(scope), STORE_OPTIONS);
+    const raw = await SecureStore.getItemAsync(
+      pendingKeyFor(scope),
+      STORE_OPTIONS,
+    );
     if (!raw) {
       pendingMemory = { scope, record: null };
       return null;
@@ -1185,7 +1254,10 @@ export async function loadPendingWithdrawal(): Promise<PendingWithdrawal | null>
     // it in the keychain forever.
     const record: PendingWithdrawal = {
       ...parsed,
-      slot: typeof parsed.slot === "string" && parsed.slot !== "" ? parsed.slot : WITHDRAWAL_SLOT,
+      slot:
+        typeof parsed.slot === "string" && parsed.slot !== ""
+          ? parsed.slot
+          : WITHDRAWAL_SLOT,
     };
     pendingMemory = { scope, record };
     return record;
@@ -1322,14 +1394,17 @@ async function confirmAbsence(
   // A record with no clock cannot be aged, so it can never earn a negative. It
   // is not wedged by that: `setAsideWithdrawal` steps past it without releasing
   // anything.
-  if (!(record.startedAt > 0) || now - record.startedAt < RESOLVE_GRACE_MS) return false;
+  if (!(record.startedAt > 0) || now - record.startedAt < RESOLVE_GRACE_MS)
+    return false;
 
   // The finding lives on the STORED record, not on the copy the caller is
   // holding — a screen that has kept its own copy since mount would otherwise
   // never see the earlier finding and could never corroborate it.
   const current = await loadPendingWithdrawal();
   const stored =
-    current && current.idempotencyKey === record.idempotencyKey ? current : null;
+    current && current.idempotencyKey === record.idempotencyKey
+      ? current
+      : null;
   const seen = stored?.missingSince ?? record.missingSince ?? 0;
   if (seen > 0) return now - seen >= MISSING_CONFIRM_MS;
   // Stamped once and never re-stamped: re-dating it on every check would push
@@ -1384,7 +1459,10 @@ export async function findPendingWithdrawal(
     // sitting at index 25 becomes a confident "this never happened", and a
     // confident negative is what authorises retiring a live key.
     if (rows.length === 0) {
-      return { withdrawal: null, conclusive: await confirmAbsence(record, cleared) };
+      return {
+        withdrawal: null,
+        conclusive: await confirmAbsence(record, cleared),
+      };
     }
 
     // The same page twice means `skip` is not being honoured, so walking on
@@ -1410,7 +1488,11 @@ export async function findPendingWithdrawal(
       const destination = withdrawal.destinationAccount;
       // Money that went to a different account is not this payout, whatever
       // else the row carries.
-      if (destination !== undefined && !destination.endsWith(record.destinationLast4)) continue;
+      if (
+        destination !== undefined &&
+        !destination.endsWith(record.destinationLast4)
+      )
+        continue;
 
       if (createdMs === null) {
         // Undated, and to an account that could be this one. A row that cannot
@@ -1425,7 +1507,11 @@ export async function findPendingWithdrawal(
         cleared = false;
         continue;
       }
-      if (destination === undefined || withdrawal.id === "" || !withdrawal.amount) {
+      if (
+        destination === undefined ||
+        withdrawal.id === "" ||
+        !withdrawal.amount
+      ) {
         // In the window, and nothing on it rules it out: no destination to
         // compare, no reference to name it by, or a figure that would not parse
         // — "5000.00" is not minor units and guessing at it is the guess that
@@ -1443,14 +1529,24 @@ export async function findPendingWithdrawal(
     // array, which is indistinguishable from a real total that happens to equal
     // this page's row count — so that case is left to the empty page above,
     // which costs one extra request and cannot be wrong.
-    if (feed.total !== null && feed.total > rows.length && skip + rows.length >= feed.total) {
-      return { withdrawal: null, conclusive: await confirmAbsence(record, cleared) };
+    if (
+      feed.total !== null &&
+      feed.total > rows.length &&
+      skip + rows.length >= feed.total
+    ) {
+      return {
+        withdrawal: null,
+        conclusive: await confirmAbsence(record, cleared),
+      };
     }
     // Newest first — checked rather than assumed, because a feed that came back
     // oldest-first would otherwise let page one end the scan before it started.
     // This is the normal exit: the feed is now older than this attempt can be.
     if (descending && oldestSeen !== null && oldestSeen < floor) {
-      return { withdrawal: null, conclusive: await confirmAbsence(record, cleared) };
+      return {
+        withdrawal: null,
+        conclusive: await confirmAbsence(record, cleared),
+      };
     }
     skip += rows.length;
   }
@@ -1631,7 +1727,10 @@ export function subscribeToWithdrawal(watcher: WithdrawalWatcher): () => void {
 }
 
 /** The payout currently being tracked, and its last known state. */
-export function trackedWithdrawal(): { id: string; latest: Withdrawal | null } | null {
+export function trackedWithdrawal(): {
+  id: string;
+  latest: Withdrawal | null;
+} | null {
   return tracked ? { id: tracked.id, latest: tracked.latest } : null;
 }
 
@@ -1640,12 +1739,20 @@ export function trackedWithdrawal(): { id: string; latest: Withdrawal | null } |
  * there. Idempotent: asking again for the payout already being tracked adopts
  * that poll rather than starting a second one.
  */
-export function trackWithdrawal(record: PendingWithdrawal, withdrawalId: string): void {
+export function trackWithdrawal(
+  record: PendingWithdrawal,
+  withdrawalId: string,
+): void {
   if (withdrawalId === "") return;
   if (tracked && tracked.id === withdrawalId) return;
   tracked?.stop();
 
-  const entry: Tracked = { id: withdrawalId, latest: null, done: false, stop: () => {} };
+  const entry: Tracked = {
+    id: withdrawalId,
+    latest: null,
+    done: false,
+    stop: () => {},
+  };
   tracked = entry;
 
   entry.stop = watchWithdrawal(
@@ -1688,7 +1795,9 @@ export function trackWithdrawal(record: PendingWithdrawal, withdrawalId: string)
  * it is, so the next launch resolves this payout again rather than deriving a
  * fresh one onto a key that is still sitting in the keychain.
  */
-export async function retireWithdrawal(record: PendingWithdrawal): Promise<boolean> {
+export async function retireWithdrawal(
+  record: PendingWithdrawal,
+): Promise<boolean> {
   // The attempt moves on BEFORE the key is dropped, in the sibling's order and
   // for the sibling's reason: a keychain that silently refuses the delete must
   // still not be able to hand this spent key to the next payout with the same
@@ -1735,7 +1844,9 @@ export async function retireWithdrawal(record: PendingWithdrawal): Promise<boole
  * the next identical payout would derive THIS slot and be handed THIS key, so
  * the honest answer is that the record has to stay where it is.
  */
-export async function setAsideWithdrawal(record: PendingWithdrawal): Promise<boolean> {
+export async function setAsideWithdrawal(
+  record: PendingWithdrawal,
+): Promise<boolean> {
   if (!(await advanceWithdrawalAttempt(record.slot))) return false;
   await clearPendingWithdrawal();
   return true;
@@ -1800,7 +1911,8 @@ export async function reconcilePendingWithdrawal(
   if (!found) return { withdrawal: null, retired: false, conclusive };
   // Answered, but with nothing that can be followed or matched again. That is
   // not the gateway saying the payout does not exist, so it may not retire one.
-  if (found.id === "") return { withdrawal: null, retired: false, conclusive: false };
+  if (found.id === "")
+    return { withdrawal: null, retired: false, conclusive: false };
   if (record.withdrawalId !== found.id) {
     await savePendingWithdrawal({ ...record, withdrawalId: found.id });
   }
@@ -1858,7 +1970,8 @@ export async function planWithdrawal(
   }
   const fingerprint = withdrawalFingerprint(payout);
   const ledger = await loadAttempts();
-  const prior = ledger.rows.find((row) => row.fingerprint === fingerprint) ?? null;
+  const prior =
+    ledger.rows.find((row) => row.fingerprint === fingerprint) ?? null;
   // A fingerprint with history keeps the stem it was written under — including
   // an unscoped one written before the account scope existed, whose key is
   // still sitting there. Only a fingerprint with no history at all starts under
@@ -1893,7 +2006,12 @@ export async function planWithdrawal(
  */
 export type ActivityEntry =
   | { kind: "deposit"; key: string; at: number | null; deposit: Deposit }
-  | { kind: "withdrawal"; key: string; at: number | null; withdrawal: Withdrawal };
+  | {
+      kind: "withdrawal";
+      key: string;
+      at: number | null;
+      withdrawal: Withdrawal;
+    };
 
 /**
  * The recent deposits and withdrawals as one list, newest first.

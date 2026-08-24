@@ -52,7 +52,7 @@ export function NavHeader({
   return (
     <View
       pointerEvents="box-none"
-      style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+      className="absolute top-[0px] left-[0px] right-[0px]"
     >
       <View
         onLayout={onLayout}

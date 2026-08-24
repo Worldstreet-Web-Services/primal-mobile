@@ -1,5 +1,5 @@
 import React from "react";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect, Text as SvgText } from "react-native-svg";
 
 import { C } from "../theme/tokens";
 
@@ -769,6 +769,294 @@ export function MoreIcon({ size = 20, color = C.text }: IconProps) {
       <Circle cx={5} cy={12} r={1.85} fill={color} />
       <Circle cx={12} cy={12} r={1.85} fill={color} />
       <Circle cx={19} cy={12} r={1.85} fill={color} />
+    </Svg>
+  );
+}
+
+/**
+ * The scalloped seal, filled, with a check cut into it — the mark on a
+ * completed step. Twelve lobes drawn as one path of arcs rather than a stack of
+ * rotated shapes, so it stays a single fill at any size.
+ *
+ * `ink` is the check, and it is NOT optional in practice: this glyph is a solid
+ * face, so the tick has to be the ground colour showing through rather than a
+ * second bright colour laid on top.
+ */
+export function BadgeCheckIcon({
+  size = 56,
+  color = C.brand,
+  ink = C.brandSoftInk,
+}: IconProps & { ink?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M20.02 14.15A2.5 2.5 0 0 1 17.87 17.87A2.5 2.5 0 0 1 14.15 20.02A2.5 2.5 0 0 1 9.85 20.02A2.5 2.5 0 0 1 6.13 17.87A2.5 2.5 0 0 1 3.98 14.15A2.5 2.5 0 0 1 3.98 9.85A2.5 2.5 0 0 1 6.13 6.13A2.5 2.5 0 0 1 9.85 3.98A2.5 2.5 0 0 1 14.15 3.98A2.5 2.5 0 0 1 17.87 6.13A2.5 2.5 0 0 1 20.02 9.85A2.5 2.5 0 0 1 20.02 14.15Z"
+        fill={color}
+      />
+      <Path
+        d="m8.4 12.1 2.5 2.5 4.7-5"
+        stroke={ink}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Two arrows chasing each other — something mirrored on a loop, not a one-off
+    refresh the member has to ask for. */
+export function SyncIcon({
+  size = 18,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4.6 12a7.4 7.4 0 0 1 12.6-5.2M19.4 12a7.4 7.4 0 0 1-12.6 5.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M17.6 3.6v3.5h-3.5M6.4 20.4v-3.5h3.5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/* ------------------------------------------------------------------ player
+ *
+ * Transport glyphs. All Feather-weight outlines on the same 24 box as the rest
+ * of the set, so a row of them reads as one control strip rather than a mix of
+ * weights. Only `PauseIcon` is solid — it is the twin of `PlayIcon`, which is
+ * solid because a triangle outlined at button size closes up.
+ */
+
+/** Solid pause bars — the twin of `PlayIcon`, same optical weight. */
+export function PauseIcon({ size = 18, color = C.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={6.4} y={4} width={3.9} height={16} rx={1.1} fill={color} />
+      <Rect x={13.7} y={4} width={3.9} height={16} rx={1.1} fill={color} />
+    </Svg>
+  );
+}
+
+/**
+ * Circular arrow with its jump written inside it.
+ *
+ * One component for both directions: the two glyphs are mirrors, and keeping
+ * them as one is what stops the back arrow drifting a hair heavier than the
+ * forward one the way two hand-drawn paths always do.
+ */
+export function SeekIcon({
+  size = 26,
+  color = C.text,
+  strokeWidth = 1.7,
+  seconds,
+  back = false,
+}: IconProps & {
+  /** Written in the loop. Omit for a bare rotate glyph. */
+  seconds?: number;
+  back?: boolean;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d={
+          back
+            ? "M3.51 15a9 9 0 1 0 2.13-9.36L1 10"
+            : "M20.49 15a9 9 0 1 1-2.12-9.36L23 10"
+        }
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d={back ? "M1 4v6h6" : "M23 4v6h-6"}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {seconds !== undefined ? (
+        <SvgText
+          x={12}
+          y={15.4}
+          fill={color}
+          fontSize={8.4}
+          fontWeight="700"
+          textAnchor="middle"
+        >
+          {String(seconds)}
+        </SvgText>
+      ) : null}
+    </Svg>
+  );
+}
+
+/** Crossing paths — the queue plays out of order. */
+export function ShuffleIcon({
+  size = 22,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * The loop, with the "1" of repeat-one cut into it.
+ *
+ * `one` is a variant rather than a separate glyph because the two are the same
+ * control at different settings — the shape must not move as it cycles.
+ */
+export function RepeatIcon({
+  size = 22,
+  color = C.silver,
+  strokeWidth = 1.7,
+  one = false,
+}: IconProps & { one?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {one ? (
+        <SvgText
+          x={12}
+          y={15.2}
+          fill={color}
+          fontSize={9}
+          fontWeight="700"
+          textAnchor="middle"
+        >
+          1
+        </SvgText>
+      ) : null}
+    </Svg>
+  );
+}
+
+/** Tray with an arrow leaving it — share this episode. */
+export function ShareIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 12.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6.5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M16 6.5 12 2.6 8 6.5M12 2.6V15"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** The same tray with the arrow coming in — keep it for offline. */
+export function DownloadIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle
+        cx={12}
+        cy={12}
+        r={9}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        fill="none"
+      />
+      <Path
+        d="M12 7.4v8M8.6 12l3.4 3.4 3.4-3.4"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Screen throwing waves — hand playback to another device. */
+export function CastIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Five bars of sound — the podcast section's own mark, set beside the wordmark
+ * at the top of an episode. Deliberately NOT `MicIcon`: that glyph is the tab,
+ * and a page should not repeat the tab's own icon at its head.
+ */
+export function WaveIcon({ size = 14, color = C.text }: IconProps) {
+  const bars = [0.42, 0.78, 1, 0.62, 0.34];
+  return (
+    <Svg width={size * 1.35} height={size} viewBox="0 0 27 20">
+      {bars.map((h, i) => (
+        <Rect
+          key={i}
+          x={i * 5.6 + 1}
+          y={10 - (h * 18) / 2}
+          width={3}
+          height={h * 18}
+          rx={1.5}
+          fill={color}
+        />
+      ))}
     </Svg>
   );
 }

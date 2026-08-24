@@ -40,7 +40,8 @@ import {
   type CryptoPayment,
   type Subscription,
 } from "@/lib/gateway/types";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * Crypto checkout — the surface that moves USD 1,000 of someone's money.
@@ -143,31 +144,20 @@ function Notice({
       disabled={!onDismiss}
       accessibilityRole={onDismiss ? "button" : undefined}
       accessibilityLabel={onDismiss ? "Dismiss" : undefined}
+      className="mt-[16px] border rounded-[16px] p-[14px]"
       style={{
-        marginTop: 16,
         backgroundColor: DANGER_TINT,
-        borderWidth: 1,
         borderColor: DANGER_EDGE,
-        borderRadius: 16,
-        padding: 14,
       }}
     >
-      <Body size={12.5} semibold color={C.down}>
+      <Body className="text-[12.5px] text-down font-body-semibold">
         {notice.title}
       </Body>
-      <Body
-        size={12}
-        color={C.silver}
-        style={{ marginTop: 4, lineHeight: 17.5 }}
-      >
+      <Body className="text-[12px] text-silver mt-[4px] leading-[17.5px]">
         {notice.detail}
       </Body>
       {notice.correlationId ? (
-        <Mono
-          size={9.5}
-          color={C.dim}
-          style={{ marginTop: 8, letterSpacing: 1 }}
-        >
+        <Mono className="text-[9.5px] text-dim mt-[8px] tracking-[1px]">
           REF {notice.correlationId}
         </Mono>
       ) : null}
@@ -178,9 +168,9 @@ function Notice({
 /** Label over value, the shape support reads back over the phone. */
 function TraceRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ marginTop: 10 }}>
+    <View className="mt-[10px]">
       <Label>{label}</Label>
-      <Mono size={11} color={C.silver} style={{ marginTop: 4, lineHeight: 16 }}>
+      <Mono className="text-[11px] text-silver mt-[4px] leading-[16px]">
         {value}
       </Mono>
     </View>
@@ -208,21 +198,14 @@ function RouteChip({
 }) {
   const body = (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: selected ? C.brand : C.border,
-        borderRadius: 14,
-        paddingVertical: 11,
-        paddingHorizontal: 14,
-      }}
+      className={cn(
+        "flex-row items-center gap-[8px] bg-canvas-raised border rounded-[14px] py-[11px] px-[14px]",
+        selected ? "border-brand" : "border-border",
+      )}
     >
-      <View style={{ flex: 1 }}>
-        <Label style={{ fontSize: 9, letterSpacing: 1.3 }}>{caption}</Label>
-        <Body size={14} semibold color={C.text} style={{ marginTop: 3 }}>
+      <View className="flex-1">
+        <Label className="text-[9px] tracking-[1.3px]">{caption}</Label>
+        <Body className="text-[14px] text-text font-body-semibold mt-[3px]">
           {value}
         </Body>
       </View>
@@ -636,7 +619,7 @@ export default function CheckoutSheet({
   // 0 below the fold, 1 seated. Started on mount and never restarted — the
   // sheet rises once, and re-running it on a state change would make the panel
   // jump every time the payment status moved.
-  const rise = useRef(new Animated.Value(0)).current;
+  const rise = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     const anim = Animated.timing(rise, {
       toValue: 1,
@@ -661,20 +644,12 @@ export default function CheckoutSheet({
   } as const;
 
   const header = (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        paddingTop: 18,
-        paddingBottom: 12,
-      }}
-    >
+    <View className="flex-row items-center px-[20px] pt-[18px] pb-[12px]">
       <CircleAction onPress={onBack} size={38} accessibilityLabel="Back">
         <BackChevron color={C.silver} />
       </CircleAction>
-      <View style={{ flex: 1, alignItems: "center" }}>
-        <Display size={20} style={{ fontFamily: F.displayBold }}>
+      <View className="flex-1 items-center">
+        <Display className="text-[20px] leading-[21px] font-display-bold">
           Crypto Checkout
         </Display>
       </View>
@@ -682,33 +657,18 @@ export default function CheckoutSheet({
   );
 
   const planCard = (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 16,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        borderRadius: 18,
-        padding: 16,
-      }}
-    >
-      <View style={{ flex: 1 }}>
+    <View className="flex-row items-center gap-[16px] bg-canvas-raised border border-rule rounded-[18px] p-[16px]">
+      <View className="flex-1">
         {/* The client's artwork reads "PRIMAL PARAGM" / "Montly" — both are
             typos in the mockup, and a paywall is the last place to ship one. */}
         <Label>Kash+</Label>
-        <Display size={18} style={{ marginTop: 6 }}>
+        <Display className="text-[18px] leading-[18.9px] mt-[6px]">
           Monthly Subscription
         </Display>
       </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <Mono size={22} color={C.text} style={{ fontFamily: F.displayBold }}>
-          {price}
-        </Mono>
-        <Mono size={11.5} color={C.dim} style={{ marginTop: 4 }}>
-          {settlement}
-        </Mono>
+      <View className="items-end">
+        <Mono className="text-[22px] text-text font-display-bold">{price}</Mono>
+        <Mono className="text-[11.5px] text-dim mt-[4px]">{settlement}</Mono>
       </View>
     </View>
   );
@@ -725,9 +685,9 @@ export default function CheckoutSheet({
     if (stage === "loading") {
       return {
         content: (
-          <View style={{ alignItems: "center", paddingVertical: 54 }}>
+          <View className="items-center py-[54px]">
             <KashPlusLoader height={26} color={C.silver} />
-            <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
+            <Body className="text-[12.5px] text-dim mt-[18px]">
               Opening your checkout
             </Body>
           </View>
@@ -754,48 +714,28 @@ export default function CheckoutSheet({
     if (stage === "enabling") {
       return {
         content: (
-          <View style={{ paddingTop: 8 }}>
+          <View className="pt-[8px]">
             <View
+              className="items-center bg-brand-glow border rounded-[20px] py-[26px] px-[20px]"
               style={{
-                alignItems: "center",
-                backgroundColor: C.brandGlow,
-                borderWidth: 1,
                 borderColor: BRAND_EDGE,
-                borderRadius: 20,
-                paddingVertical: 26,
-                paddingHorizontal: 20,
               }}
             >
               <CheckIcon size={26} color={C.brand} />
-              <Display size={19} style={{ marginTop: 14, textAlign: "center" }}>
+              <Display className="text-[19px] leading-[19.95px] mt-[14px] text-center">
                 Payment confirmed.
               </Display>
-              <Display
-                size={19}
-                color={C.brand}
-                style={{ textAlign: "center" }}
-              >
+              <Display className="text-[19px] leading-[19.95px] text-brand text-center">
                 Enabling your account.
               </Display>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 16,
-                }}
-              >
+              <View className="flex-row items-center gap-[8px] mt-[16px]">
                 <PulseDot color={C.brand} />
-                <Body size={12} color={C.silver}>
+                <Body className="text-[12px] text-silver">
                   Asking Primal{syncAttempt > 0 ? ` · ${syncAttempt + 1}` : ""}
                 </Body>
               </View>
             </View>
-            <Body
-              size={12}
-              color={C.dim}
-              style={{ marginTop: 16, lineHeight: 18, textAlign: "center" }}
-            >
+            <Body className="text-[12px] text-dim mt-[16px] leading-[18px] text-center">
               Your transfer has settled. Access switches on from Primal's side,
               which usually takes a few seconds — nothing else is needed from
               you, and nothing will be charged again.
@@ -810,22 +750,12 @@ export default function CheckoutSheet({
     if (stage === "support") {
       return {
         content: (
-          <View style={{ paddingTop: 8 }}>
-            <View
-              style={{
-                backgroundColor: C.raised,
-                borderWidth: 1,
-                borderColor: C.border,
-                borderRadius: 20,
-                padding: 18,
-              }}
-            >
-              <Display size={18}>Your payment landed</Display>
-              <Body
-                size={12.5}
-                color={C.silver}
-                style={{ marginTop: 8, lineHeight: 19 }}
-              >
+          <View className="pt-[8px]">
+            <View className="bg-canvas-raised border border-border rounded-[20px] p-[18px]">
+              <Display className="text-[18px] leading-[18.9px]">
+                Your payment landed
+              </Display>
+              <Body className="text-[12.5px] text-silver mt-[8px] leading-[19px]">
                 Primal has the money but has not switched your access on yet.
                 Nothing is owed and nothing needs paying again — this is ours to
                 finish. Quote these to support and they can find it in one look.
@@ -839,7 +769,7 @@ export default function CheckoutSheet({
           </View>
         ),
         footer: (
-          <View style={{ gap: 10 }}>
+          <View className="gap-[10px]">
             <MetalButton
               label="Check once more"
               loading={busy}
@@ -860,29 +790,21 @@ export default function CheckoutSheet({
       const expired = status === "EXPIRED";
       return {
         content: (
-          <View style={{ paddingTop: 8 }}>
+          <View className="pt-[8px]">
             <View
+              className="border rounded-[20px] p-[18px]"
               style={{
                 backgroundColor: DANGER_TINT,
-                borderWidth: 1,
                 borderColor: DANGER_EDGE,
-                borderRadius: 20,
-                padding: 18,
               }}
             >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 9 }}
-              >
+              <View className="flex-row items-center gap-[9px]">
                 <AlertIcon size={17} color={C.down} />
-                <Body size={13.5} semibold color={C.down}>
+                <Body className="text-[13.5px] text-down font-body-semibold">
                   {expired ? "Payment window closed" : "Payment failed"}
                 </Body>
               </View>
-              <Body
-                size={12.5}
-                color={C.silver}
-                style={{ marginTop: 10, lineHeight: 19 }}
-              >
+              <Body className="text-[12.5px] text-silver mt-[10px] leading-[19px]">
                 {expired
                   ? "This deposit address is no longer watched. Do not send anything to it — start a fresh checkout and you will be given a new one."
                   : "Primal could not settle this payment. If anything left your wallet it refunds to the address you started from."}
@@ -906,29 +828,21 @@ export default function CheckoutSheet({
     if (payment && !quote.safe) {
       return {
         content: (
-          <View style={{ paddingTop: 8 }}>
+          <View className="pt-[8px]">
             <View
+              className="border rounded-[20px] p-[18px]"
               style={{
                 backgroundColor: DANGER_TINT,
-                borderWidth: 1,
                 borderColor: DANGER_EDGE,
-                borderRadius: 20,
-                padding: 18,
               }}
             >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 9 }}
-              >
+              <View className="flex-row items-center gap-[9px]">
                 <AlertIcon size={17} color={C.down} />
-                <Body size={13.5} semibold color={C.down}>
+                <Body className="text-[13.5px] text-down font-body-semibold">
                   Do not send anything
                 </Body>
               </View>
-              <Body
-                size={12.5}
-                color={C.silver}
-                style={{ marginTop: 10, lineHeight: 19 }}
-              >
+              <Body className="text-[12.5px] text-silver mt-[10px] leading-[19px]">
                 This checkout was quoted on a route this app does not recognise,
                 so it cannot tell you what to send or where. Nothing has been
                 charged. Quote the reference below to support.
@@ -955,9 +869,9 @@ export default function CheckoutSheet({
     const shownAsset = locked ? (quote.asset?.symbol ?? "—") : asset.symbol;
 
     const routeBlock = (
-      <View style={{ marginTop: 22 }}>
+      <View className="mt-[22px]">
         <Label>Select asset &amp; network</Label>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+        <View className="flex-row gap-[10px] mt-[10px]">
           <RouteChip
             caption="Asset"
             value={shownAsset}
@@ -977,14 +891,7 @@ export default function CheckoutSheet({
         </View>
 
         {!locked && picking ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
+          <View className="flex-row flex-wrap gap-[8px] mt-[10px]">
             {subs.ORIGIN_NETWORKS.map((n) => {
               const on = n.chainId === chainId;
               return (
@@ -996,16 +903,20 @@ export default function CheckoutSheet({
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
+                  className={cn(
+                    "px-[14px] py-[9px] border",
+                    on ? "border-brand" : "border-border",
+                    on ? "bg-brand-glow" : "bg-canvas-raised",
+                  )}
                   style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 9,
                     borderRadius: PILL,
-                    borderWidth: 1,
-                    borderColor: on ? C.brand : C.border,
-                    backgroundColor: on ? C.brandGlow : C.raised,
                   }}
                 >
-                  <Body size={12.5} semibold color={on ? C.brand : C.silver}>
+                  <Body
+                    className={on ? "text-brand" : "text-silver"}
+                    size={12.5}
+                    semibold
+                  >
                     {n.name}
                   </Body>
                 </Pressable>
@@ -1014,7 +925,7 @@ export default function CheckoutSheet({
           </View>
         ) : null}
 
-        <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
+        <Body className="text-[11px] text-dim mt-[10px] leading-[16px]">
           {locked
             ? "This checkout is bound to the route above. A different network needs a different deposit address, which means a new checkout."
             : "The address you are given only accepts this asset on this network. Anything else is lost."}
@@ -1048,33 +959,24 @@ export default function CheckoutSheet({
                 before the button it disables. */}
             {walletAddress ? null : (
               <View
+                className="flex-row gap-[11px] mb-[14px] border rounded-[16px] p-[14px]"
                 style={{
-                  flexDirection: "row",
-                  gap: 11,
-                  marginBottom: 14,
                   backgroundColor: HOLD_TINT,
-                  borderWidth: 1,
                   borderColor: HOLD_EDGE,
-                  borderRadius: 16,
-                  padding: 14,
                 }}
               >
-                <View style={{ paddingTop: 1 }}>
+                <View className="pt-[1px]">
                   <AlertIcon size={17} color={C.amber} />
                 </View>
                 {/* Two different reasons produce a null address, and telling a
                     signed-OUT person to "unlock your wallet" points them at a
                     wallet that does not exist yet. The route knows which it is;
                     this only says what it was told. */}
-                <View style={{ flex: 1 }}>
-                  <Body size={12.5} semibold color={C.amber}>
+                <View className="flex-1">
+                  <Body className="text-[12.5px] text-amber font-body-semibold">
                     {signedOut ? "Sign in to continue" : "Wallet locked"}
                   </Body>
-                  <Body
-                    size={12.5}
-                    color={C.sub}
-                    style={{ marginTop: 4, lineHeight: 18 }}
-                  >
+                  <Body className="text-[12.5px] text-sub mt-[4px] leading-[18px]">
                     {signedOut
                       ? "KashPlus needs your wallet address before it can take a payment — it is where the provider refunds you if the route fails."
                       : "Unlock your wallet first — a payment needs somewhere to refund to if the route fails."}
@@ -1092,11 +994,7 @@ export default function CheckoutSheet({
               onPress={() => void requestAddress()}
             />
             {walletAddress ? (
-              <Body
-                size={11}
-                color={C.dim}
-                style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
-              >
+              <Body className="text-[11px] text-dim mt-[12px] text-center leading-[17px]">
                 A failed route refunds to your own wallet.
               </Body>
             ) : null}
@@ -1113,59 +1011,32 @@ export default function CheckoutSheet({
     const shut = stalled || expired;
 
     const statusStrip = (
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 9,
-          marginTop: 16,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          borderRadius: 14,
-          paddingVertical: 12,
-          paddingHorizontal: 14,
-        }}
-      >
+      <View className="flex-row items-center gap-[9px] mt-[16px] bg-canvas-raised border border-rule rounded-[14px] py-[12px] px-[14px]">
         <PulseDot color={status === "PROCESSING" ? C.brand : C.amber} />
-        <Body size={12.5} color={C.silver} style={{ flex: 1 }}>
+        <Body className="text-[12.5px] text-silver flex-1">
           {shut ? "Window closed" : subs.describePaymentStatus(status)}
         </Body>
         {countdown && !shut ? (
-          <Mono size={12} color={C.text}>
-            {countdown}
-          </Mono>
+          <Mono className="text-[12px] text-text">{countdown}</Mono>
         ) : null}
       </View>
     );
 
     const addressBlock = (
-      <View style={{ marginTop: 22 }}>
+      <View className="mt-[22px]">
         <Label>Deposit address</Label>
         <Pressable
           onPress={() => void copy("addr", payment.depositAddress)}
           accessibilityRole="button"
           accessibilityLabel="Copy deposit address"
+          className="mt-[10px] flex-row items-center gap-[12px] bg-canvas-raised border rounded-[16px] py-[14px] px-[16px]"
           style={{
-            marginTop: 10,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            backgroundColor: C.raised,
-            borderWidth: 1,
             borderColor: copied === "addr" ? BRAND_EDGE : C.border,
-            borderRadius: 16,
-            paddingVertical: 14,
-            paddingHorizontal: 16,
           }}
         >
           {/* The whole string, in groups. Never `0x8335…2913` — that ellipsis
               is the entire address-poisoning attack surface. */}
-          <Mono
-            size={12.5}
-            color={C.text}
-            style={{ flex: 1, lineHeight: 20, fontFamily: F.monoSemibold }}
-          >
+          <Mono className="text-[12.5px] text-text flex-1 leading-[20px] font-mono-semibold">
             {groups.join(" ")}
           </Mono>
           <CopyMark copied={copied === "addr"} label="COPY" />
@@ -1175,44 +1046,26 @@ export default function CheckoutSheet({
           onPress={() => setReviewing((v) => !v)}
           accessibilityRole="button"
           accessibilityState={{ expanded: reviewing }}
-          style={{ paddingVertical: 10 }}
+          className="py-[10px]"
         >
-          <Body size={12} semibold color={C.brand}>
+          <Body className="text-[12px] text-brand font-body-semibold">
             {reviewing ? "Hide full address" : "Review the full address"}
           </Body>
         </Pressable>
 
         {reviewing ? (
-          <View
-            style={{
-              backgroundColor: C.inset,
-              borderWidth: 1,
-              borderColor: C.hairline,
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <Body size={12} color={C.silver} style={{ lineHeight: 18 }}>
+          <View className="bg-canvas-inset border border-rule rounded-[16px] p-[16px]">
+            <Body className="text-[12px] text-silver leading-[18px]">
               Paste it, then compare the gold characters at both ends against
               what your wallet shows. An address that differs anywhere is not
               this one.
             </Body>
-            <Mono size={14} style={{ marginTop: 14, lineHeight: 24 }}>
-              <Mono
-                size={14}
-                color={C.brand}
-                style={{ fontFamily: F.monoSemibold }}
-              >
+            <Mono className="text-[14px] mt-[14px] leading-[24px]">
+              <Mono className="text-[14px] text-brand font-mono-semibold">
                 {edges.head}
               </Mono>
-              <Mono size={14} color={C.text}>
-                {edges.middle}
-              </Mono>
-              <Mono
-                size={14}
-                color={C.brand}
-                style={{ fontFamily: F.monoSemibold }}
-              >
+              <Mono className="text-[14px] text-text">{edges.middle}</Mono>
+              <Mono className="text-[14px] text-brand font-mono-semibold">
                 {edges.tail}
               </Mono>
             </Mono>
@@ -1221,13 +1074,13 @@ export default function CheckoutSheet({
                 that has to be COMPARED character by character is the last place
                 in the app for the quietest tier — the anti-poisoning design is
                 undone if the thing being compared is hard to read. */}
-            <View style={{ marginTop: 14, gap: 4 }}>
-              <Body size={11.5} color={C.sub}>
+            <View className="mt-[14px] gap-[4px]">
+              <Body className="text-[11.5px] text-sub">
                 {quote.networkName}
                 {quote.chainId === null ? "" : ` · chain ${quote.chainId}`}
               </Body>
               {quote.assetAddress ? (
-                <Mono size={11} color={C.sub} style={{ lineHeight: 16 }}>
+                <Mono className="text-[11px] text-sub leading-[16px]">
                   {quote.asset?.symbol} contract {quote.assetAddress}
                 </Mono>
               ) : null}
@@ -1238,7 +1091,7 @@ export default function CheckoutSheet({
     );
 
     const amountBlock = (
-      <View style={{ marginTop: 22 }}>
+      <View className="mt-[22px]">
         <Label>Send exactly</Label>
         <Pressable
           onPress={() =>
@@ -1249,42 +1102,26 @@ export default function CheckoutSheet({
           disabled={!quote.amountPlain}
           accessibilityRole="button"
           accessibilityLabel="Copy the amount to send"
+          className="mt-[10px] flex-row items-end gap-[12px] bg-canvas-raised border rounded-[16px] py-[15px] px-[16px]"
           style={{
-            marginTop: 10,
-            flexDirection: "row",
-            alignItems: "flex-end",
-            gap: 12,
-            backgroundColor: C.raised,
-            borderWidth: 1,
             borderColor: copied === "amount" ? BRAND_EDGE : C.border,
-            borderRadius: 16,
-            paddingVertical: 15,
-            paddingHorizontal: 16,
           }}
         >
-          <View style={{ flex: 1 }}>
+          <View className="flex-1">
             {/* The exact `originAmount`, at the trusted table's decimals. */}
-            <Mono
-              size={24}
-              color={C.text}
-              style={{ fontFamily: F.displayBold }}
-            >
+            <Mono className="text-[24px] text-text font-display-bold">
               {quote.amountText}
             </Mono>
-            <Body size={12} color={C.sub} style={{ marginTop: 4 }}>
+            <Body className="text-[12px] text-sub mt-[4px]">
               {quote.asset?.symbol} on {quote.networkName}
             </Body>
           </View>
-          <View style={{ paddingBottom: 4 }}>
+          <View className="pb-[4px]">
             <CopyMark copied={copied === "amount"} label="COPY" />
           </View>
         </Pressable>
         {grossed ? (
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ marginTop: 9, lineHeight: 16 }}
-          >
+          <Body className="text-[11px] text-dim mt-[9px] leading-[16px]">
             More than the {settlement} that has to settle — the difference is
             the route's fee, already worked in. Send the figure above, not the
             plan price.
@@ -1295,21 +1132,16 @@ export default function CheckoutSheet({
 
     const warning = (
       <View
+        className="flex-row gap-[11px] mt-[22px] border rounded-[16px] p-[14px]"
         style={{
-          flexDirection: "row",
-          gap: 11,
-          marginTop: 22,
           backgroundColor: DANGER_TINT,
-          borderWidth: 1,
           borderColor: DANGER_EDGE,
-          borderRadius: 16,
-          padding: 14,
         }}
       >
-        <View style={{ paddingTop: 1 }}>
+        <View className="pt-[1px]">
           <AlertIcon size={17} color={C.down} />
         </View>
-        <Body size={12.5} color={C.silver} style={{ flex: 1, lineHeight: 18 }}>
+        <Body className="text-[12.5px] text-silver flex-1 leading-[18px]">
           Confirm that the wallet address and network above match your sending
           wallet before continuing.
         </Body>
@@ -1325,16 +1157,13 @@ export default function CheckoutSheet({
             {planCard}
             {statusStrip}
             <View
+              className="mt-[16px] border rounded-[16px] p-[14px]"
               style={{
-                marginTop: 16,
                 backgroundColor: DANGER_TINT,
-                borderWidth: 1,
                 borderColor: DANGER_EDGE,
-                borderRadius: 16,
-                padding: 14,
               }}
             >
-              <Body size={12.5} color={C.silver} style={{ lineHeight: 18 }}>
+              <Body className="text-[12.5px] text-silver leading-[18px]">
                 The payment window has closed. Do not send anything to the
                 address you were given. If you sent before it closed, check once
                 more — Primal decides whether it counted, not this app.
@@ -1346,7 +1175,7 @@ export default function CheckoutSheet({
           </View>
         ),
         footer: (
-          <View style={{ gap: 10 }}>
+          <View className="gap-[10px]">
             <MetalButton
               label="Check once more"
               loading={busy}
@@ -1372,11 +1201,7 @@ export default function CheckoutSheet({
             ) : null}
             {/* Stays in the scroll: it is the tail of the status narrative, and
                 the Close it mentions is pinned directly below it. */}
-            <Body
-              size={12}
-              color={C.dim}
-              style={{ marginTop: 18, lineHeight: 18, textAlign: "center" }}
-            >
+            <Body className="text-[12px] text-dim mt-[18px] leading-[18px] text-center">
               Watching for your transfer. You can close this — it keeps running,
               and your subscription switches on the moment it confirms.
             </Body>
@@ -1402,11 +1227,7 @@ export default function CheckoutSheet({
       footer: (
         <View>
           <MetalButton label="Continue" onPress={() => setAcknowledged(true)} />
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
-          >
+          <Body className="text-[11px] text-dim mt-[12px] text-center leading-[17px]">
             Your subscription unlocks instantly upon transaction confirmation.
           </Body>
         </View>
@@ -1415,11 +1236,9 @@ export default function CheckoutSheet({
   })();
 
   return (
-    <View
-      style={{ flex: 1, justifyContent: "flex-end", backgroundColor: SCRIM }}
-    >
+    <View className="flex-1 justify-end" style={{ backgroundColor: SCRIM }}>
       <Pressable
-        style={{ flex: 1 }}
+        className="flex-1"
         onPress={close}
         accessibilityRole="button"
         accessibilityLabel="Dismiss checkout"
@@ -1462,13 +1281,9 @@ export default function CheckoutSheet({
             this edge and stops, so nothing can ever pass under the action. */}
         {panel.footer ? (
           <View
+            className="px-[20px] pt-[16px] border-t border-t-rule bg-sheet"
             style={{
-              paddingHorizontal: 20,
-              paddingTop: 16,
               paddingBottom: Math.max(insets.bottom, 16) + 6,
-              borderTopWidth: 1,
-              borderTopColor: C.hairline,
-              backgroundColor: C.sheet,
             }}
           >
             {panel.footer}

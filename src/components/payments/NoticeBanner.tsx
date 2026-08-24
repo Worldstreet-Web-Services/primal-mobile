@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { AlertIcon } from "../icons";
 
 export type NoticeTone = "warning" | "info";
@@ -26,23 +26,16 @@ export function NoticeBanner({
   return (
     <View
       accessibilityRole="alert"
+      className="flex-row gap-[12px] p-[16px] rounded-[16px] border"
       style={{
-        flexDirection: "row",
-        gap: 12,
-        padding: 16,
-        borderRadius: 16,
         backgroundColor: warning ? "rgba(246,165,165,0.07)" : C.raised,
-        borderWidth: 1,
         borderColor: warning ? "rgba(246,165,165,0.34)" : C.hairline,
       }}
     >
       {icon ?? <AlertIcon size={18} color={accent} />}
       <Text
+        className="flex-1 font-body text-[12.5px] leading-[18px]"
         style={{
-          flex: 1,
-          fontFamily: F.body,
-          fontSize: 12.5,
-          lineHeight: 18,
           color: accent,
         }}
       >

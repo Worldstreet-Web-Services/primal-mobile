@@ -1,3 +1,186 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * The palette, and the single place it is defined.
+ *
+ * Every colour and family in the app comes from a variable below. `:root` is
+ * light, `.dark:root` is dark, and NativeWind swaps between them off the class
+ * set by `colorScheme` — which is why `tailwind.config.js` carries
+ * `darkMode: "class"`. Without that, only the media query would work and
+ * `colorScheme.set()` would have nothing to switch.
+ *
+ * Dark is what ships (see `src/app/_layout.tsx`). Light is a real palette, not
+ * an inversion: every chromatic value was re-derived against the light ground
+ * rather than reused, because #83BE60 is 9.5:1 on black and 2.1:1 on white —
+ * the same green is a legible ink in one theme and unreadable in the other.
+ * Body-text tokens clear 4.5:1 on their own canvas in BOTH themes; the one
+ * deliberate exception is `--figure-tail`, the muted ".00" on a large figure,
+ * which is held to the 3:1 large-text floor.
+ *
+ * TWO FORMATS, on purpose:
+ *
+ *   1. Solid colours are stored as bare `R G B` channels and consumed in
+ *      tailwind as `rgb(var(--x) / <alpha-value>)`. That is what makes
+ *      `text-brand/70` and `bg-canvas/50` work.
+ *   2. Chrome whose translucency IS the design — hairlines, glass, the card
+ *      wash — is stored as a finished `rgba()` string and consumed as
+ *      `var(--x)`. The alpha is part of the token, so these take no opacity
+ *      modifier. Putting them in group 1 would move a design decision out to
+ *      several hundred call sites.
+ *
+ * `src/theme/tokens.ts` mirrors this file for the handful of places a class
+ * cannot reach — gradient `colors` arrays, SVG `fill`, `shadowColor`, blur
+ * tints. Change a value here, change it there. Nothing else should read
+ * colours from TypeScript.
+ */
+
+:root {
+  /* -------------------------------------------------------------- ground */
+  /* Light inverts the elevation relationship rather than the values: on black,
+     a raised surface is lighter than the canvas; on grey, it is white. A white
+     canvas with a whiter card has nowhere to go. */
+  --canvas: 244 245 247;
+  --canvas-raised: rgba(255, 255, 255, 0.96);
+  --canvas-inset: 232 234 237;
+  --sheet: 255 255 255;
+  --key: 233 235 238;
+  --ink: 10 10 10;
+
+  /* ---------------------------------------------------------------- text */
+  --text: 11 13 16;
+  --sub: 78 85 94;
+  --dim: 101 108 117;
+  --silver: 78 85 94;
+  --silver-muted: 101 108 117;
+  --silver-faint: 134 141 149;
+  --figure-tail: 134 141 149;
+  --accent: 82 82 91;
+  --placeholder: rgba(0, 0, 0, 0.3);
+
+  /* --------------------------------------------------------------- lines */
+  --card: rgba(0, 0, 0, 0.035);
+  --border: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.26);
+  --hairline: rgba(0, 0, 0, 0.08);
+
+  /* --------------------------------------------------------------- brand */
+  /* Re-derived, not reused: the dark leaf green is 2.1:1 on this ground. This
+     one clears 5.09:1 as ink AND takes white ink at 5.56:1 as a fill, which is
+     the pair of jobs `brand` has to do. `--brand-ink` therefore FLIPS between
+     themes — near-black on the bright dark-mode fill, white on this one. */
+  --brand: 63 117 34;
+  --brand-ink: 255 255 255;
+  --brand-soft: 52 97 28;
+  --brand-soft-ink: 255 255 255;
+  --brand-glow: rgba(63, 117, 34, 0.12);
+  --green: 47 127 46;
+  --green-ink: 255 255 255;
+  --green-glow: rgba(47, 127, 46, 0.12);
+
+  /* --------------------------------------------------------------- money */
+  /* Mint against rose, both pulled down until they are ink rather than tint.
+     Still deliberately NOT the brand hue — a credit in a list must never be
+     mistaken for a brand action sitting in the same row. */
+  --up: 11 122 76;
+  --up-tint: rgba(11, 122, 76, 0.1);
+  --down: 192 39 45;
+
+  /* ------------------------------------------------------------- signals */
+  --live: 62 125 31;
+  --amber: 138 93 0;
+  --highlight: 175 196 42;
+  --highlight-ink: 18 24 10;
+
+  /* --------------------------------------------------------------- metal */
+  /* The one place light mode is a different OBJECT, not a different value. A
+     brushed silver face is invisible on a light ground, so light-mode metal is
+     graphite catching light from the same angle — still a milled face, still
+     raked on the diagonal, but reading as a solid raised thing. Ink flips to
+     white with it. */
+  --metal-0: #5a6068;
+  --metal-1: #31363d;
+  --metal-2: #4a5058;
+  --metal-3: #20242a;
+  --metal-shine: rgba(255, 255, 255, 0.35);
+  --metal-ink: 255 255 255;
+
+  /* --------------------------------------------------------------- glass */
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-tint: rgba(255, 255, 255, 0.5);
+  --glass-edge: rgba(244, 245, 247, 0.75);
+}
+
+.dark:root {
+  /* -------------------------------------------------------------- ground */
+  --canvas: 0 0 0;
+  --canvas-raised: rgba(20, 20, 20, 0.58);
+  --canvas-inset: 30 30 32;
+  /* A hair ABOVE the ground, not below it. Sheets used to sit under the canvas
+     so a modal read as depth; on black there is nothing below to go to, so the
+     separation comes from the sheet's own hairline and grabber instead. */
+  --sheet: 10 10 10;
+  --key: 22 22 23;
+  --ink: 10 10 10;
+
+  /* ---------------------------------------------------------------- text */
+  --text: 242 244 246;
+  --sub: 192 198 206;
+  --dim: 152 158 167;
+  /* The metal-register name for the `sub` rung, not a rung of its own — it
+     measured 1.06:1 from `sub`, so it now IS `sub`. There is nothing between
+     `text` and this. */
+  --silver: 192 198 206;
+  --silver-muted: 152 158 167;
+  --silver-faint: 122 128 138;
+  --figure-tail: 122 128 138;
+  --accent: 212 212 216;
+  --placeholder: rgba(255, 255, 255, 0.2);
+
+  /* --------------------------------------------------------------- lines */
+  --card: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.28);
+  --hairline: rgba(255, 255, 255, 0.08);
+
+  /* --------------------------------------------------------------- brand */
+  /* Leaf green, 2026-08-14. 9.5:1 on the black canvas, so it clears the
+     small-text floor as ink and not just as fill. */
+  --brand: 131 190 96;
+  --brand-ink: 10 20 5;
+  --brand-soft: 116 172 85;
+  --brand-soft-ink: 8 17 3;
+  --brand-glow: rgba(131, 190, 96, 0.14);
+  --green: 101 187 100;
+  --green-ink: 6 20 10;
+  --green-glow: rgba(101, 187, 100, 0.14);
+
+  /* --------------------------------------------------------------- money */
+  --up: 124 231 176;
+  --up-tint: rgba(124, 231, 176, 0.12);
+  --down: 246 165 165;
+
+  /* ------------------------------------------------------------- signals */
+  --live: 220 243 204;
+  --amber: 245 184 61;
+  --highlight: 217 242 75;
+  --highlight-ink: 18 24 10;
+
+  /* --------------------------------------------------------------- metal */
+  /* Four stops rather than two: the bright band at 0.38 and the darker roll-off
+     at the foot are what make a surface read as a milled face catching light
+     instead of a grey wash. Always drawn on the diagonal — a vertical ramp
+     reads as a gradient, a raked one reads as metal. */
+  --metal-0: #f4f6f8;
+  --metal-1: #cbd0d6;
+  --metal-2: #eaedf0;
+  --metal-3: #a6acb4;
+  --metal-shine: rgba(255, 255, 255, 0.85);
+  --metal-ink: 11 12 14;
+
+  /* --------------------------------------------------------------- glass */
+  --glass: rgba(18, 18, 18, 0.72);
+  --glass-tint: rgba(0, 0, 0, 0.5);
+  --glass-edge: rgba(0, 0, 0, 0.6);
+}

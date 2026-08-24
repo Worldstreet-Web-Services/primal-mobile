@@ -2,16 +2,14 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import FundBankScreen from "@/screens/FundBankScreen";
-import { C } from "@/theme/tokens";
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // Bank-transfer funding: the user's real provisioned account, then the
 // provider's own DETECTED → CREDITED narration. Deposits are provider-initiated
 // — nothing here asks for an amount, because nothing on the rail wants one.
 export default function FundBank() {
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <FundBankScreen
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/home")}

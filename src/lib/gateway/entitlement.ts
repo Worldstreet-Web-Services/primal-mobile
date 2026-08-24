@@ -129,7 +129,9 @@ async function fetchRememberedSubscription(
   if (!id) return null;
   try {
     return readSubscription(
-      await client.get<unknown>(`/v1/subscriptions/${encodeURIComponent(id)}`, { signal }),
+      await client.get<unknown>(`/v1/subscriptions/${encodeURIComponent(id)}`, {
+        signal,
+      }),
     );
   } catch (error) {
     if (SessionExpiredError.is(error)) throw error;
@@ -174,10 +176,12 @@ export async function probeEntitlement(options?: {
     }
   }
 
-  const subscription = await fetchRememberedSubscription(options?.signal).catch((error) => {
-    if (SessionExpiredError.is(error)) throw error;
-    return null;
-  });
+  const subscription = await fetchRememberedSubscription(options?.signal).catch(
+    (error) => {
+      if (SessionExpiredError.is(error)) throw error;
+      return null;
+    },
+  );
 
   return {
     state: deriveState({ entitled, subscription }),
@@ -199,7 +203,9 @@ export function deriveState(input: {
   const status = input.subscription?.status ?? "UNKNOWN";
 
   if (input.entitled) {
-    return status === "CANCEL_AT_PERIOD_END" ? "cancel_at_period_end" : "active";
+    return status === "CANCEL_AT_PERIOD_END"
+      ? "cancel_at_period_end"
+      : "active";
   }
 
   switch (status) {

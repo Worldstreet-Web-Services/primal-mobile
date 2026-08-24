@@ -70,7 +70,9 @@ export class ApiError extends Error {
 
   /** Survives a transpile that breaks `instanceof` across module copies. */
   static is(error: unknown): error is ApiError {
-    return error instanceof ApiError || (error as ApiError)?.name === "ApiError";
+    return (
+      error instanceof ApiError || (error as ApiError)?.name === "ApiError"
+    );
   }
 }
 
@@ -201,8 +203,7 @@ export const SUBSCRIPTION_STATUSES = [
   "REVOKED",
 ] as const;
 export type SubscriptionStatus =
-  | (typeof SUBSCRIPTION_STATUSES)[number]
-  | "UNKNOWN";
+  (typeof SUBSCRIPTION_STATUSES)[number] | "UNKNOWN";
 export const asSubscriptionStatus = (v: unknown): SubscriptionStatus =>
   oneOf(SUBSCRIPTION_STATUSES, v);
 
@@ -253,7 +254,12 @@ export const asTransferStatus = (v: unknown): TransferStatus =>
 
 /** True once no further movement is possible — safe to stop polling. */
 export function isTerminalTransfer(status: TransferStatus): boolean {
-  return status === "SETTLED" || status === "DELIVERED" || status === "FAILED" || status === "REVERSED";
+  return (
+    status === "SETTLED" ||
+    status === "DELIVERED" ||
+    status === "FAILED" ||
+    status === "REVERSED"
+  );
 }
 
 /* ------------------------------------------------------------------- money */
@@ -282,12 +288,7 @@ export interface ProtoTimestamp {
  * every caller having to remember which side of the boundary it came from.
  */
 export type WireTimestamp =
-  | ProtoTimestamp
-  | Date
-  | string
-  | number
-  | null
-  | undefined;
+  ProtoTimestamp | Date | string | number | null | undefined;
 
 /* -------------------------------------------------------------------- auth */
 
@@ -494,8 +495,7 @@ export function readPage<T>(raw: unknown, map: (item: unknown) => T): Page<T> {
   }
   const o = (raw ?? {}) as Record<string, unknown>;
   const list = [o.items, o.data, o.results, o.records].find(Array.isArray) as
-    | unknown[]
-    | undefined;
+    unknown[] | undefined;
   const num = (v: unknown) => (typeof v === "number" ? v : null);
   return {
     items: (list ?? []).map(map),

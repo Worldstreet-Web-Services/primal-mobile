@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { Animated, Easing, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -6,7 +6,7 @@ import { FloatingBackdrop } from "../components/FloatingBackdrop";
 import { ArrowRight } from "../components/icons";
 import { Logo } from "../components/Logo";
 import { Display, Mono, PrimaryButton } from "../components/ui";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 
 /**
  * Where the backdrop's orbit rings converge, as a fraction of screen width.
@@ -63,8 +63,8 @@ export default function ContinueScreen({
   // status bar — otherwise the clock and the notch eat their labels.
   const backdropTop = insets.top + 8;
 
-  const enter = useRef(new Animated.Value(0)).current;
-  const drift = useRef(new Animated.Value(0)).current;
+  const enter = useMemo(() => new Animated.Value(0), []);
+  const drift = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     Animated.timing(enter, {
@@ -117,7 +117,7 @@ export default function ContinueScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       {/* Pills and rings drift as one plate — they're a single artwork, and
           parallaxing the mark against them is what sells the depth. */}
       <Animated.View
@@ -138,13 +138,10 @@ export default function ContinueScreen({
 
       <Animated.View
         pointerEvents="none"
+        className="absolute left-[0px] right-[0px] items-center"
         style={[
           {
-            position: "absolute",
             top: backdropTop + width * RING_CENTER - markH / 2,
-            left: 0,
-            right: 0,
-            alignItems: "center",
           },
           {
             opacity: enter,
@@ -171,35 +168,29 @@ export default function ContinueScreen({
       {/* Set in caps here rather than in the strings, so the copy stays
           readable as prose for whoever edits it next. */}
       <Animated.View
-        style={[
-          { marginTop: backdropTop + width * COPY_TOP, paddingHorizontal: 20 },
-          step(1),
-        ]}
+        className="px-[20px]"
+        style={[{ marginTop: backdropTop + width * COPY_TOP }, step(1)]}
       >
-        <Display size={32} style={{ fontFamily: F.displayBold }}>
+        <Display className="text-[32px] leading-[33.6px] font-display-bold">
           {title.toUpperCase()}
         </Display>
-        <Display
-          size={32}
-          color={C.brand}
-          style={{ fontFamily: F.displayBold, marginTop: 2 }}
-        >
+        <Display className="text-[32px] leading-[33.6px] text-brand font-display-bold mt-[2px]">
           {brand.toUpperCase()}
         </Display>
 
-        <Mono size={18} style={{ letterSpacing: 1.6, marginTop: 16 }}>
+        <Mono className="text-[18px] tracking-[1.6px] mt-[16px]">
           {`${tagline.toUpperCase()} `}
-          <Mono size={18} color={C.brand} style={{ letterSpacing: 1.6 }}>
+          <Mono className="text-[18px] text-brand tracking-[1.6px]">
             {taglineAccent.toUpperCase()}
           </Mono>
         </Mono>
       </Animated.View>
 
       <Animated.View
+        className="px-[20px]"
         style={[
           {
             marginTop: "auto",
-            paddingHorizontal: 20,
             paddingBottom: Math.max(insets.bottom, 16) + 8,
           },
           step(2),

@@ -116,7 +116,9 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === "") continue;
-    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+    parts.push(
+      `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+    );
   }
   return parts.length ? `${base}?${parts.join("&")}` : base;
 }
@@ -155,7 +157,10 @@ function readRateLimit(headers: Headers): RateLimitInfo {
     const value = Number(raw);
     return Number.isFinite(value) ? value : null;
   };
-  return { limit: num("x-ratelimit-limit"), remaining: num("x-ratelimit-remaining") };
+  return {
+    limit: num("x-ratelimit-limit"),
+    remaining: num("x-ratelimit-remaining"),
+  };
 }
 
 function normalizeMessage(body: unknown, fallback: string): string {
@@ -181,7 +186,8 @@ function readCode(body: unknown): string | null {
   return null;
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function trace(message: string, detail: Record<string, unknown>): void {
   // Deliberately never carries headers, bodies or tokens.
@@ -190,7 +196,10 @@ function trace(message: string, detail: Record<string, unknown>): void {
 
 /* ------------------------------------------------------------- one attempt */
 
-async function attempt<T>(req: NormalizedRequest, token: string | null): Promise<T> {
+async function attempt<T>(
+  req: NormalizedRequest,
+  token: string | null,
+): Promise<T> {
   const controller = new AbortController();
   let timedOut = false;
 
@@ -259,7 +268,10 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
   const cid = response.headers.get("x-correlation-id") ?? req.correlationId;
 
   let parsed: unknown = null;
-  if (response.status !== 204 && response.headers.get("content-length") !== "0") {
+  if (
+    response.status !== 204 &&
+    response.headers.get("content-length") !== "0"
+  ) {
     const text = await response.text().catch(() => "");
     if (text !== "") {
       try {
@@ -295,8 +307,9 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
       statusCode: response.status,
       message: normalizeMessage(parsed, `Request failed (${response.status}).`),
       correlationId:
-        typeof (parsed as { correlationId?: unknown })?.correlationId === "string"
-          ? ((parsed as { correlationId: string }).correlationId)
+        typeof (parsed as { correlationId?: unknown })?.correlationId ===
+        "string"
+          ? (parsed as { correlationId: string }).correlationId
           : cid,
       code: readCode(parsed),
       retryAfterMs: parseRetryAfter(response.headers.get("retry-after")),
@@ -309,7 +322,10 @@ async function attempt<T>(req: NormalizedRequest, token: string | null): Promise
 
 /* ----------------------------------------------------------- attempt loop */
 
-async function dispatch<T>(req: NormalizedRequest, token: string | null): Promise<T> {
+async function dispatch<T>(
+  req: NormalizedRequest,
+  token: string | null,
+): Promise<T> {
   let lastError: unknown;
 
   for (let index = 0; index < req.maxAttempts; index += 1) {
@@ -332,7 +348,10 @@ async function dispatch<T>(req: NormalizedRequest, token: string | null): Promis
         // Respect the server's own number when it gives one; otherwise back off
         // harder than usual, since 429 means we are already asking too often.
         delay = error.retryAfterMs ?? backoffDelay(index) * 2;
-      } else if (ApiError.is(error) && RETRYABLE_STATUSES.has(error.statusCode)) {
+      } else if (
+        ApiError.is(error) &&
+        RETRYABLE_STATUSES.has(error.statusCode)
+      ) {
         delay = backoffDelay(index);
       } else {
         // 4xx (other than 429), 500, anything unrecognised: not our call to
@@ -380,9 +399,11 @@ export function refreshSession(): Promise<string> {
     refreshInFlight = performRefresh();
     // Detach the bookkeeping from the caller's chain so a rejection handled by
     // the caller does not also surface as unhandled here.
-    void refreshInFlight.catch(() => undefined).then(() => {
-      refreshInFlight = null;
-    });
+    void refreshInFlight
+      .catch(() => undefined)
+      .then(() => {
+        refreshInFlight = null;
+      });
   }
   return refreshInFlight;
 }
@@ -433,7 +454,10 @@ async function performRefresh(): Promise<string> {
       error.statusCode !== 408;
     if (dead) {
       await session.clear();
-      throw new SessionExpiredError("Primal session could not be renewed.", error);
+      throw new SessionExpiredError(
+        "Primal session could not be renewed.",
+        error,
+      );
     }
     throw error;
   }
@@ -460,7 +484,8 @@ export async function request<T>(options: RequestOptions): Promise<T> {
   const method = options.method ?? "GET";
   const isRead = method === "GET";
   const useAuth = options.auth !== false;
-  const bodyText = options.body === undefined ? null : JSON.stringify(options.body);
+  const bodyText =
+    options.body === undefined ? null : JSON.stringify(options.body);
 
   const req: NormalizedRequest = {
     method,
@@ -468,7 +493,8 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     url: buildUrl(options.path, options.query),
     bodyText,
     timeoutMs:
-      options.timeoutMs ?? (isRead ? DEFAULT_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS),
+      options.timeoutMs ??
+      (isRead ? DEFAULT_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS),
     signal: options.signal,
     replayable:
       options.retry ?? (isRead || carriesIdempotencyKey(options.body)),
@@ -493,7 +519,8 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     // Another request may already have refreshed while this one was in flight.
     // Reuse that result instead of rotating a second time.
     const current = await session.getAccessToken();
-    const fresh = current && current !== token ? current : await refreshSession();
+    const fresh =
+      current && current !== token ? current : await refreshSession();
 
     try {
       return await dispatch<T>(req, fresh);
@@ -513,8 +540,10 @@ export async function request<T>(options: RequestOptions): Promise<T> {
 
 /* ------------------------------------------------------------ conveniences */
 
-export const get = <T>(path: string, options: Omit<RequestOptions, "path" | "method" | "body"> = {}) =>
-  request<T>({ ...options, path, method: "GET" });
+export const get = <T>(
+  path: string,
+  options: Omit<RequestOptions, "path" | "method" | "body"> = {},
+) => request<T>({ ...options, path, method: "GET" });
 
 export const post = <T>(
   path: string,

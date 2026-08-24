@@ -1,6 +1,5 @@
 import { View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
 import { Body } from "../ui";
 
 /**
@@ -18,19 +17,12 @@ export function ArticleMeta({
   size?: number;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-      <Body size={size} color={C.brand} style={{ fontFamily: F.bodyMedium }}>
+    <View className="flex-row items-center gap-[7px]">
+      <Body className="text-brand font-body-medium" size={size}>
         {channel}
       </Body>
-      <View
-        style={{
-          width: 3,
-          height: 3,
-          borderRadius: 2,
-          backgroundColor: C.dim,
-        }}
-      />
-      <Body size={size} color={C.dim}>
+      <View className="w-[3px] h-[3px] rounded-[2px] bg-dim" />
+      <Body className="text-dim" size={size}>
         {age}
       </Body>
     </View>

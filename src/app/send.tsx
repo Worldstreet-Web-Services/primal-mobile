@@ -2,15 +2,13 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import SendScreen from "@/screens/SendScreen";
-import { C } from "@/theme/tokens";
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // Naira payout: bank → account number → the name the bank returned → amount.
 // The screen writes the draft; the confirm route reads it.
 export default function Send() {
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <SendScreen
         onBack={() => router.back()}
         onContinue={() => router.push("/send-confirm")}

@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import PasskeyScreen from "@/screens/PasskeyScreen";
-import { C } from "@/theme/tokens";
 
 export default function Passkey() {
   const { enableBiometrics, skipBiometrics, capability } = useAuth();
@@ -47,7 +46,10 @@ export default function Passkey() {
         toast.error("Too many attempts", "Unlock your device, then try again.");
         return;
       }
-      toast.error("Couldn't enable biometrics", "You can turn it on later in Profile.");
+      toast.error(
+        "Couldn't enable biometrics",
+        "You can turn it on later in Profile.",
+      );
     } finally {
       setEnabling(false);
     }
@@ -63,7 +65,7 @@ export default function Passkey() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <PasskeyScreen
         onEnable={onEnable}
         onSkip={onSkip}

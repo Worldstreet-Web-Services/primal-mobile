@@ -70,50 +70,23 @@ function MethodPlate({
       <View
         accessibilityRole="button"
         accessibilityLabel={title}
-        style={{
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.border,
-          borderRadius: 20,
-          padding: 16,
-          overflow: "hidden",
-        }}
+        className="bg-canvas-raised border border-border rounded-[20px] p-[16px] overflow-hidden"
       >
         <Shine />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 13 }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 13,
-              backgroundColor: C.inset,
-              borderWidth: 1,
-              borderColor: C.hairline,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+        <View className="flex-row items-center gap-[13px]">
+          <View className="w-[40px] h-[40px] rounded-[13px] bg-canvas-inset border border-rule items-center justify-center">
             {glyph}
           </View>
-          <View style={{ flex: 1 }}>
-            <Body size={15} semibold>
+          <View className="flex-1">
+            <Body className="text-[15px]" semibold>
               {title}
             </Body>
-            <Body size={12} color={C.sub} style={{ marginTop: 3 }}>
-              {sub}
-            </Body>
+            <Body className="text-[12px] text-sub mt-[3px]">{sub}</Body>
           </View>
           <Chevron />
         </View>
-        <View
-          style={{
-            marginTop: 13,
-            paddingTop: 11,
-            borderTopWidth: 1,
-            borderTopColor: C.hairline,
-          }}
-        >
-          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.1 }}>
+        <View className="mt-[13px] pt-[11px] border-t border-t-rule">
+          <Mono className="text-[10px] text-dim tracking-[1.1px]">
             {detail}
           </Mono>
         </View>
@@ -151,13 +124,13 @@ export default function FundScreen({
     <Screen>
       <BackHeader title="Add funds" onBack={onBack} />
 
-      <View style={{ marginTop: 18 }}>
-        <Display size={19} color={C.silver} style={{ lineHeight: 27 }}>
+      <View className="mt-[18px]">
+        <Display className="text-[19px] leading-[19.95px] text-silver leading-[27px]">
           One way in, and it lands{"\n"}in an account in your name.
         </Display>
 
-        <Label style={{ marginTop: 26 }}>How money gets in</Label>
-        <View style={{ marginTop: 12 }}>
+        <Label className="mt-[26px]">How money gets in</Label>
+        <View className="mt-[12px]">
           {/* The sub-line says PERMANENT because that is what /fund-bank hands
               over. The earlier "a one-off account, issued to you for this
               transfer" promised an expiring number LinkPay does not issue — the
@@ -171,20 +144,12 @@ export default function FundScreen({
           />
         </View>
 
-        <View
-          style={{
-            marginTop: 26,
-            paddingTop: 18,
-            borderTopWidth: 1,
-            borderTopColor: C.hairline,
-          }}
-        >
-          <GhostButton label="Show my account details" onPress={onOpenReceive} />
-          <Body
-            size={11}
-            color={C.dim}
-            style={{ textAlign: "center", marginTop: 14, lineHeight: 17 }}
-          >
+        <View className="mt-[26px] pt-[18px] border-t border-t-rule">
+          <GhostButton
+            label="Show my account details"
+            onPress={onOpenReceive}
+          />
+          <Body className="text-[11px] text-dim text-center mt-[14px] leading-[17px]">
             Your account number, ready to hand to someone else.
           </Body>
         </View>
@@ -192,11 +157,7 @@ export default function FundScreen({
         {/* Said once, quietly, rather than left as a route that mimes a
             deposit. Someone who used to reach the crypto picker from here
             deserves to know it is not open, not to find an address waiting. */}
-        <Body
-          size={11}
-          color={C.dim}
-          style={{ marginTop: 22, lineHeight: 17 }}
-        >
+        <Body className="text-[11px] text-dim mt-[22px] leading-[17px]">
           Crypto deposits that convert to naira are not open yet. Your wallet
           can still receive crypto — it stays crypto.
         </Body>

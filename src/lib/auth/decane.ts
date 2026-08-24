@@ -312,7 +312,8 @@ export async function signOut(options?: { forget?: boolean }): Promise<void> {
   // back in restores the same account instead of a stranger's.
   if (usingMockAuth) return placeholder.signOut(options);
 
-  const existing = client ?? (initialising ? await initialising.catch(() => null) : null);
+  const existing =
+    client ?? (initialising ? await initialising.catch(() => null) : null);
 
   try {
     if (existing) await existing.disconnect();
@@ -328,7 +329,8 @@ export async function signOut(options?: { forget?: boolean }): Promise<void> {
 
 /** Subscribe to SDK lifecycle events; returns an unsubscribe function. */
 export async function onSdkEvent(
-  event: "wallet-creating" | "wallet-unlocking" | "session-expired" | "disconnected",
+  event:
+    "wallet-creating" | "wallet-unlocking" | "session-expired" | "disconnected",
   handler: () => void,
 ): Promise<() => void> {
   if (usingMockAuth) return () => {};

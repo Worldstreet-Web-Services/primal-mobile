@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Animated,
   Easing,
@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MetalButton } from "../components/ui";
-import { C, F } from "../theme/tokens";
 
 const HERO = require("../../assets/images/logo.png");
 /** The gold artwork's own ratio — width drives, height follows. */
@@ -69,10 +68,10 @@ export default function WelcomeScreen({
 
   const heroW = Math.min(width * 0.35, 180);
 
-  const mark = useRef(new Animated.Value(0)).current;
+  const mark = useMemo(() => new Animated.Value(0), []);
   // One driver for the whole stack below the mark; each line reads a different
   // slice of it, which is what makes them arrive staggered off one animation.
-  const copy = useRef(new Animated.Value(0)).current;
+  const copy = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     Animated.timing(mark, {
@@ -115,13 +114,10 @@ export default function WelcomeScreen({
 
   return (
     <View
+      className="flex-1 bg-canvas px-[26px] relative"
       style={{
-        flex: 1,
-        backgroundColor: C.canvas,
         paddingTop: insets.top,
-        paddingHorizontal: 26,
         paddingBottom: Math.max(insets.bottom, 26) + 8,
-        position: "relative",
       }}
     >
       {/* Bloom sits behind everything — first sibling, so it is below the whole
@@ -135,7 +131,7 @@ export default function WelcomeScreen({
           plain View honours it, so the rays stay decorative. */}
       <View
         pointerEvents="none"
-        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+        className="absolute top-[0px] left-[0px] right-[0px]"
       >
         <Image
           source={require("../../assets/images/star_behind.png")}
@@ -146,11 +142,10 @@ export default function WelcomeScreen({
 
       {/* The mark holds the upper two thirds alone — the composition is one
           object in light, then the words, then the way in. */}
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <View className="flex-1 items-center justify-center">
         <Animated.View
+          className="items-center justify-center"
           style={{
-            alignItems: "center",
-            justifyContent: "center",
             opacity: mark,
             transform: [
               {
@@ -178,17 +173,8 @@ export default function WelcomeScreen({
             INSIDE the centred block on purpose: parked outside it, the flex
             space opened up between the mark and the name and the lockup came
             apart down the middle of the screen. */}
-        <Animated.View style={[{ marginTop: -4 }, step(0)]}>
-          <Text
-            style={{
-              fontFamily: F.display,
-              fontSize: 46,
-              lineHeight: 54,
-              letterSpacing: -0.6,
-              color: C.text,
-              textAlign: "center",
-            }}
-          >
+        <Animated.View className="mt-[-4px]" style={step(0)}>
+          <Text className="font-display text-[46px] leading-[54px] tracking-[-0.6px] text-text text-center">
             KashPlus
           </Text>
         </Animated.View>

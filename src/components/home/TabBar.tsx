@@ -61,20 +61,19 @@ function TabButton({
       className="flex-1 flex-col items-center gap-1"
     >
       <View
+        className="items-center justify-center"
         style={{
           width: GLYPH,
           height: GLYPH,
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         {tab.icon({ size: 24, color: ink, filled: active })}
       </View>
       <Text
         numberOfLines={1}
+        className="text-[14px]"
         style={{
           fontFamily: active ? F.bodySemibold : F.body,
-          fontSize: 14,
           lineHeight: LABEL_H,
           marginTop: GAP,
 
@@ -103,19 +102,15 @@ export function TabBar({
 
   return (
     <View
+      className="absolute flex-row items-center justify-around overflow-hidden"
       style={[
         {
-          position: "absolute",
           left: SIDE,
           right: SIDE,
           bottom: Math.max(insets.bottom, 12),
           height: BAR_H,
           borderRadius: RADIUS,
-          flexDirection: "row",
-          alignItems: "center",
           paddingHorizontal: INSET,
-          justifyContent: "space-around",
-          overflow: "hidden",
         },
         style,
       ]}

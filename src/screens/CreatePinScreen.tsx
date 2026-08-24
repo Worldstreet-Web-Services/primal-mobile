@@ -67,42 +67,29 @@ export default function CreatePinScreen({
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        paddingHorizontal: 24,
-        paddingBottom: 34,
-      }}
-    >
-      <View style={{ paddingTop: 10 }}>
+    <View className="flex-1 bg-canvas px-[24px] pb-[34px]">
+      <View className="pt-[10px]">
         <Label>Step 2 of 3</Label>
       </View>
-      <View style={{ marginTop: 26 }}>
-        <Display size={26}>
+      <View className="mt-[26px]">
+        <Display className="text-[26px] leading-[27.3px]">
           {confirming ? "Confirm your" : "Create your"}
           {"\n"}transaction PIN
         </Display>
-        <Body
-          size={13.5}
-          color={C.sub}
-          style={{ marginTop: 10, lineHeight: 21 }}
-        >
+        <Body className="text-[13.5px] text-sub mt-[10px] leading-[21px]">
           {confirming
             ? "Enter the same 4 digits again."
             : "4 digits. You’ll enter it every time money leaves KashPlus."}
         </Body>
       </View>
-      <View style={{ marginTop: 44 }}>
+      <View className="mt-[44px]">
         <PinDots filled={pin.length} shake={shake} />
       </View>
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <View className="flex-1 items-center justify-center">
         {saving ? (
           <Spinner color={C.silver} />
         ) : error ? (
-          <Body size={12.5} color={C.down}>
-            {error}
-          </Body>
+          <Body className="text-[12.5px] text-down">{error}</Body>
         ) : null}
       </View>
       <Keypad onKey={onKey} />

@@ -46,7 +46,10 @@ export type MessageSigner = (message: string) => Promise<string>;
  * a wallet change. That false positive would clear a perfectly good session and
  * demand a signature on every launch, so the comparison is deliberately blunt.
  */
-export function isSameWallet(a: string | null | undefined, b: string | null | undefined): boolean {
+export function isSameWallet(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
   if (!a || !b) return false;
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
@@ -196,7 +199,9 @@ export async function signInWithWallet(
     if (!ApiError.is(error) || error.statusCode !== 400) throw error;
     const retried = await handshakeOnce(walletAddress, sign);
     if ("staleChallenge" in retried) {
-      throw new SessionExpiredError("Primal challenge expired before it could be signed.");
+      throw new SessionExpiredError(
+        "Primal challenge expired before it could be signed.",
+      );
     }
     return retried.session;
   }
@@ -207,7 +212,9 @@ export async function signInWithWallet(
   if ("staleChallenge" in retried) {
     // Twice in a row means the signing step itself is slower than the
     // challenge window, not that this attempt was unlucky.
-    throw new SessionExpiredError("Primal challenge expired before it could be signed.");
+    throw new SessionExpiredError(
+      "Primal challenge expired before it could be signed.",
+    );
   }
   return retried.session;
 }
@@ -245,11 +252,16 @@ export interface Bootstrap {
  * network call, and again against the gateway's own answer, which is the
  * authority on who a token actually belongs to.
  */
-export async function bootstrap(expectedWalletAddress?: string): Promise<Bootstrap> {
+export async function bootstrap(
+  expectedWalletAddress?: string,
+): Promise<Bootstrap> {
   const stored = await session.load();
   if (!stored) return { identity: null, stored: null };
 
-  if (expectedWalletAddress && !isSameWallet(stored.walletAddress, expectedWalletAddress)) {
+  if (
+    expectedWalletAddress &&
+    !isSameWallet(stored.walletAddress, expectedWalletAddress)
+  ) {
     await session.clear();
     return { identity: null, stored: null };
   }
@@ -257,7 +269,10 @@ export async function bootstrap(expectedWalletAddress?: string): Promise<Bootstr
   try {
     const identity = await me();
 
-    if (expectedWalletAddress && !isSameWallet(identity.walletAddress, expectedWalletAddress)) {
+    if (
+      expectedWalletAddress &&
+      !isSameWallet(identity.walletAddress, expectedWalletAddress)
+    ) {
       // The gateway says this token belongs to someone else. Never rewrite the
       // authenticated address to match the UI — clear, and let the caller earn
       // a session for the wallet it actually has.

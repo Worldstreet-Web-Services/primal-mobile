@@ -95,7 +95,10 @@ async function drop(key: string): Promise<void> {
  * server-side, where a stolen device can't replay it.
  */
 async function hashPin(pin: string, salt: string): Promise<string> {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${salt}:${pin}`);
+  return Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    `${salt}:${pin}`,
+  );
 }
 
 export async function savePin(pin: string): Promise<void> {
@@ -143,7 +146,10 @@ export async function hasPin(): Promise<boolean> {
 }
 
 export async function verifyPin(pin: string): Promise<boolean> {
-  const [hash, salt] = await Promise.all([get(KEYS.pinHash), get(KEYS.pinSalt)]);
+  const [hash, salt] = await Promise.all([
+    get(KEYS.pinHash),
+    get(KEYS.pinSalt),
+  ]);
   if (!hash || !salt) return false;
   return (await hashPin(pin, salt)) === hash;
 }
@@ -171,5 +177,9 @@ export async function isBiometricsEnabled(): Promise<boolean> {
  * after which the app lock has to be set up again from scratch.
  */
 export async function clearAll(): Promise<void> {
-  await Promise.all([clearPin(), setBiometricsEnabled(false), drop(KEYS.account)]);
+  await Promise.all([
+    clearPin(),
+    setBiometricsEnabled(false),
+    drop(KEYS.account),
+  ]);
 }

@@ -1,7 +1,6 @@
 import { type ImageSource } from "expo-image";
 import { FlatList, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
 import { PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 
@@ -34,21 +33,12 @@ export function SpaceTile({
       >
         {/* Free-floating illustration, no card chrome — client call 2026-08:
             the rail is icons on the canvas, not boxed CTAs. */}
-        <View
-          style={{ height: 68, alignItems: "center", justifyContent: "center" }}
-        >
+        <View className="h-[68px] items-center justify-center">
           <ArtSlot source={space.artwork} size={62} />
         </View>
         <Text
           numberOfLines={1}
-          style={{
-            fontFamily: F.mono,
-            fontSize: 10,
-            letterSpacing: 0.7,
-            textAlign: "center",
-            marginTop: 9,
-            color: C.sub,
-          }}
+          className="font-mono text-[10px] tracking-[0.7px] text-center mt-[9px] text-sub"
         >
           {space.label.toUpperCase()}
         </Text>

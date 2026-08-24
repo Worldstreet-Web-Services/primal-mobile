@@ -144,17 +144,12 @@ function Field({
   mono?: boolean;
 }) {
   return (
-    <View style={{ marginTop: 16 }}>
+    <View className="mt-[16px]">
       <Label>{label}</Label>
       <View
+        className="mt-[8px] bg-canvas-raised border rounded-[14px] px-[14px] overflow-hidden"
         style={{
-          marginTop: 8,
-          backgroundColor: C.raised,
-          borderWidth: 1,
           borderColor: error ? "rgba(246,165,165,0.45)" : C.hairline,
-          borderRadius: 14,
-          paddingHorizontal: 14,
-          overflow: "hidden",
         }}
       >
         <Shine />
@@ -170,9 +165,8 @@ function Field({
           // Nothing on this form is a credential the OS should remember for us.
           autoComplete="off"
           textContentType="none"
+          className="h-[50px] text-text"
           style={{
-            height: 50,
-            color: C.text,
             fontFamily: mono ? F.monoSemibold : F.body,
             fontSize: mono ? 15.5 : 14.5,
             letterSpacing: mono ? 1.2 : 0,
@@ -180,11 +174,9 @@ function Field({
         />
       </View>
       {error ? (
-        <Body size={11.5} color={C.down} style={{ marginTop: 7 }}>
-          {error}
-        </Body>
+        <Body className="text-[11.5px] text-down mt-[7px]">{error}</Body>
       ) : hint ? (
-        <Body size={11} color={C.dim} style={{ marginTop: 7, lineHeight: 16 }}>
+        <Body className="text-[11px] text-dim mt-[7px] leading-[16px]">
           {hint}
         </Body>
       ) : null}
@@ -193,24 +185,24 @@ function Field({
 }
 
 /** A fact the user cannot change, shown rather than hidden. */
-function FixedRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function FixedRow({
+  label,
+  value,
+  last,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
   return (
     <View
+      className="flex-row items-center justify-between py-[13px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: 13,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
-      <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
-        {label}
-      </Mono>
-      <Mono size={12.5} color={C.silver}>
-        {value}
-      </Mono>
+      <Mono className="text-[10px] text-dim tracking-[1.3px]">{label}</Mono>
+      <Mono className="text-[12.5px] text-silver">{value}</Mono>
     </View>
   );
 }
@@ -308,12 +300,22 @@ export default function KycScreen({
   }, [phase, onNeedsSubscription]);
 
   const problems = {
-    firstName: firstName.trim().length < 2 ? "Your first name, as your bank has it." : null,
-    lastName: lastName.trim().length < 2 ? "Your surname, as your bank has it." : null,
-    phoneNumber: validPhone(phoneNumber) ? null : "An 11-digit Nigerian number, e.g. 08012345678.",
-    email: EMAIL_PATTERN.test(email.trim()) ? null : "An email address the bank can reach you on.",
+    firstName:
+      firstName.trim().length < 2
+        ? "Your first name, as your bank has it."
+        : null,
+    lastName:
+      lastName.trim().length < 2 ? "Your surname, as your bank has it." : null,
+    phoneNumber: validPhone(phoneNumber)
+      ? null
+      : "An 11-digit Nigerian number, e.g. 08012345678.",
+    email: EMAIL_PATTERN.test(email.trim())
+      ? null
+      : "An email address the bank can reach you on.",
     bvn:
-      bvn.replace(/\D/g, "").length === BVN_LENGTH ? null : `Your BVN is ${BVN_LENGTH} digits.`,
+      bvn.replace(/\D/g, "").length === BVN_LENGTH
+        ? null
+        : `Your BVN is ${BVN_LENGTH} digits.`,
   };
   const complete = Object.values(problems).every((p) => p === null);
 
@@ -436,7 +438,7 @@ export default function KycScreen({
   const header = (title: string, sub: string) => (
     <View>
       <BackHeader title={title} onBack={onBack} />
-      <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.4, marginTop: 2 }}>
+      <Mono className="text-[9.5px] text-dim tracking-[1.4px] mt-[2px]">
         {sub}
       </Mono>
     </View>
@@ -446,7 +448,7 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "CHECKING WHERE YOU ARE")}
-        <View style={{ marginTop: 60, alignItems: "center" }}>
+        <View className="mt-[60px] items-center">
           <Spinner />
         </View>
       </Screen>
@@ -457,10 +459,10 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "SIGN IN FIRST")}
-        <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
+        <Body className="text-[13px] text-sub mt-[24px] leading-[19px]">
           Sign in to KashPlus and this account opens against your own identity.
         </Body>
-        <View style={{ marginTop: 20 }}>
+        <View className="mt-[20px]">
           <MetallicButton label="Sign in" onPress={onNeedsSignIn} />
         </View>
       </Screen>
@@ -471,11 +473,11 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "SUBSCRIPTION REQUIRED")}
-        <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
-          A naira account is part of a KashPlus subscription. Nothing is wrong with your sign-in —
-          the subscription is what is missing.
+        <Body className="text-[13px] text-sub mt-[24px] leading-[19px]">
+          A naira account is part of a KashPlus subscription. Nothing is wrong
+          with your sign-in — the subscription is what is missing.
         </Body>
-        <View style={{ marginTop: 20 }}>
+        <View className="mt-[20px]">
           <MetallicButton label="See the plan" onPress={onNeedsSubscription} />
         </View>
       </Screen>
@@ -490,24 +492,21 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", paying ? "PAYMENT IN FLIGHT" : "ALMOST OPEN")}
         <View
+          className="mt-[30px] bg-canvas-raised border rounded-[20px] p-[20px] overflow-hidden"
           style={{
-            marginTop: 30,
-            backgroundColor: C.raised,
-            borderWidth: 1,
             borderColor: "rgba(245,184,61,0.3)",
-            borderRadius: 20,
-            padding: 20,
-            overflow: "hidden",
           }}
         >
           <Shine />
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+          <View className="flex-row items-center gap-[9px]">
             {watching ? <PulseDot /> : null}
-            <Display size={18}>
-              {paying ? "Your payment is still on its way" : "Switching your membership on"}
+            <Display className="text-[18px] leading-[18.9px]">
+              {paying
+                ? "Your payment is still on its way"
+                : "Switching your membership on"}
             </Display>
           </View>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 12, lineHeight: 19 }}>
+          <Body className="text-[12.5px] text-sub mt-[12px] leading-[19px]">
             {paying
               ? "KashPlus is waiting for your subscription transfer to land. A naira account opens the moment it does — nothing here needs paying twice."
               : "Your payment is in and the gateway is still switching the naira side on. It usually takes a moment, and nothing needs paying again."}
@@ -516,11 +515,13 @@ export default function KycScreen({
           {/* Only claimed while it is true — the hook stops asking when this
               screen is not in front, in the background, and once its window is
               spent. */}
-          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
-            {watching ? "CHECKING EVERY FEW SECONDS" : "CHECK WHEN YOU ARE READY"}
+          <Mono className="text-[10px] text-dim tracking-[1.3px]">
+            {watching
+              ? "CHECKING EVERY FEW SECONDS"
+              : "CHECK WHEN YOU ARE READY"}
           </Mono>
         </View>
-        <View style={{ marginTop: 22 }}>
+        <View className="mt-[22px]">
           <GhostButton label="Check now" onPress={reload} />
         </View>
       </Screen>
@@ -531,40 +532,26 @@ export default function KycScreen({
     return (
       <Screen center>
         <View
+          className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: C.upBg,
-            borderWidth: 1,
             borderColor: "rgba(124,231,176,0.35)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <Check />
         </View>
-        <Display size={23} style={{ marginTop: 20, textAlign: "center" }}>
+        <Display className="text-[23px] leading-[24.15px] mt-[20px] text-center">
           Your account is open
         </Display>
         {account?.accountNumber ? (
-          <Text
-            style={{
-              fontFamily: F.monoSemibold,
-              fontSize: 26,
-              letterSpacing: 2.5,
-              color: C.text,
-              marginTop: 16,
-            }}
-          >
+          <Text className="font-mono-semibold text-[26px] tracking-[2.5px] text-text mt-[16px]">
             {account.accountNumber}
           </Text>
         ) : null}
-        <Body size={12.5} color={C.sub} style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}>
+        <Body className="text-[12.5px] text-sub mt-[10px] text-center leading-[19px]">
           {account?.bankName ? `${account.bankName} · ` : ""}
           {account?.accountName ?? "In your name"}
         </Body>
-        <View style={{ marginTop: 30, alignSelf: "stretch" }}>
+        <View className="mt-[30px]" style={{ alignSelf: "stretch" }}>
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </Screen>
@@ -579,27 +566,24 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "WITH THE BANK")}
         <View
+          className="mt-[30px] bg-canvas-raised border rounded-[20px] p-[20px] overflow-hidden"
           style={{
-            marginTop: 30,
-            backgroundColor: C.raised,
-            borderWidth: 1,
             borderColor: "rgba(245,184,61,0.3)",
-            borderRadius: 20,
-            padding: 20,
-            overflow: "hidden",
           }}
         >
           <Shine />
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+          <View className="flex-row items-center gap-[9px]">
             <PulseDot />
-            <Display size={18}>
-              {account?.status === "CUSTOMER_CREATED" ? "Almost there" : "Verifying your details"}
+            <Display className="text-[18px] leading-[18.9px]">
+              {account?.status === "CUSTOMER_CREATED"
+                ? "Almost there"
+                : "Verifying your details"}
             </Display>
           </View>
           {/* "Nothing needs doing from here" and "this screen is watching" are
               both promises about the poll, so they end when it does. What the
               bank is doing has not changed — only who is asking. */}
-          <Body size={12.5} color={C.sub} style={{ marginTop: 12, lineHeight: 19 }}>
+          <Body className="text-[12.5px] text-sub mt-[12px] leading-[19px]">
             {account?.status === "CUSTOMER_CREATED"
               ? watching
                 ? "You are on the bank's books and your account number is being issued. This screen is watching for it."
@@ -615,17 +599,19 @@ export default function KycScreen({
               went on saying "every 10 seconds" through any of those would be
               the screen lying about work it is not doing, and "Check now" would
               read as the redundant option rather than the only one left. */}
-          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
-            {watching ? "CHECKING EVERY 10 SECONDS" : "CHECK WHEN YOU ARE READY"}
+          <Mono className="text-[10px] text-dim tracking-[1.3px]">
+            {watching
+              ? "CHECKING EVERY 10 SECONDS"
+              : "CHECK WHEN YOU ARE READY"}
           </Mono>
         </View>
 
-        <View style={{ marginTop: 22 }}>
+        <View className="mt-[22px]">
           <GhostButton label="Check now" onPress={reload} />
         </View>
-        <Body size={11.5} color={C.dim} style={{ marginTop: 18, lineHeight: 17 }}>
-          Leaving this screen does not cancel anything — the account keeps opening, and the fiat
-          space will show it the moment it is live.
+        <Body className="text-[11.5px] text-dim mt-[18px] leading-[17px]">
+          Leaving this screen does not cancel anything — the account keeps
+          opening, and the fiat space will show it the moment it is live.
         </Body>
       </Screen>
     );
@@ -636,22 +622,21 @@ export default function KycScreen({
       <Screen>
         {header("Naira account", "TURNED DOWN")}
         <View
+          className="mt-[30px] border rounded-[20px] p-[20px]"
           style={{
-            marginTop: 30,
             backgroundColor: "rgba(246,165,165,0.08)",
-            borderWidth: 1,
             borderColor: "rgba(246,165,165,0.35)",
-            borderRadius: 20,
-            padding: 20,
           }}
         >
-          <Display size={18}>The bank could not open this account</Display>
-          <Body size={12.5} color={C.down} style={{ marginTop: 12, lineHeight: 19 }}>
+          <Display className="text-[18px] leading-[18.9px]">
+            The bank could not open this account
+          </Display>
+          <Body className="text-[12.5px] text-down mt-[12px] leading-[19px]">
             {account?.failureReason ??
               "No reason was given. The usual cause is a name that does not match the one on the BVN."}
           </Body>
         </View>
-        <View style={{ marginTop: 22 }}>
+        <View className="mt-[22px]">
           <MetallicButton
             label="Edit details and try again"
             // Held while the account is being re-read: this control drops the
@@ -669,9 +654,9 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "DISABLED")}
-        <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
-          This account has been switched off. Support can say why and turn it back on — opening a
-          second one is not the fix, so this form is closed.
+        <Body className="text-[13px] text-sub mt-[24px] leading-[19px]">
+          This account has been switched off. Support can say why and turn it
+          back on — opening a second one is not the fix, so this form is closed.
         </Body>
       </Screen>
     );
@@ -686,10 +671,10 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "STATUS NOT RECOGNISED")}
-        <Body size={13} color={C.sub} style={{ marginTop: 24, lineHeight: 19 }}>
+        <Body className="text-[13px] text-sub mt-[24px] leading-[19px]">
           {`Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}. You already have an account, and this version of KashPlus does not recognise the state it is in — so this form stays closed. Opening a second one is not the fix.`}
         </Body>
-        <View style={{ marginTop: 20 }}>
+        <View className="mt-[20px]">
           <MetallicButton label="Check again" onPress={reload} />
         </View>
       </Screen>
@@ -700,10 +685,10 @@ export default function KycScreen({
     return (
       <Screen>
         {header("Naira account", "COULD NOT CHECK")}
-        <Body size={13} color={C.down} style={{ marginTop: 24, lineHeight: 19 }}>
+        <Body className="text-[13px] text-down mt-[24px] leading-[19px]">
           {accountError ?? "Something went wrong reaching KashPlus."}
         </Body>
-        <View style={{ marginTop: 20 }}>
+        <View className="mt-[20px]">
           <MetallicButton label="Try again" onPress={reload} />
         </View>
       </Screen>
@@ -716,9 +701,9 @@ export default function KycScreen({
     <Screen bottom={80} keyboardShouldPersistTaps="handled">
       {header("Open a naira account", "ONE CHECK · THEN IT IS YOURS")}
 
-      <Body size={12.5} color={C.sub} style={{ marginTop: 14, lineHeight: 19 }}>
-        The bank opens the account in your name, so these have to match the details it already
-        holds against your BVN.
+      <Body className="text-[12.5px] text-sub mt-[14px] leading-[19px]">
+        The bank opens the account in your name, so these have to match the
+        details it already holds against your BVN.
       </Body>
 
       {submitError ? (
@@ -726,16 +711,13 @@ export default function KycScreen({
           onPress={() => setSubmitError(null)}
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
+          className="mt-[16px] border rounded-[16px] p-[13px]"
           style={{
-            marginTop: 16,
             backgroundColor: "rgba(246,165,165,0.1)",
-            borderWidth: 1,
             borderColor: "rgba(246,165,165,0.35)",
-            borderRadius: 16,
-            padding: 13,
           }}
         >
-          <Body size={12} color={C.down} style={{ lineHeight: 17.5 }}>
+          <Body className="text-[12px] text-down leading-[17.5px]">
             {submitError}
           </Body>
         </Pressable>
@@ -750,8 +732,8 @@ export default function KycScreen({
           it one. It stands on its own copy so dismissing the red panel does not
           take the escape hatch with it. */}
       {conflicted ? (
-        <View style={{ marginTop: 14 }}>
-          <Body size={11.5} color={C.dim} style={{ marginBottom: 10, lineHeight: 17 }}>
+        <View className="mt-[14px]">
+          <Body className="text-[11.5px] text-dim mb-[10px] leading-[17px]">
             {rereading
               ? "KashPlus is checking what that first request actually did before offering to clear it."
               : "KashPlus is still holding the first version of this request. Clear it and your next tap sends these details as a new one."}
@@ -811,23 +793,13 @@ export default function KycScreen({
         hint="Sent once to open the account. KashPlus does not store it on this device."
       />
 
-      <View
-        style={{
-          marginTop: 22,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          borderRadius: 16,
-          paddingHorizontal: 16,
-          overflow: "hidden",
-        }}
-      >
+      <View className="mt-[22px] bg-canvas-raised border border-rule rounded-[16px] px-[16px] overflow-hidden">
         <Shine />
         <FixedRow label="COUNTRY" value="Nigeria (NG)" />
         <FixedRow label="CURRENCY" value="Naira (NGN)" last />
       </View>
 
-      <View style={{ marginTop: 24 }}>
+      <View className="mt-[24px]">
         <MetallicButton
           label="Open my account"
           loading={submitting}
@@ -841,7 +813,7 @@ export default function KycScreen({
         />
       </View>
 
-      <Body size={11} color={C.dim} style={{ marginTop: 16, textAlign: "center", lineHeight: 16.5 }}>
+      <Body className="text-[11px] text-dim mt-[16px] text-center leading-[16.5px]">
         {rereading
           ? "Checking with KashPlus whether an account has already been opened for you — one moment."
           : "Tapping this once is enough. If it times out, KashPlus re-asks about the same request rather than sending a second one."}

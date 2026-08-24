@@ -2,7 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { CheckIcon, CopyIcon } from "../icons";
 
 /** How long the copied state holds before reverting. */
@@ -38,29 +38,11 @@ export function AddressField({
   };
 
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        height: 58,
-        paddingLeft: 16,
-        paddingRight: 10,
-        borderRadius: 14,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: C.hairline,
-      }}
-    >
+    <View className="flex-row items-center gap-[10px] h-[58px] pl-[16px] pr-[10px] rounded-[14px] bg-canvas-raised border border-rule">
       <Text
         numberOfLines={1}
         ellipsizeMode="tail"
-        style={{
-          flex: 1,
-          fontFamily: F.mono,
-          fontSize: 13.5,
-          color: C.text,
-        }}
+        className="flex-1 font-mono text-[13.5px] text-text"
       >
         {address}
       </Text>
@@ -70,14 +52,7 @@ export function AddressField({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={copied ? "Address copied" : "Copy deposit address"}
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 11,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: C.inset,
-        }}
+        className="w-[38px] h-[38px] rounded-[11px] items-center justify-center bg-canvas-inset"
       >
         {copied ? (
           <CheckIcon size={17} color={C.brand} />

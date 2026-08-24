@@ -9,7 +9,7 @@ import {
   Screen,
   TxRow,
 } from "@/components/ui";
-import { C } from "@/theme/tokens";
+import { cn } from "@/lib/cn";
 
 // Everything arrives formatted — the UI never does money math.
 const nowStrip = [
@@ -101,22 +101,18 @@ function NowChip({
   amber?: boolean;
 }) {
   return (
-    <Card style={{ flex: 1, padding: 12, borderRadius: 16 }}>
-      <Label style={{ fontSize: 9 }}>{caption}</Label>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 5,
-          marginTop: 7,
-        }}
-      >
-        <Mono size={13.5} color={amber ? C.amber : C.text}>
+    <Card className="flex-1 p-[12px] rounded-[16px]">
+      <Label className="text-[9px]">{caption}</Label>
+      <View className="flex-row items-center gap-[5px] mt-[7px]">
+        <Mono className={amber ? "text-amber" : "text-text"} size={13.5}>
           {figure}
         </Mono>
         {amber ? <PulseDot size={5} /> : null}
       </View>
-      <Mono size={10} color={amber ? C.dim : C.up} style={{ marginTop: 4 }}>
+      <Mono
+        size={10}
+        className={cn("mt-[4px]", amber ? "text-dim" : "text-up")}
+      >
         {delta}
       </Mono>
     </Card>
@@ -135,24 +131,20 @@ export interface PulseScreenProps {
 export default function PulseScreen({ top = 0 }: PulseScreenProps) {
   return (
     <Screen top={top}>
-      <View style={{ marginTop: 10, flexDirection: "row", gap: 8 }}>
+      <View className="mt-[10px] flex-row gap-[8px]">
         {nowStrip.map((c) => (
           <NowChip key={c.caption} {...c} />
         ))}
       </View>
 
-      <View style={{ marginTop: 26 }}>
+      <View className="mt-[26px]">
         <Label>Activity</Label>
         {feed.map((t, i) => (
           <TxRow key={t.title} {...t} last={i === feed.length - 1} />
         ))}
       </View>
 
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 18 }}
-      >
+      <Body className="text-[11px] text-dim text-center mt-[18px]">
         One feed across fiat, crypto, points and games — as it happens
       </Body>
     </Screen>

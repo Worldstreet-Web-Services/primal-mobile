@@ -19,7 +19,7 @@ export default function TraderProfile() {
   const trader = id ? traderById(id) : undefined;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <PageHeader
         title="Trader Profile"
         align="left"
@@ -37,14 +37,18 @@ export default function TraderProfile() {
         <TraderProfileScreen
           trader={trader}
           // Mirroring is Worldstreet's call (PRD §F6) — until that endpoint
-          // lands, confirming just returns to the feed.
-          onStartCopying={() => router.back()}
+          // lands, nothing is actually mirrored and the flow goes straight to
+          // its last page. `replace`, not `push`: back from a confirmed
+          // decision must not land on the screen that asked for it.
+          onStartCopying={(traderId, stake) =>
+            router.replace(
+              `/copy-trading/activated?id=${encodeURIComponent(traderId)}&amount=${stake}`,
+            )
+          }
         />
       ) : (
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <Body size={14} color={C.sub}>
+        <View className="flex-1 items-center justify-center">
+          <Body className="text-[14px] text-sub">
             That trader is no longer listed.
           </Body>
         </View>

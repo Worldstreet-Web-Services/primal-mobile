@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   Animated,
   Easing,
@@ -11,21 +11,23 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { Body, Mono, PressableScale } from "@/components/ui";
 import { formatUsd, truncateAddress } from "@/lib/vault/format";
 import { useVaultStore } from "@/store/vault";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
+import { cn } from "@/lib/cn";
 
 // Confetti in the house palette — the money-in green for the win, brand and
 // chrome for sparkle. Amber stays out of it: on this screen amber is the clock.
-const CONFETTI = [C.up, C.brand, "#FFFFFF", C.silver];
+const confetti = () => [C.up, C.brand, "#FFFFFF", C.silver];
 
 function Particle({ index, total }: { index: number; total: number }) {
   const { width, height } = useWindowDimensions();
-  const progress = useRef(new Animated.Value(0)).current;
+  const progress = useMemo(() => new Animated.Value(0), []);
 
   // Deterministic fan-out per index with a little jitter.
   const angle = (index / total) * Math.PI * 2 + (index % 3) * 0.35;
   const distance = 120 + ((index * 37) % 140);
   const size = 6 + ((index * 13) % 8);
-  const color = CONFETTI[index % CONFETTI.length];
+  const palette = confetti();
+  const color = palette[index % palette.length];
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -41,17 +43,21 @@ function Particle({ index, total }: { index: number; total: number }) {
   return (
     <Animated.View
       pointerEvents="none"
+      className="absolute rounded-[2px]"
       style={{
-        position: "absolute",
         left: width / 2 - size / 2,
         top: height / 2 - size / 2,
         width: size,
         height: size * 0.6,
-        borderRadius: 2,
         backgroundColor: color,
-        opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+        opacity: progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 0],
+        }),
         transform: [
-          { translateX: Animated.multiply(progress, Math.cos(angle) * distance) },
+          {
+            translateX: Animated.multiply(progress, Math.cos(angle) * distance),
+          },
           {
             translateY: Animated.add(
               Animated.multiply(progress, Math.sin(angle) * distance),
@@ -84,7 +90,7 @@ function CrownMark({ color, size = 26 }: { color: string; size?: number }) {
 }
 
 function SpinnerRing() {
-  const turn = useRef(new Animated.Value(0)).current;
+  const turn = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(turn, {
@@ -99,13 +105,9 @@ function SpinnerRing() {
   }, [turn]);
   return (
     <Animated.View
+      className="w-[84px] h-[84px] rounded-[42px] border-rule border-t-silver"
       style={{
-        width: 84,
-        height: 84,
-        borderRadius: 42,
         borderWidth: 2,
-        borderColor: C.hairline,
-        borderTopColor: C.silver,
         transform: [
           {
             rotate: turn.interpolate({
@@ -121,20 +123,18 @@ function SpinnerRing() {
 
 /** Full-screen dim that fades itself in on mount. */
 function Dim({ children }: { children: React.ReactNode }) {
-  const v = useRef(new Animated.Value(0)).current;
+  const v = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
   }, [v]);
   return (
     <Animated.View
+      className="absolute top-[0px] left-[0px] right-[0px] bottom-[0px] items-center justify-center"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        alignItems: "center",
-        justifyContent: "center",
         backgroundColor: "rgba(0,0,0,0.82)",
         opacity: v,
       }}
@@ -149,7 +149,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
   const dismiss = useVaultStore((s) => s.dismissReveal);
 
   const particles = useMemo(() => Array.from({ length: 36 }, (_, i) => i), []);
-  const pop = useRef(new Animated.Value(0)).current;
+  const pop = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     if (phase.kind === "reveal") {
@@ -168,50 +168,24 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
   if (phase.kind === "calculating") {
     return (
       <Dim>
-        <View style={{ alignItems: "center" }}>
-          <View style={{ alignItems: "center", justifyContent: "center" }}>
+        <View className="items-center">
+          <View className="items-center justify-center">
             <SpinnerRing />
-            <View style={{ position: "absolute" }}>
+            <View className="absolute">
               <CrownMark color={C.dim} size={28} />
             </View>
           </View>
-          <Mono
-            size={9.5}
-            color={C.dim}
-            style={{ marginTop: 26, letterSpacing: 2.2 }}
-          >
+          <Mono className="text-[9.5px] text-dim mt-[26px] tracking-[2.2px]">
             SETTLING THE ROUND
           </Mono>
-          <Text
-            style={{
-              marginTop: 12,
-              fontFamily: F.display,
-              fontSize: 20,
-              color: C.text,
-            }}
-          >
+          <Text className="mt-[12px] font-display text-[20px] text-text">
             Deciding who stood last
           </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-end",
-              gap: 7,
-              marginTop: 12,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 15,
-                color: C.silver,
-              }}
-            >
+          <View className="flex-row items-end gap-[7px] mt-[12px]">
+            <Text className="font-mono-semibold text-[15px] text-silver">
               {formatUsd(phase.potUsd)}
             </Text>
-            <Body size={12.5} color={C.dim}>
-              on the line
-            </Body>
+            <Body className="text-[12.5px] text-dim">on the line</Body>
           </View>
         </View>
       </Dim>
@@ -231,15 +205,9 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
         : null}
 
       <Animated.View
+        className="mx-[32px] items-center rounded-[28px] border bg-canvas-raised px-[32px] py-[32px]"
         style={{
-          marginHorizontal: 32,
-          alignItems: "center",
-          borderRadius: 28,
-          borderWidth: 1,
           borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
-          backgroundColor: C.raised,
-          paddingHorizontal: 32,
-          paddingVertical: 32,
           opacity: pop,
           transform: [
             {
@@ -252,14 +220,11 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
         }}
       >
         <View
+          className={cn(
+            "w-[56px] h-[56px] rounded-[28px] items-center justify-center border",
+            youWon ? "bg-up-tint" : "bg-canvas-inset",
+          )}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: youWon ? C.upBg : C.inset,
-            borderWidth: 1,
             borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
           }}
         >
@@ -267,65 +232,38 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
         </View>
         <Mono
           size={9.5}
-          color={youWon ? C.up : C.dim}
-          style={{ marginTop: 18, letterSpacing: 2.4 }}
+
+          className={cn(
+            "mt-[18px] tracking-[2.4px]",
+            youWon ? "text-up" : "text-dim",
+          )}
         >
           {youWon ? "THE POT IS YOURS" : "ROUND SETTLED"}
         </Mono>
-        <Text
-          style={{
-            marginTop: 10,
-            textAlign: "center",
-            fontFamily: F.displayBold,
-            fontSize: 22,
-            color: C.text,
-          }}
-        >
+        <Text className="mt-[10px] text-center font-display-bold text-[22px] text-text">
           {youWon ? "You stood last" : truncateAddress(phase.winner)}
         </Text>
         <Text
-          style={{
-            marginTop: 12,
-            textAlign: "center",
-            fontFamily: F.monoSemibold,
-            fontSize: 32,
-            letterSpacing: -0.5,
-            color: youWon ? C.up : C.text,
-          }}
+          className={cn(
+            "mt-[12px] text-center font-mono-semibold text-[32px] tracking-[-0.5px]",
+            youWon ? "text-up" : "text-text",
+          )}
         >
           {formatUsd(phase.prizeUsd)}
         </Text>
-        <Body
-          size={12}
-          color={C.dim}
-          style={{ marginTop: 12, textAlign: "center", lineHeight: 18 }}
-        >
+        <Body className="text-[12px] text-dim mt-[12px] text-center leading-[18px]">
           {youWon
             ? "The winner's cut is on its way to your wallet."
             : "Took the winner's half. Open a table and build the next pot."}
         </Body>
-        <View style={{ marginTop: 26 }}>
+        <View className="mt-[26px]">
           <PressableScale onPress={dismiss} scale={0.97}>
             <View
               accessibilityRole="button"
               accessibilityLabel="Dismiss"
-              style={{
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: C.border,
-                backgroundColor: C.key,
-                paddingHorizontal: 44,
-                paddingVertical: 14,
-              }}
+              className="rounded-[999px] border border-border bg-key px-[44px] py-[14px]"
             >
-              <Text
-                style={{
-                  fontFamily: F.monoSemibold,
-                  fontSize: 11.5,
-                  letterSpacing: 1.6,
-                  color: C.text,
-                }}
-              >
+              <Text className="font-mono-semibold text-[11.5px] tracking-[1.6px] text-text">
                 {youWon ? "DONE" : "GOT IT"}
               </Text>
             </View>

@@ -20,7 +20,6 @@ import {
   kashSeries,
   ranges,
 } from "@/data/earn";
-import { C } from "@/theme/tokens";
 
 export interface AutoEarnScreenProps {
   balance?: BalanceStats;
@@ -58,12 +57,7 @@ export default function AutoEarnScreen({
 
   return (
     <Screen pad={13} top={top} bottom={bottom}>
-      <View
-        style={{
-          marginTop: 12,
-          padding: 18,
-        }}
-      >
+      <View className="mt-[12px] p-[18px]">
         {/* Gain first, then the label, then the number — the move is what the
             glance is for, and the total confirms it. */}
         <BalanceSummary
@@ -82,7 +76,7 @@ export default function AutoEarnScreen({
         />
       </View>
 
-      <View style={{ marginTop: 18 }}>
+      <View className="mt-[18px]">
         <ChartCard
           quote={quote}
           data={series}
@@ -92,27 +86,20 @@ export default function AutoEarnScreen({
         />
       </View>
 
-      <View style={{ marginTop: 4 }}>
+      <View className="mt-[4px]">
         <AssetList assets={holding} framed={false} onOpen={onOpenAsset} />
       </View>
 
       {/* Rule above the section, not below the watch row — it belongs to the
           heading it introduces, so the two move together. */}
-      <View
-        style={{
-          marginTop: 18,
-          paddingTop: 18,
-          borderTopWidth: 1,
-          borderTopColor: C.hairline,
-        }}
-      >
+      <View className="mt-[18px] pt-[18px] border-t border-t-rule">
         <Label>Market intelligence</Label>
-        <Display size={22} style={{ marginTop: 10 }}>
+        <Display className="text-[22px] leading-[23.1px] mt-[10px]">
           My Portfolio
         </Display>
       </View>
 
-      <View style={{ marginTop: 14 }}>
+      <View className="mt-[14px]">
         <AssetList
           assets={portfolio}
           subIcon={<ClockIcon size={12} />}

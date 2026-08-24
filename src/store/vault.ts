@@ -239,11 +239,7 @@ export const useVaultStore = create<VaultState>((set, get) => {
       // A game is past its deadline. If it is the one on stage, open the
       // suspense window while the keeper settles it.
       const feat = featuredGame(get().games, get().featuredId);
-      if (
-        feat &&
-        feat.endTime * 1000 <= now &&
-        get().phase.kind === "idle"
-      ) {
+      if (feat && feat.endTime * 1000 <= now && get().phase.kind === "idle") {
         set({
           phase: {
             kind: "calculating",
@@ -254,7 +250,8 @@ export const useVaultStore = create<VaultState>((set, get) => {
       }
       if (attempts++ >= EXPIRY_POLL_MAX) {
         // Don't strand the suspense overlay on a keeper that never came.
-        if (get().phase.kind === "calculating") set({ phase: { kind: "idle" } });
+        if (get().phase.kind === "calculating")
+          set({ phase: { kind: "idle" } });
         stopExpiryWatch();
         return;
       }
@@ -267,7 +264,9 @@ export const useVaultStore = create<VaultState>((set, get) => {
     };
 
     const nearest = nearestDeadline();
-    schedule(Math.max(0, (nearest ?? Date.now()) - Date.now()) + EXPIRY_GRACE_MS);
+    schedule(
+      Math.max(0, (nearest ?? Date.now()) - Date.now()) + EXPIRY_GRACE_MS,
+    );
   };
 
   const scheduleFeedRefresh = () => {
@@ -338,7 +337,9 @@ export const useVaultStore = create<VaultState>((set, get) => {
         const gameId = Number(d.gameId);
         if (!get().games.some((g) => g.gameId === gameId)) {
           // A play on a game we've never seen — resync the lobby.
-          void fetchVaultGames().then(applyGames).catch(() => {});
+          void fetchVaultGames()
+            .then(applyGames)
+            .catch(() => {});
           break;
         }
         const u = unit();
@@ -501,7 +502,9 @@ export const useVaultStore = create<VaultState>((set, get) => {
               set({ activities: activities.slice(0, MAX_ACTIVITIES) }),
             )
             .catch(() => {});
-          void fetchVaultWinners().then((winners) => set({ winners })).catch(() => {});
+          void fetchVaultWinners()
+            .then((winners) => set({ winners }))
+            .catch(() => {});
         }
       }, FEED_POLL_MS);
     },

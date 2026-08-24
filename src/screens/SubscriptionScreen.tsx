@@ -1,6 +1,12 @@
 import { Image, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Easing,
@@ -35,7 +41,8 @@ import {
   type PrimalAppState,
   type Subscription,
 } from "@/lib/gateway/types";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * The paywall — and, for someone who already pays, the membership page.
@@ -105,8 +112,18 @@ const DOTS_BLOCK = 34;
 const GUTTER = 26;
 
 const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 /** Deliberately not `toLocaleDateString` — Intl availability varies by engine
@@ -146,16 +163,9 @@ function priceText(m: Money): string {
  *  signature across the auth-scale surfaces, not two that nearly match. */
 function Lockup() {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+    <View className="flex-row items-center gap-[10px]">
       <KashPlusMark height={26} color={C.text} />
-      <Text
-        style={{
-          fontFamily: F.display,
-          fontSize: 27,
-          letterSpacing: -0.4,
-          color: C.text,
-        }}
-      >
+      <Text className="font-display text-[27px] tracking-[-0.4px] text-text">
         KashPlus
       </Text>
     </View>
@@ -173,12 +183,11 @@ function BenefitCard({
 }) {
   return (
     <View
+      className="overflow-hidden bg-sheet"
       style={{
         width,
         height,
         borderRadius: CARD_RADIUS,
-        overflow: "hidden",
-        backgroundColor: C.sheet,
       }}
       accessible
       accessibilityLabel={benefit.title}
@@ -215,10 +224,9 @@ function BenefitCard({
         }}
       />
       <Body
-        semibold
-        size={15}
+        className="text-[15px] font-body-semibold absolute left-[16px] right-[16px] bottom-[15px]"
+
         numberOfLines={2}
-        style={{ position: "absolute", left: 16, right: 16, bottom: 15 }}
       >
         {benefit.title}
       </Body>
@@ -231,23 +239,16 @@ function BenefitCard({
 function Dots({ count, active }: { count: number; active: number }) {
   if (count < 2) return null;
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        marginTop: 18,
-      }}
-    >
+    <View className="flex-row items-center justify-center gap-[6px] mt-[18px]">
       {Array.from({ length: count }, (_, i) => (
         <View
           key={i}
+          className={cn(
+            "h-[6px] rounded-[3px]",
+            i === active ? "bg-brand" : "bg-border-strong",
+          )}
           style={{
             width: i === active ? 20 : 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: i === active ? C.brand : C.borderStrong,
           }}
         />
       ))}
@@ -278,27 +279,16 @@ function StatusStrip({
 }) {
   const ink = tone === "brand" ? C.brand : tone === "amber" ? C.amber : C.sub;
   const body = (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 9,
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        borderRadius: 14,
-        paddingVertical: 11,
-        paddingHorizontal: 13,
-      }}
-    >
+    <View className="flex-row items-center gap-[9px] bg-card border border-rule rounded-[14px] py-[11px] px-[13px]">
       {live ? (
         <PulseDot color={ink} />
       ) : (
         <View
-          style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ink }}
+          className="w-[6px] h-[6px] rounded-[3px]"
+          style={{ backgroundColor: ink }}
         />
       )}
-      <Body size={12.5} color={C.silver} style={{ flex: 1, lineHeight: 18 }}>
+      <Body className="text-[12.5px] text-silver flex-1 leading-[18px]">
         {children}
       </Body>
     </View>
@@ -324,22 +314,20 @@ function Notice({
       onPress={onDismiss}
       accessibilityRole="button"
       accessibilityLabel="Dismiss"
+      className="border rounded-[16px] p-[14px]"
       style={{
         backgroundColor: "rgba(246,165,165,0.1)",
-        borderWidth: 1,
         borderColor: "rgba(246,165,165,0.35)",
-        borderRadius: 16,
-        padding: 14,
       }}
     >
-      <Body size={12.5} semibold color={C.down}>
+      <Body className="text-[12.5px] text-down font-body-semibold">
         {notice.title}
       </Body>
-      <Body size={12} color={C.silver} style={{ marginTop: 4, lineHeight: 17.5 }}>
+      <Body className="text-[12px] text-silver mt-[4px] leading-[17.5px]">
         {notice.detail}
       </Body>
       {notice.correlationId ? (
-        <Mono size={9.5} color={C.dim} style={{ marginTop: 8, letterSpacing: 1 }}>
+        <Mono className="text-[9.5px] text-dim mt-[8px] tracking-[1px]">
           REF {notice.correlationId}
         </Mono>
       ) : null}
@@ -426,7 +414,9 @@ export default function SubscriptionScreen({
 
     (async () => {
       try {
-        const existing = await subs.resumeCheckout({ signal: controller.signal });
+        const existing = await subs.resumeCheckout({
+          signal: controller.signal,
+        });
         if (!alive.current) return;
         if (existing) {
           setMembership(existing.subscription);
@@ -456,7 +446,7 @@ export default function SubscriptionScreen({
   // The page arrives composed rather than assembled: one driver, sliced per
   // block, so the lockup settles before the headline and the headline before
   // the shelf. Same curve and stagger as SignInScreen.
-  const intro = useRef(new Animated.Value(0)).current;
+  const intro = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     if (loading) return;
     Animated.timing(intro, {
@@ -497,7 +487,10 @@ export default function SubscriptionScreen({
       setCancelling(true);
       setNotice(null);
       try {
-        const updated = await subs.cancelSubscription(membership.id, atPeriodEnd);
+        const updated = await subs.cancelSubscription(
+          membership.id,
+          atPeriodEnd,
+        );
         if (!alive.current) return;
         if (updated) setMembership(updated);
         setConfirmImmediate(false);
@@ -535,7 +528,8 @@ export default function SubscriptionScreen({
   // the dots — the only thing saying how many cards there are — out of sight.
   // Shrinking the card by those few points is a far smaller lie than hiding the
   // pagination, and the ratio is held either way so the artwork never distorts.
-  const room = viewportH > 0 && shelfY > 0 ? viewportH - shelfY - DOTS_BLOCK : 0;
+  const room =
+    viewportH > 0 && shelfY > 0 ? viewportH - shelfY - DOTS_BLOCK : 0;
   const cardH =
     room > 0
       ? Math.max(CARD_MIN_H, Math.min(Math.round(baseW * CARD_RATIO), room))
@@ -593,9 +587,9 @@ export default function SubscriptionScreen({
         <View style={{ paddingHorizontal: GUTTER }}>
           <Lockup />
         </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View className="flex-1 items-center justify-center">
           <KashPlusLoader height={38} color={C.brand} />
-          <Body size={12.5} color={C.dim} style={{ marginTop: 18 }}>
+          <Body className="text-[12.5px] text-dim mt-[18px]">
             Checking your membership
           </Body>
         </View>
@@ -615,47 +609,48 @@ export default function SubscriptionScreen({
     return (
       <View style={frame}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: GUTTER, paddingBottom: 28 }}
+          contentContainerStyle={{
+            paddingHorizontal: GUTTER,
+            paddingBottom: 28,
+          }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View className="flex-row items-center">
             <Lockup />
-            <View style={{ flex: 1 }} />
+            <View className="flex-1" />
             {onBack ? (
-              <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
-                <Body size={13} color={C.sub}>
-                  {backLabel}
-                </Body>
+              <Pressable
+                onPress={onBack}
+                hitSlop={12}
+                accessibilityRole="button"
+              >
+                <Body className="text-[13px] text-sub">{backLabel}</Body>
               </Pressable>
             ) : null}
           </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 34 }}>
+          <View className="flex-row items-center gap-[8px] mt-[34px]">
             <View
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 4,
-                backgroundColor: ending ? C.amber : C.up,
-              }}
+              className={cn(
+                "w-[7px] h-[7px] rounded-[4px]",
+                ending ? "bg-amber" : "bg-up",
+              )}
             />
-            <Mono size={10} color={ending ? C.amber : C.up} style={{ letterSpacing: 1.4 }}>
+            <Mono
+              size={10}
+
+              className={cn(
+                "tracking-[1.4px]",
+                ending ? "text-amber" : "text-up",
+              )}
+            >
               {subs
                 .describeSubscriptionStatus(membership?.status ?? "ACTIVE")
                 .toUpperCase()}
             </Mono>
           </View>
 
-          <Text
-            style={{
-              fontFamily: F.displayBold,
-              fontSize: 34,
-              lineHeight: 41,
-              letterSpacing: -0.8,
-              color: C.text,
-              marginTop: 12,
-            }}
-          >
+          <Text className="font-display-bold text-[34px] leading-[41px] tracking-[-0.8px] text-text mt-[12px]">
             {ending ? "Your membership is ending" : "You have KashPlus"}
           </Text>
 
@@ -663,25 +658,21 @@ export default function SubscriptionScreen({
               money is set with `Mono`. Plain `Mono` here, not the semibold cut:
               on this face the figure is a fact in a sentence, not the offer, so
               it gets the tabular numerals without the paywall's emphasis. */}
-          <Body size={15} color={C.sub} style={{ marginTop: 12, lineHeight: 23 }}>
+          <Body className="text-[15px] text-sub mt-[12px] leading-[23px]">
             {renews ? (
               ending ? (
                 `Everything keeps working until ${renews}. Nothing will be charged after that.`
               ) : (
                 <>
                   {`Renews ${renews} at `}
-                  <Mono size={15} color={C.sub}>
-                    {price}
-                  </Mono>
+                  <Mono className="text-[15px] text-sub">{price}</Mono>
                   {` per ${subs.MEMBERSHIP_PERIOD}.`}
                 </>
               )
             ) : (
               <>
                 {"Billed "}
-                <Mono size={15} color={C.sub}>
-                  {price}
-                </Mono>
+                <Mono className="text-[15px] text-sub">{price}</Mono>
                 {` per ${subs.MEMBERSHIP_PERIOD}.`}
               </>
             )}
@@ -689,26 +680,24 @@ export default function SubscriptionScreen({
 
           {membership ? (
             ending ? null : (
-              <View style={{ marginTop: 34 }}>
+              <View className="mt-[34px]">
                 {confirmImmediate ? (
                   <View
+                    className="border rounded-[20px] p-[18px]"
                     style={{
                       backgroundColor: "rgba(246,165,165,0.08)",
-                      borderWidth: 1,
                       borderColor: "rgba(246,165,165,0.3)",
-                      borderRadius: 20,
-                      padding: 18,
                     }}
                   >
-                    <Body size={14} semibold color={C.down}>
+                    <Body className="text-[14px] text-down font-body-semibold">
                       End access now?
                     </Body>
-                    <Body size={12.5} color={C.silver} style={{ marginTop: 8, lineHeight: 19 }}>
+                    <Body className="text-[12.5px] text-silver mt-[8px] leading-[19px]">
                       Your account, transfers and bill payments stop the moment
                       this goes through — not at the end of the month you have
                       paid for. There is no refund for the remaining days.
                     </Body>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                    <View className="flex-row gap-[10px] mt-[18px]">
                       <GhostButton
                         label="Keep membership"
                         onPress={() => setConfirmImmediate(false)}
@@ -719,19 +708,22 @@ export default function SubscriptionScreen({
                         label="End access now"
                         onPress={() => void cancel(false)}
                         loading={cancelling}
-                        style={{ flex: 1, borderColor: "rgba(246,165,165,0.45)" }}
+                        style={{
+                          flex: 1,
+                          borderColor: "rgba(246,165,165,0.45)",
+                        }}
                       />
                     </View>
                   </View>
                 ) : (
                   <>
                     <Label>Ending it</Label>
-                    <Body size={13} color={C.sub} style={{ marginTop: 10, lineHeight: 20 }}>
+                    <Body className="text-[13px] text-sub mt-[10px] leading-[20px]">
                       Stopping at the end of the period keeps everything working
                       until{renews ? ` ${renews}` : " it runs out"}. Ending now
                       is immediate.
                     </Body>
-                    <View style={{ marginTop: 18, gap: 10 }}>
+                    <View className="mt-[18px] gap-[10px]">
                       <QuietButton
                         label="Stop renewing"
                         onPress={() => void cancel(true)}
@@ -740,9 +732,9 @@ export default function SubscriptionScreen({
                       <Pressable
                         onPress={() => setConfirmImmediate(true)}
                         accessibilityRole="button"
-                        style={{ alignItems: "center", paddingVertical: 12 }}
+                        className="items-center py-[12px]"
                       >
-                        <Body size={12.5} color={C.dim}>
+                        <Body className="text-[12.5px] text-dim">
                           End access immediately
                         </Body>
                       </Pressable>
@@ -752,14 +744,14 @@ export default function SubscriptionScreen({
               </View>
             )
           ) : (
-            <Body size={12.5} color={C.dim} style={{ marginTop: 26, lineHeight: 19 }}>
+            <Body className="text-[12.5px] text-dim mt-[26px] leading-[19px]">
               Renewal details are not available on this device. Sign in on the
               device that started the membership to manage it.
             </Body>
           )}
 
           {notice ? (
-            <View style={{ marginTop: 20 }}>
+            <View className="mt-[20px]">
               <Notice notice={notice} onDismiss={() => setNotice(null)} />
             </View>
           ) : null}
@@ -773,7 +765,9 @@ export default function SubscriptionScreen({
   const pendingExpiry = pending?.payment?.expiresAt;
   // `formatCountdown` reads the clock itself, so `now` is the dependency that
   // makes it recompute — it is the tick, not an input.
-  const pendingCountdown = pendingExpiry ? formatCountdown(pendingExpiry) : null;
+  const pendingCountdown = pendingExpiry
+    ? formatCountdown(pendingExpiry)
+    : null;
   void now;
 
   const syncing = state === "entitlement_syncing";
@@ -790,34 +784,32 @@ export default function SubscriptionScreen({
         onLayout={(event) => setViewportH(event.nativeEvent.layout.height)}
       >
         <Animated.View
+          className="flex-row items-center"
           style={[
             {
-              flexDirection: "row",
-              alignItems: "center",
               paddingHorizontal: GUTTER,
             },
             step(0),
           ]}
         >
           <Lockup />
-          <View style={{ flex: 1 }} />
+          <View className="flex-1" />
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
-              <Body size={13} color={C.sub}>
-                {backLabel}
-              </Body>
+              <Body className="text-[13px] text-sub">{backLabel}</Body>
             </Pressable>
           ) : null}
         </Animated.View>
 
         {syncing || resumable || state === "expired" ? (
           <Animated.View
-            style={[{ paddingHorizontal: GUTTER, marginTop: 22 }, step(1)]}
+            className="mt-[22px]"
+            style={[{ paddingHorizontal: GUTTER }, step(1)]}
           >
             {syncing ? (
               <StatusStrip tone="amber">
-                Your payment is confirmed. Primal is still enabling the account —
-                this usually takes under a minute.
+                Your payment is confirmed. Primal is still enabling the account
+                — this usually takes under a minute.
               </StatusStrip>
             ) : resumable ? (
               <StatusStrip
@@ -831,7 +823,7 @@ export default function SubscriptionScreen({
                 {pendingCountdown ? (
                   <>
                     {" — it closes in "}
-                    <Mono size={12.5} color={C.silver}>
+                    <Mono className="text-[12.5px] text-silver">
                       {pendingCountdown}
                     </Mono>
                   </>
@@ -848,36 +840,35 @@ export default function SubscriptionScreen({
         ) : null}
 
         <Animated.View
-          style={[{ paddingHorizontal: GUTTER, marginTop: 26 }, step(2)]}
+          className="mt-[26px]"
+          style={[{ paddingHorizontal: GUTTER }, step(2)]}
         >
           <Text
+            className="font-display-bold tracking-[-1px] text-text"
             style={{
-              fontFamily: F.displayBold,
               // The headline is the screen. It steps down on narrow devices
               // rather than wrapping to five lines and pushing the shelf under
               // the fold.
               fontSize: width < 380 ? 33 : 38,
               lineHeight: width < 380 ? 40 : 46,
-              letterSpacing: -1,
-              color: C.text,
             }}
           >
             Get exclusive benefits with KashPlus subscription
           </Text>
 
-          <Body size={15} color={C.sub} style={{ marginTop: 14, lineHeight: 23 }}>
+          <Body className="text-[15px] text-sub mt-[14px] leading-[23px]">
             Get exclusive benefits with KashPlus Subscription{" "}
             {/* The figure goes through `Mono` for the tabular numerals, and
                 `monoSemibold` — the same cut `bodySemibold` resolves to — so it
                 keeps the weight the design gives it against the sentence. */}
-            <Mono size={15} color={C.text} style={{ fontFamily: F.monoSemibold }}>
+            <Mono className="text-[15px] text-text font-mono-semibold">
               {price}
             </Mono>{" "}
             per {subs.MEMBERSHIP_PERIOD}.
           </Body>
         </Animated.View>
 
-        <Animated.View style={[{ marginTop: 34 }, step(3)]}>
+        <Animated.View className="mt-[34px]" style={step(3)}>
           <Label style={{ paddingHorizontal: GUTTER }}>Premium Benefits</Label>
         </Animated.View>
 
@@ -885,7 +876,8 @@ export default function SubscriptionScreen({
             shelf still arrive together — split only so this wrapper's `y` is the
             shelf's own offset in the page, which is what sizes the cards. */}
         <Animated.View
-          style={[{ marginTop: 16 }, step(3)]}
+          className="mt-[16px]"
+          style={step(3)}
           onLayout={(event) => setShelfY(event.nativeEvent.layout.y)}
         >
           {/* Full-bleed shelf: the gutter lives in the content inset, not on the

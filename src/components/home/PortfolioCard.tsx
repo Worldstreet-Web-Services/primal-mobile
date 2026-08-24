@@ -1,7 +1,7 @@
 import { Pressable, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { PlusIcon, SendIcon, WalletIcon } from "../icons";
 import { Body, MetalButton, Mono, Pulse, QuietButton } from "../ui";
 
@@ -128,19 +128,14 @@ function Figure({
     <Mono
       size={size}
       color={color}
+      className="font-display-bold tracking-[-0.4px]"
       style={{
-        fontFamily: F.displayBold,
         lineHeight: size * 1.06,
-        letterSpacing: -0.4,
       }}
     >
       {head}
       {tail ? (
-        <Mono
-          size={size}
-          color={C.figureTail}
-          style={{ fontFamily: F.displayBold }}
-        >
+        <Mono className="text-figure-tail font-display-bold" size={size}>
           {tail}
         </Mono>
       ) : null}
@@ -162,21 +157,20 @@ function MaskedFigure({ size }: { size: number }) {
     <View
       accessible
       accessibilityLabel="Balance hidden"
+      className="flex-row items-center"
       style={{
-        flexDirection: "row",
         gap: dot * 0.62,
         height: size * 1.06,
-        alignItems: "center",
       }}
     >
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <View
           key={i}
+          className="bg-sub"
           style={{
             width: dot,
             height: dot,
             borderRadius: dot / 2,
-            backgroundColor: C.sub,
           }}
         />
       ))}
@@ -224,9 +218,7 @@ function EyeIcon({
  */
 function Eyebrow({ children }: { children: string }) {
   return (
-    <Body size={15} color={C.dim} style={{ letterSpacing: 0.1 }}>
-      {children}
-    </Body>
+    <Body className="text-[15px] text-dim tracking-[0.1px]">{children}</Body>
   );
 }
 
@@ -234,13 +226,10 @@ function Eyebrow({ children }: { children: string }) {
 function WalletChip() {
   return (
     <View
+      className="rounded-[13px] bg-canvas-inset items-center justify-center"
       style={{
         width: CHIP,
         height: CHIP,
-        borderRadius: 13,
-        backgroundColor: C.inset,
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
       <WalletIcon size={21} color={C.sub} />
@@ -266,10 +255,9 @@ function DeltaLine({
   const tone = delta.direction === "down" ? C.down : C.green;
   return (
     <Body
-      size={17}
-      semibold
+      className="text-[17px] font-body-semibold mt-[6px] tracking-[0.1px]"
+
       color={tone}
-      style={{ marginTop: 6, letterSpacing: 0.1 }}
     >
       {hidden ? "•••••" : delta.label}
     </Body>
@@ -287,15 +275,15 @@ function DeltaLine({
  */
 function LegRow({ leg, hidden }: { leg: MoneyLeg; hidden: boolean }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <Mono size={10} color={C.dim} style={{ letterSpacing: 1.5 }}>
+    <View className="flex-row items-center gap-[10px]">
+      <Mono className="text-[10px] text-dim tracking-[1.5px]">
         {leg.label.toUpperCase()}
       </Mono>
-      <View style={{ flex: 1 }} />
+      <View className="flex-1" />
       {hidden ? (
         <MaskedFigure size={11} />
       ) : (
-        <Mono size={13} color={C.sub} style={{ fontFamily: F.monoSemibold }}>
+        <Mono className="text-[13px] text-sub font-mono-semibold">
           {leg.amount}
         </Mono>
       )}
@@ -306,18 +294,16 @@ function LegRow({ leg, hidden }: { leg: MoneyLeg; hidden: boolean }) {
 /** A missing leg: the reason, and the one control that can change it. */
 function MissingRow({ missing }: { missing: MissingLeg }) {
   return (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Mono size={10} color={C.dim} style={{ letterSpacing: 1.5 }}>
+    <View className="gap-[6px]">
+      <View className="flex-row items-center gap-[10px]">
+        <Mono className="text-[10px] text-dim tracking-[1.5px]">
           {missing.label.toUpperCase()}
         </Mono>
-        <View style={{ flex: 1 }} />
+        <View className="flex-1" />
         {/* Never a zero: a zero is itself a claim about someone's money. */}
-        <Mono size={13} color={C.dim}>
-          —
-        </Mono>
+        <Mono className="text-[13px] text-dim">—</Mono>
       </View>
-      <Body size={12} color={C.sub} style={{ lineHeight: 18 }}>
+      <Body className="text-[12px] text-sub leading-[18px]">
         {missing.note}
       </Body>
       {missing.action ? (
@@ -325,9 +311,9 @@ function MissingRow({ missing }: { missing: MissingLeg }) {
           onPress={missing.onAction}
           accessibilityRole="button"
           hitSlop={8}
-          style={{ alignSelf: "flex-start", paddingVertical: 2 }}
+          className="self-start py-[2px]"
         >
-          <Mono size={10} color={C.brand} style={{ letterSpacing: 1.4 }}>
+          <Mono className="text-[10px] text-brand tracking-[1.4px]">
             {missing.action.toUpperCase()}
           </Mono>
         </Pressable>
@@ -360,36 +346,19 @@ function FigureRow({
 }) {
   return (
     <View
+      className="items-center justify-center"
       style={{
         alignSelf: "stretch",
-        alignItems: "center",
-        justifyContent: "center",
         paddingHorizontal: EYE_SLOT,
       }}
     >
       {children}
       {lead ? (
-        <View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            justifyContent: "center",
-          }}
-        >
+        <View className="absolute left-[0px] top-[0px] bottom-[0px] justify-center">
           {lead}
         </View>
       ) : null}
-      <View
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          justifyContent: "center",
-        }}
-      >
+      <View className="absolute right-[0px] top-[0px] bottom-[0px] justify-center">
         {eye}
       </View>
     </View>
@@ -423,11 +392,9 @@ function Actions({
 }) {
   return (
     <View
+      className="flex-row gap-[12px] mt-[20px]"
       style={{
         alignSelf: "stretch",
-        flexDirection: "row",
-        gap: 12,
-        marginTop: 20,
       }}
     >
       {onDeposit ? (
@@ -437,16 +404,7 @@ function Actions({
           icon={
             // The dark disc behind the glyph is the reference's, and it is what
             // stops a thin stroke disappearing into the brushed face.
-            <View
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: C.metalInk,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <View className="w-[24px] h-[24px] rounded-[12px] bg-metal-ink items-center justify-center">
               <PlusIcon size={12} color={C.text} />
             </View>
           }
@@ -514,7 +472,7 @@ export function PortfolioCard({
         // "Hide", not "lock" or "protect": this stops the person beside you
         // reading the screen, and claims nothing beyond that.
         accessibilityLabel={hidden ? "Show balance" : "Hide balance"}
-        style={{ padding: 6 }}
+        className="p-[6px]"
       >
         <EyeIcon open={!hidden} />
       </Pressable>
@@ -522,23 +480,16 @@ export function PortfolioCard({
 
   return (
     <View
+      className="bg-canvas-raised border border-rule px-[20px] pt-[22px] pb-[22px] items-center overflow-hidden"
       style={[
         {
-          backgroundColor: C.raised,
           borderRadius: RADIUS,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 20,
-          paddingTop: 22,
-          paddingBottom: 22,
-          alignItems: "center",
-          overflow: "hidden",
         },
         style,
       ]}
     >
       {view.state === "loading" ? (
-        <View style={{ alignItems: "center", gap: 14, paddingVertical: 4 }}>
+        <View className="items-center gap-[14px] py-[4px]">
           <Pulse width={120} height={11} radius={5} />
           <Pulse width={210} height={40} radius={12} />
           <Pulse width={168} height={12} radius={5} />
@@ -549,9 +500,9 @@ export function PortfolioCard({
           {/* Two currencies, two figures, one weight. Promoting either one to
               the headline is the partial-total lie in a larger point size. */}
           <FigureRow eye={eye}>
-            <View style={{ alignItems: "center", gap: 12, marginTop: 10 }}>
+            <View className="items-center gap-[12px] mt-[10px]">
               {view.legs.map((leg) => (
-                <View key={leg.key} style={{ alignItems: "center", gap: 3 }}>
+                <View key={leg.key} className="items-center gap-[3px]">
                   {hidden ? (
                     <MaskedFigure size={SPLIT} />
                   ) : (
@@ -560,18 +511,14 @@ export function PortfolioCard({
                       size={Math.min(SPLIT, heroSize(leg.amount))}
                     />
                   )}
-                  <Mono size={10} color={C.dim} style={{ letterSpacing: 1.5 }}>
+                  <Mono className="text-[10px] text-dim tracking-[1.5px]">
                     {leg.label.toUpperCase()}
                   </Mono>
                 </View>
               ))}
             </View>
           </FigureRow>
-          <Body
-            size={12}
-            color={C.sub}
-            style={{ marginTop: 16, lineHeight: 18, textAlign: "center" }}
-          >
+          <Body className="text-[12px] text-sub mt-[16px] leading-[18px] text-center">
             {view.note}
           </Body>
           <Actions onDeposit={onDeposit} onTransfer={onTransfer} />
@@ -580,7 +527,7 @@ export function PortfolioCard({
         <>
           <Eyebrow>Total Portfolio</Eyebrow>
           <FigureRow lead={<WalletChip />} eye={eye}>
-            <View style={{ marginTop: 8 }}>
+            <View className="mt-[8px]">
               {hidden ? (
                 <MaskedFigure size={HERO} />
               ) : (
@@ -591,7 +538,10 @@ export function PortfolioCard({
           {delta ? <DeltaLine delta={delta} hidden={hidden} /> : null}
           {/* The reference's delta slot, carrying what the total is made of.
               See the `LegRow` note on why it is not, by itself, a percentage. */}
-          <View style={{ alignSelf: "stretch", marginTop: 18, gap: 9 }}>
+          <View
+            className="mt-[18px] gap-[9px]"
+            style={{ alignSelf: "stretch" }}
+          >
             {view.legs.map((leg) => (
               <LegRow key={leg.key} leg={leg} hidden={hidden} />
             ))}
@@ -604,15 +554,14 @@ export function PortfolioCard({
           <FigureRow lead={<WalletChip />} eye={eye}>
             {/* The em dash IS the answer: a total that cannot be computed is
                 not zero, and the sentences below say which leg is missing. */}
-            <Mono
-              size={HERO}
-              color={C.dim}
-              style={{ fontFamily: F.displayBold, marginTop: 8 }}
-            >
+            <Mono className="text-dim font-display-bold mt-[8px]" size={HERO}>
               —
             </Mono>
           </FigureRow>
-          <View style={{ alignSelf: "stretch", marginTop: 16, gap: 14 }}>
+          <View
+            className="mt-[16px] gap-[14px]"
+            style={{ alignSelf: "stretch" }}
+          >
             {view.legs.map((leg) => (
               <LegRow key={leg.key} leg={leg} hidden={hidden} />
             ))}

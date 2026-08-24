@@ -17,8 +17,7 @@ export interface Candle {
 /** Right-hand gutter reserved for the price axis, so candles never run under it. */
 const AXIS_W = 54;
 
-const abbreviate = (n: number) =>
-  `$${Math.round(n).toLocaleString("en-US")}`;
+const abbreviate = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 /**
  * Candlestick chart with a price axis, a dashed line on the last close, and an
@@ -185,18 +184,13 @@ export function CandleChart({
 
           {times.length ? (
             <View
+              className="flex-row justify-between mt-[8px]"
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
                 width: plotW,
-                marginTop: 8,
               }}
             >
               {times.map((t) => (
-                <Text
-                  key={t}
-                  style={{ fontFamily: F.mono, fontSize: 9.5, color: C.dim }}
-                >
+                <Text key={t} className="font-mono text-[9.5px] text-dim">
                   {t}
                 </Text>
               ))}

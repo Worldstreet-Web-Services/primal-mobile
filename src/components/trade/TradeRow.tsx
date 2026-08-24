@@ -51,7 +51,7 @@ export function TradeRow({
     >
       <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
         <View style={{ flex: 1 }}>
-          <Body size={14} semibold>
+          <Body className="text-[14px]" semibold>
             {position.pair}
           </Body>
           {/* Side and age on one line: the arrow carries the direction, so the
@@ -79,17 +79,15 @@ export function TradeRow({
               {up ? "Long" : "Short"}
             </Text>
             {position.duration ? (
-              <Body size={11.5} color={C.dim}>
+              <Body className="text-[11.5px] text-dim">
                 {position.duration}
               </Body>
             ) : null}
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
-          <Mono size={13.5} color={C.up}>
-            {position.changePct}
-          </Mono>
-          <Mono size={11.5} color={C.sub} style={{ marginTop: 3 }}>
+          <Mono className="text-[13.5px] text-up">{position.changePct}</Mono>
+          <Mono className="text-[11.5px] text-sub" style={{ marginTop: 3 }}>
             {position.changeUsd}
           </Mono>
         </View>
@@ -97,8 +95,8 @@ export function TradeRow({
 
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <View style={{ flex: 1 }}>
-          <Body size={13.5}>{position.trader}</Body>
-          <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
+          <Body className="text-[13.5px]">{position.trader}</Body>
+          <Body className="text-[11px] text-dim" style={{ marginTop: 3 }}>
             {`Entry ${position.entry}`}
           </Body>
         </View>

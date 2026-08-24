@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import CreatePinScreen from "@/screens/CreatePinScreen";
-import { C } from "@/theme/tokens";
 
 export default function Pin() {
   const { createPin } = useAuth();
@@ -16,7 +15,10 @@ export default function Pin() {
     setSaving(true);
     try {
       await createPin(pin);
-      toast.success("PIN set", "You'll enter it every time money leaves KashPlus.");
+      toast.success(
+        "PIN set",
+        "You'll enter it every time money leaves KashPlus.",
+      );
       router.replace("/passkey");
     } catch {
       toast.error("Couldn't save your PIN", "Try once more.");
@@ -26,7 +28,7 @@ export default function Pin() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <CreatePinScreen onDone={onDone} saving={saving} />
     </SafeAreaView>
   );

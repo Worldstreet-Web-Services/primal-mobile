@@ -2,7 +2,7 @@ import React from "react";
 import { View, Pressable, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C, metalStops } from "../theme/tokens";
 import {
   Screen,
   BackChevron,
@@ -63,7 +63,7 @@ function StageNode({ state }: { state: StageState }) {
     return (
       <LinearGradient
         colors={C.metal}
-        locations={C.metalStops}
+        locations={metalStops}
         start={METAL_ANGLE.start}
         end={METAL_ANGLE.end}
         style={{
@@ -90,14 +90,9 @@ function StageNode({ state }: { state: StageState }) {
   if (state === "active") {
     return (
       <View
+        className="w-[22px] h-[22px] rounded-[12px] border-amber items-center justify-center"
         style={{
-          width: 22,
-          height: 22,
-          borderRadius: 12,
           borderWidth: 2,
-          borderColor: C.amber,
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         <PulseDot color={C.amber} size={8} />
@@ -106,10 +101,8 @@ function StageNode({ state }: { state: StageState }) {
   }
   return (
     <View
+      className="w-[22px] h-[22px] rounded-[12px]"
       style={{
-        width: 22,
-        height: 22,
-        borderRadius: 12,
         borderWidth: 2,
         // The stage still ahead: the quietest of the three nodes, but it has to
         // survive the lighter ground. Neutral border rather than the old silver
@@ -134,28 +127,18 @@ function QuoteRow({
 }) {
   return (
     <View
+      className="flex-row items-center justify-between py-[13px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: 13,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
       <View>
-        <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
-          {label}
-        </Mono>
+        <Mono className="text-[9px] text-dim tracking-[1.4px]">{label}</Mono>
         {note ? (
-          <Mono size={10} color={C.dim} style={{ marginTop: 4 }}>
-            {note}
-          </Mono>
+          <Mono className="text-[10px] text-dim mt-[4px]">{note}</Mono>
         ) : null}
       </View>
-      <Mono size={12.5} color={C.silver}>
-        {value}
-      </Mono>
+      <Mono className="text-[12.5px] text-silver">{value}</Mono>
     </View>
   );
 }
@@ -163,14 +146,7 @@ function QuoteRow({
 export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
   return (
     <Screen>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-          paddingTop: 10,
-        }}
-      >
+      <View className="flex-row items-center gap-[12px] pt-[10px]">
         <Pressable
           onPress={onBack}
           hitSlop={10}
@@ -179,53 +155,27 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
         >
           <BackChevron />
         </Pressable>
-        <View style={{ flex: 1 }}>
-          <Display size={20}>To Ghana</Display>
-          <Mono
-            size={9.5}
-            color={C.dim}
-            style={{ marginTop: 3, letterSpacing: 1.4 }}
-          >
+        <View className="flex-1">
+          <Display className="text-[20px] leading-[21px]">To Ghana</Display>
+          <Mono className="text-[9.5px] text-dim mt-[3px] tracking-[1.4px]">
             NGN → GHS · WORLDSTREET RAIL
           </Mono>
         </View>
       </View>
 
-      <View style={{ marginTop: 28, alignItems: "center" }}>
-        <Label style={{ letterSpacing: 2 }}>Kofi receives</Label>
-        <Text
-          style={{
-            fontFamily: F.monoSemibold,
-            fontSize: 38,
-            letterSpacing: -0.5,
-            color: C.text,
-            marginTop: 12,
-          }}
-        >
-          <Text style={{ fontSize: 24, color: C.sub }}>GH₵</Text>
+      <View className="mt-[28px] items-center">
+        <Label className="tracking-[2px]">Kofi receives</Label>
+        <Text className="font-mono-semibold text-[38px] tracking-[-0.5px] text-text mt-[12px]">
+          <Text className="text-[24px] text-sub">GH₵</Text>
           41,208
-          <Text style={{ fontSize: 21, color: C.dim }}>.50</Text>
+          <Text className="text-[21px] text-dim">.50</Text>
         </Text>
-        <Mono
-          size={11.5}
-          color={C.dim}
-          style={{ marginTop: 8, letterSpacing: 0.4 }}
-        >
+        <Mono className="text-[11.5px] text-dim mt-[8px] tracking-[0.4px]">
           ≈ $326.10 · you sent ₦500,000.00
         </Mono>
       </View>
 
-      <View
-        style={{
-          marginTop: 24,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          borderRadius: 18,
-          paddingHorizontal: 16,
-          overflow: "hidden",
-        }}
-      >
+      <View className="mt-[24px] bg-canvas-raised border border-rule rounded-[18px] px-[16px] overflow-hidden">
         <Shine />
         <QuoteRow label="RATE" value="1 NGN → 0.08242 GHS" />
         <QuoteRow label="FEE" value="₦1,250.00" note="in quote" />
@@ -235,10 +185,10 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
       <SectionRule space={24} />
 
       <Label>Progress</Label>
-      <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
+      <View className="mt-[16px] px-[4px]">
         {stages.map((s, i) => (
-          <View key={s.title} style={{ flexDirection: "row", gap: 14 }}>
-            <View style={{ alignItems: "center" }}>
+          <View key={s.title} className="flex-row gap-[14px]">
+            <View className="items-center">
               <StageNode state={s.state} />
               {i < stages.length - 1 ? (
                 s.link === "toAmber" ? (
@@ -248,9 +198,8 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
                   />
                 ) : (
                   <View
+                    className="w-[2px] flex-1"
                     style={{
-                      width: 2,
-                      flex: 1,
                       // Settled rail in silver, not the old near-white: on the
                       // charcoal ground that value stopped reading as "behind
                       // you" and started reading as a lit wire down the page.
@@ -262,7 +211,8 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
               ) : null}
             </View>
             <View
-              style={{ flex: 1, paddingBottom: i < stages.length - 1 ? 22 : 0 }}
+              className="flex-1"
+              style={{ paddingBottom: i < stages.length - 1 ? 22 : 0 }}
             >
               <Body
                 size={13.5}
@@ -277,57 +227,26 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
               >
                 {s.title}
               </Body>
-              <Mono size={10.5} color={C.dim} style={{ marginTop: 4 }}>
-                {s.sub}
-              </Mono>
+              <Mono className="text-[10.5px] text-dim mt-[4px]">{s.sub}</Mono>
               {s.narration ? (
                 <View
+                  className="mt-[12px] rounded-[14px] border px-[14px] py-[12px]"
                   style={{
-                    marginTop: 12,
-                    borderRadius: 14,
-                    borderWidth: 1,
                     borderColor: "rgba(245,184,61,0.26)",
                     backgroundColor: "rgba(245,184,61,0.07)",
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 7,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: 3,
-                        backgroundColor: C.amber,
-                      }}
-                    />
-                    <Mono
-                      size={8.5}
-                      color={C.amber}
-                      style={{ letterSpacing: 1.6 }}
-                    >
+                  <View className="flex-row items-center gap-[7px]">
+                    <View className="w-[5px] h-[5px] rounded-[3px] bg-amber" />
+                    <Mono className="text-[8.5px] text-amber tracking-[1.6px]">
                       IN FLIGHT
                     </Mono>
-                    <View style={{ flex: 1 }} />
-                    <Mono
-                      size={8.5}
-                      color={C.dim}
-                      style={{ letterSpacing: 1.4 }}
-                    >
+                    <View className="flex-1" />
+                    <Mono className="text-[8.5px] text-dim tracking-[1.4px]">
                       USUALLY UNDER 2 MIN
                     </Mono>
                   </View>
-                  <Body
-                    size={12}
-                    color={C.silver}
-                    style={{ marginTop: 9, lineHeight: 18 }}
-                  >
+                  <Body className="text-[12px] text-silver mt-[9px] leading-[18px]">
                     {s.narration}
                   </Body>
                 </View>
@@ -340,11 +259,7 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
       <SectionRule space={24} />
 
       <GhostButton label="Share receipt" height={48} />
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 14, lineHeight: 16 }}
-      >
+      <Body className="text-[11px] text-dim text-center mt-[14px] leading-[16px]">
         Priced by the provider. KashPlus adds nothing on top.
       </Body>
     </Screen>

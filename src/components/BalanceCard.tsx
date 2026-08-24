@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import { TrendUpIcon } from "./icons";
 import { AmountText, Display, PressableScale } from "./ui";
 
@@ -69,26 +69,14 @@ export function BalanceCard({
       accessibilityLabel={isHidden ? "Show balance" : "Hide balance"}
       style={style}
     >
-      <View
-        style={{
-          overflow: "hidden",
-          paddingHorizontal: 18,
-          paddingTop: 20,
-          paddingBottom: 34,
-        }}
-      >
+      <View className="overflow-hidden px-[18px] pt-[20px] pb-[34px]">
         {/* <Shine /> */}
 
         {delta && !isHidden ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View className="flex-row items-center gap-[10px]">
             <View
+              className="flex-row items-center gap-[5px] px-[9px] py-[5px] rounded-[8px]"
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                paddingHorizontal: 9,
-                paddingVertical: 5,
-                borderRadius: 8,
                 backgroundColor: delta.negative
                   ? "rgba(246,165,165,0.12)"
                   : C.upBg,
@@ -96,9 +84,8 @@ export function BalanceCard({
             >
               <TrendUpIcon size={13} color={tone} />
               <Text
+                className="font-body-semibold text-[13px]"
                 style={{
-                  fontFamily: F.bodySemibold,
-                  fontSize: 13,
                   color: tone,
                 }}
               >
@@ -106,9 +93,7 @@ export function BalanceCard({
               </Text>
             </View>
             {delta.caption ? (
-              <Text
-                style={{ fontFamily: F.body, fontSize: 12.5, color: C.sub }}
-              >
+              <Text className="font-body text-[12.5px] text-sub">
                 {delta.caption}
               </Text>
             ) : null}
@@ -118,40 +103,25 @@ export function BalanceCard({
         {/* Label and denomination share one baseline — the denomination is the
             half that changes, so it carries the contrast. */}
         <View
+          className="flex-row gap-[8px]"
           style={{
-            flexDirection: "row",
             alignItems: "baseline",
-            gap: 8,
             marginTop: delta ? 16 : 0,
           }}
         >
-          <Text
-            style={{
-              fontFamily: F.mono,
-              fontSize: 11,
-              letterSpacing: 1.8,
-              color: C.dim,
-            }}
-          >
+          <Text className="font-mono text-[11px] tracking-[1.8px] text-dim">
             {label.toUpperCase()}
           </Text>
           {currency ? (
-            <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 11,
-                letterSpacing: 1.8,
-                color: C.brand,
-              }}
-            >
+            <Text className="font-mono-semibold text-[11px] tracking-[1.8px] text-brand">
               {currency.toUpperCase()}
             </Text>
           ) : null}
         </View>
 
-        <View style={{ marginTop: 6 }}>
+        <View className="mt-[6px]">
           {isHidden ? (
-            <Display size={40}>{MASK}</Display>
+            <Display className="text-[40px] leading-[42px]">{MASK}</Display>
           ) : (
             <AmountText value={amount} size={40} />
           )}

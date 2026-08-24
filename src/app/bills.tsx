@@ -29,9 +29,13 @@ import {
   type VasProvider,
   type VasTransaction,
 } from "@/lib/gateway/services";
-import BillCheckoutScreen, { type CheckoutPhase } from "@/screens/BillCheckoutScreen";
-import BillsScreen, { type BillDraft, type BillsBlock } from "@/screens/BillsScreen";
-import { C } from "@/theme/tokens";
+import BillCheckoutScreen, {
+  type CheckoutPhase,
+} from "@/screens/BillCheckoutScreen";
+import BillsScreen, {
+  type BillDraft,
+  type BillsBlock,
+} from "@/screens/BillsScreen";
 
 /**
  * Bills — value-added services on LinkPay.
@@ -75,7 +79,10 @@ function gateFor(
   // Paid but not propagated yet, and a payment mid-flight, are both "hold on"
   // rather than "you cannot" — sending someone who has just paid to the paywall
   // is the worst version of this screen.
-  if (state.state === "entitlement_syncing" || state.state === "payment_pending") {
+  if (
+    state.state === "entitlement_syncing" ||
+    state.state === "payment_pending"
+  ) {
     return "waiting";
   }
   return isEntitled(state.state) ? "ready" : "subscription";
@@ -223,7 +230,9 @@ export default function Bills() {
     // offer the handshake again — a permanent skeleton is a lie.
     if (gate === "stalled") {
       setLoading(false);
-      setError(primal.error ?? "Could not reach KashPlus. Check your connection.");
+      setError(
+        primal.error ?? "Could not reach KashPlus. Check your connection.",
+      );
       return;
     }
     // Nothing under /v1/linkpay/* will answer without an entitlement, so an
@@ -328,7 +337,9 @@ export default function Bills() {
       setResumedAt(null);
       setPhase("placing");
       sent = true;
-      const placed = await purchase(intent, { idempotencyKey: plan.idempotencyKey });
+      const placed = await purchase(intent, {
+        idempotencyKey: plan.idempotencyKey,
+      });
       setTransaction(placed);
       // The id goes into the record before anything else happens to it: it is
       // the only thing that can resolve this attempt if the app dies now.
@@ -527,7 +538,7 @@ export default function Bills() {
   }, [gate, transactionId, confirm]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       {draft ? (
         <BillCheckoutScreen
           top={headerHeight}
@@ -561,7 +572,9 @@ export default function Bills() {
           // and the refusal came off the wire — a lapse the gate itself has
           // ruled on is not something a button can dismiss.
           onDismissBlock={
-            block === "subscription" && gate !== "subscription" && categories.length > 0
+            block === "subscription" &&
+            gate !== "subscription" &&
+            categories.length > 0
               ? dismissWirePaywall
               : undefined
           }

@@ -34,10 +34,8 @@ export function FloatingBackdrop({
   return (
     <View
       pointerEvents="none"
-      style={[
-        { position: "absolute", top, left: 0, width, opacity },
-        style,
-      ]}
+      className="absolute left-[0px]"
+      style={[{ top, width, opacity }, style]}
     >
       <Image
         source={SOURCE}

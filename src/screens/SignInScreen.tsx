@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   Easing,
@@ -14,7 +14,7 @@ import { ArtSlot } from "@/components/home";
 import { KingsChatMark } from "@/components/icons";
 import { KashPlusMark } from "@/components/KashPlusMark";
 import { MetalButton, OutlineButton } from "@/components/ui";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
 
 /** The screen's gutter. */
 const PAD = 26;
@@ -111,13 +111,17 @@ type Satellite = {
   label: string;
 };
 
+// `tint` is a getter on each: this is module scope, so a plain `C.green`
+// would bake the palette at import. See `BEVEL.outline` in ui.tsx.
 const SATELLITES: Satellite[] = [
   {
     id: "earn",
     ring: 1,
     angle: 130,
     size: 0.135,
-    tint: C.green,
+    get tint() {
+      return C.green;
+    },
     label: "Earn",
   },
   {
@@ -125,7 +129,9 @@ const SATELLITES: Satellite[] = [
     ring: -1,
     angle: 0,
     size: 0.125,
-    tint: C.silver,
+    get tint() {
+      return C.silver;
+    },
     label: "Games",
   },
   {
@@ -133,7 +139,9 @@ const SATELLITES: Satellite[] = [
     ring: 1,
     angle: 0,
     size: 0.125,
-    tint: C.green,
+    get tint() {
+      return C.green;
+    },
     label: "Trade",
   },
   {
@@ -141,7 +149,9 @@ const SATELLITES: Satellite[] = [
     ring: 2,
     angle: 221,
     size: 0.12,
-    tint: C.silver,
+    get tint() {
+      return C.silver;
+    },
     label: "Markets",
   },
 ];
@@ -179,18 +189,13 @@ function Orbiter({
       accessible
       accessibilityRole="image"
       accessibilityLabel={satellite.label}
+      className="absolute items-center justify-center bg-card border border-rule"
       style={{
-        position: "absolute",
         left: x * width - d / 2,
         top: y * width - d / 2,
         width: d,
         height: d,
         borderRadius: d / 2,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.hairline,
         transform: [
           {
             translateY: drift.interpolate({
@@ -211,7 +216,8 @@ function OrbitField({ width }: { width: number }) {
 
   // One driver per object so they float out of phase; a shared one makes four
   // objects bob in lockstep, which reads as the whole screen breathing.
-  const drifts = useRef(SATELLITES.map(() => new Animated.Value(0))).current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const drifts = useMemo(() => SATELLITES.map(() => new Animated.Value(0)), []);
 
   useEffect(() => {
     const loops = drifts.map((drift, i) =>
@@ -233,7 +239,8 @@ function OrbitField({ width }: { width: number }) {
   return (
     <View
       pointerEvents="none"
-      style={{ width, height, overflow: "hidden" }}
+      className="overflow-hidden"
+      style={{ width, height }}
       accessible={false}
     >
       <Svg width={width} height={height}>
@@ -354,7 +361,7 @@ export default function SignInScreen({
 
   // One driver for the page; each block reads a different slice of it, which is
   // what makes them arrive staggered off a single animation.
-  const copy = useRef(new Animated.Value(0)).current;
+  const copy = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     Animated.timing(copy, {
@@ -393,7 +400,7 @@ export default function SignInScreen({
     // absolute child of a padded parent is inset by that padding, so anchoring
     // the art to a padded box would quietly hand it the gutters back. The
     // padded column is the inner one.
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       {/* The diagram is a LAYER, not a row: absolutely placed, full-bleed, hung
           off the bottom of the lockup, and first in document order so it paints
           behind everything. Out of the flex flow entirely — it no longer takes
@@ -402,10 +409,9 @@ export default function SignInScreen({
           the headline off the rings. */}
       <Animated.View
         pointerEvents="none"
+        className="absolute left-[0px]"
         style={[
           {
-            position: "absolute",
-            left: 0,
             top: insets.top + 75 + lockup + FIELD_GAP,
           },
           step(1),
@@ -415,32 +421,22 @@ export default function SignInScreen({
       </Animated.View>
 
       <View
+        className="flex-1 items-center"
         style={{
-          flex: 1,
           paddingTop: insets.top + 14,
           paddingHorizontal: PAD,
           paddingBottom: Math.max(insets.bottom, 24) + 6,
-          alignItems: "center",
         }}
       >
         {/* Lockup: the flat vector mark, not the gold hero. The hero is the
             welcome screen's subject; here the brand is just a signature. */}
         <Animated.View
           onLayout={(e) => setLockup(e.nativeEvent.layout.height)}
-          style={[
-            { flexDirection: "row", alignItems: "center", gap: 10 },
-            step(0),
-          ]}
+          className="flex-row items-center gap-[10px]"
+          style={step(0)}
         >
           <KashPlusMark height={30} color={C.text} />
-          <Text
-            style={{
-              fontFamily: F.displayBold,
-              fontSize: 31,
-              letterSpacing: -0.6,
-              color: C.text,
-            }}
-          >
+          <Text className="font-display-bold text-[31px] tracking-[-0.6px] text-text">
             KashPlus
           </Text>
         </Animated.View>
@@ -448,20 +444,13 @@ export default function SignInScreen({
         {/* Where the diagram used to sit. It is a layer now, so what is left here
           is the space it occupies — this is what holds the copy down at the
           foot of the screen. */}
-        <View style={{ flex: 1 }} />
+        <View className="flex-1" />
 
-        <Animated.View style={[{ marginBottom: 34 }, step(2)]}>
+        <Animated.View className="mb-[34px]" style={step(2)}>
           {HEADLINE.map((line, i) => (
             <Text
               key={i}
-              style={{
-                fontFamily: F.displayBold,
-                fontSize: 32,
-                lineHeight: 37,
-                letterSpacing: -0.8,
-                color: C.text,
-                textAlign: "center",
-              }}
+              className="font-display-bold text-[32px] leading-[37px] tracking-[-0.8px] text-text text-center"
             >
               {line.map((seg, j) => (
                 <Text
@@ -513,23 +502,15 @@ export default function SignInScreen({
           is a legal call, not a layout one — set it small, dim and centred so
           it sits under the pair without competing, and let the owner say the
           word if it goes. */}
-        <Animated.View style={[{ marginTop: 18 }, step(5)]}>
-          <Text
-            style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              lineHeight: 16,
-              color: C.dim,
-              textAlign: "center",
-            }}
-          >
+        <Animated.View className="mt-[18px]" style={step(5)}>
+          <Text className="font-body text-[11px] leading-[16px] text-dim text-center">
             {creatingWallet ? (
               "Creating your wallet — this takes a few seconds. Keep the app open."
             ) : (
               <>
                 By continuing you agree to KashPlus&apos;s{" "}
-                <Text style={{ color: C.sub }}>Terms</Text> and{" "}
-                <Text style={{ color: C.sub }}>Privacy Policy</Text>.
+                <Text className="text-sub">Terms</Text> and{" "}
+                <Text className="text-sub">Privacy Policy</Text>.
               </>
             )}
           </Text>

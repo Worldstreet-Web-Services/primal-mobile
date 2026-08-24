@@ -2,7 +2,6 @@ import type { Context } from "react";
 import { FlatList, ScrollView, View, useWindowDimensions } from "react-native";
 
 import type { Trader } from "@/data/traders";
-import { C } from "../../theme/tokens";
 import { Avatar } from "../home/ProfileHeader";
 import { StarIcon } from "../icons";
 import { Body, MetalButton, Mono, PressableScale, QuietButton } from "../ui";
@@ -36,15 +35,12 @@ function Portrait({ trader, size }: { trader: Trader; size: number }) {
         source={trader.avatar}
         initial={trader.name}
         size={size}
-        ring="rgba(255,255,255,0.14)"
+        ringClassName="border-border"
       />
       {trader.online ? (
         // Ringed in the surface colour rather than bordered — the ring's job is
         // to hold a gap between the dot and the portrait under it.
-        <View
-          className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2"
-          style={{ backgroundColor: C.green, borderColor: C.raised }}
-        />
+        <View className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 bg-green border-canvas-raised" />
       ) : null}
     </View>
   );
@@ -55,9 +51,7 @@ function Portrait({ trader, size }: { trader: Trader; size: number }) {
 function HotFlag() {
   return (
     <View className="rounded-md bg-down/10 px-2 py-1">
-      <Mono size={9.5} color={C.down} style={{ letterSpacing: 1.2 }}>
-        HOT
-      </Mono>
+      <Mono className="text-[9.5px] text-down tracking-[1.2px]">HOT</Mono>
     </View>
   );
 }
@@ -109,15 +103,17 @@ export function TraderCard({
           {trader.hot ? <HotFlag /> : null}
         </View>
 
-        <Body semibold size={17} numberOfLines={1} style={{ marginTop: 14 }}>
+        <Body
+          className="text-[17px] font-body-semibold mt-[14px]"
+          numberOfLines={1}
+        >
           {trader.name}
         </Body>
         {trader.copiers ? (
           <Body
-            size={12.5}
-            color={C.dim}
+            className="text-[12.5px] text-dim mt-[3px]"
+
             numberOfLines={1}
-            style={{ marginTop: 3 }}
           >
             {trader.copiers}
           </Body>
@@ -126,12 +122,8 @@ export function TraderCard({
         {/* The return and the word for it share a baseline: the figure carries
             the glance, the label only says what it is. */}
         <View className="mt-3 flex-row items-baseline gap-1.5">
-          <Mono size={16} color={C.up}>
-            {trader.roi}
-          </Mono>
-          <Body size={11} color={C.dim}>
-            ROI
-          </Body>
+          <Mono className="text-[16px] text-up">{trader.roi}</Mono>
+          <Body className="text-[11px] text-dim">ROI</Body>
         </View>
 
         <View className="mt-4">
@@ -219,38 +211,30 @@ export function TraderRow({
         <Portrait trader={trader} size={44} />
 
         <View className="flex-1">
-          <Body semibold size={15} numberOfLines={1}>
+          <Body className="text-[15px] font-body-semibold" numberOfLines={1}>
             {trader.name}
           </Body>
           <View className="mt-1 flex-row items-center gap-1">
             {trader.rating ? (
               <>
                 <StarIcon size={12} />
-                <Body size={12} color={C.dim}>
-                  {trader.rating}
-                </Body>
+                <Body className="text-[12px] text-dim">{trader.rating}</Body>
               </>
             ) : null}
             {trader.rating && trader.market ? (
-              <Body size={12} color={C.dim}>
-                ·
-              </Body>
+              <Body className="text-[12px] text-dim">·</Body>
             ) : null}
             {trader.market ? (
-              <Body size={12} color={C.dim}>
-                {trader.market}
-              </Body>
+              <Body className="text-[12px] text-dim">{trader.market}</Body>
             ) : null}
           </View>
         </View>
 
         <View className="items-end">
-          <Body size={10.5} color={C.dim}>
+          <Body className="text-[10.5px] text-dim">
             {trader.roiPeriod ? `ROI (${trader.roiPeriod})` : "ROI"}
           </Body>
-          <Mono size={14} color={C.up} style={{ marginTop: 2 }}>
-            {trader.roi}
-          </Mono>
+          <Mono className="text-[14px] text-up mt-[2px]">{trader.roi}</Mono>
         </View>
 
         <CopyAction trader={trader} onCopy={onCopy} height={34} />
@@ -313,9 +297,7 @@ export function TraderList({
       removeClippedSubviews={false}
       ListEmptyComponent={
         <View className="px-4 py-6">
-          <Body size={13} color={C.dim}>
-            No traders to copy yet.
-          </Body>
+          <Body className="text-[13px] text-dim">No traders to copy yet.</Body>
         </View>
       }
     />

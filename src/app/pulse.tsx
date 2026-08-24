@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { PageHeader } from "@/components/PageHeader";
 import PulseScreen from "@/screens/PulseScreen";
-import { C } from "@/theme/tokens";
+
 import { router } from "expo-router";
 
 export default function Pulse() {
@@ -12,7 +12,7 @@ export default function Pulse() {
   const [headerHeight, setHeaderHeight] = useState(0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <PageHeader title="Notifications" onBack={() => router.back()} />
       {/* Wordmark only, matching Home — the screen's own Display carries the tab name. */}
 

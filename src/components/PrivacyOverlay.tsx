@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, AppState, Easing, StyleSheet } from "react-native";
 
 import { Splash } from "./Splash";
@@ -29,9 +29,11 @@ export function PrivacyOverlay() {
   const [mounted, setMounted] = useState(
     () => AppState.currentState !== "active",
   );
-  const opacity = useRef(
-    new Animated.Value(AppState.currentState !== "active" ? 1 : 0),
-  ).current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const opacity = useMemo(
+    () => new Animated.Value(AppState.currentState !== "active" ? 1 : 0),
+    [],
+  );
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {

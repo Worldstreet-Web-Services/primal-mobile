@@ -14,6 +14,7 @@ import {
   Screen,
   Toggle,
 } from "@/components/ui";
+import { money, moneyShort } from "@/lib/format";
 import {
   defaultInvestment,
   investPresets,
@@ -21,26 +22,11 @@ import {
   traderStats,
   type Trader,
 } from "@/data/traders";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
+import { cn } from "@/lib/cn";
 
 /** Clears the pinned action bar so the note above it is never trapped under it. */
 const BAR_SPACE = 96;
-
-/**
- * `$1,234.50`. The one place this screen formats a figure: everything sourced
- * arrives preformatted, but the stake is typed here, so the summary under it
- * has to be built from what was typed.
- */
-function money(value: number): string {
-  const [whole, cents] = value.toFixed(2).split(".");
-  return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${cents}`;
-}
-
-/** The same figure without a trailing `.00`. In a sentence, decimals on a round
-    number read as noise; in the receipt below they are the point. */
-function moneyShort(value: number): string {
-  return Number.isInteger(value) ? money(value).slice(0, -3) : money(value);
-}
 
 /** Keeps a typed stake to digits and one decimal point. */
 function sanitize(input: string): string {
@@ -62,7 +48,7 @@ function HeadlineStat({
   return (
     <View className="flex-1">
       <Label>{label}</Label>
-      <Display size={22} color={color} style={{ marginTop: 6 }}>
+      <Display className="text-[22px] leading-[23.1px] mt-[6px]" color={color}>
         {value}
       </Display>
     </View>
@@ -82,10 +68,8 @@ function StatTile({
   return (
     // Half the row minus half the gap — a two-up grid without a grid.
     <View className="w-[48.5%] rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-      <Body size={12.5} color={C.dim}>
-        {label}
-      </Body>
-      <Mono size={17} color={color} style={{ marginTop: 6 }}>
+      <Body className="text-[12.5px] text-dim">{label}</Body>
+      <Mono className="text-[17px] mt-[6px]" color={color}>
         {value}
       </Mono>
     </View>
@@ -103,7 +87,7 @@ function Panel({
   return (
     <View className="mt-4 rounded-3xl border border-white/10 bg-canvas-raised p-4">
       {title ? (
-        <Body semibold size={17} style={{ marginBottom: 14 }}>
+        <Body className="text-[17px] font-body-semibold mb-[14px]">
           {title}
         </Body>
       ) : null}
@@ -159,7 +143,7 @@ export default function TraderProfileScreen({
   const stop = value * safetyStopRatio;
 
   return (
-    <View className="flex-1" style={{ backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <Screen
         pad={16}
         bottom={BAR_SPACE + insets.bottom}
@@ -172,26 +156,31 @@ export default function TraderProfileScreen({
               source={trader.avatar}
               initial={trader.name}
               size={64}
-              ring="rgba(255,255,255,0.14)"
+              ringClassName="border-border"
             />
             {trader.online ? (
-              <View
-                className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2"
-                style={{ backgroundColor: C.green, borderColor: C.canvas }}
-              />
+              <View className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 bg-green border-canvas" />
             ) : null}
           </View>
 
           <View className="flex-1">
-            <Display size={23} numberOfLines={1}>
+            <Display
+              className="text-[23px] leading-[24.15px]"
+              numberOfLines={1}
+            >
               {trader.name}
             </Display>
             <View className="mt-2 flex-row items-center gap-2">
               <View
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: trader.online ? C.green : C.dim }}
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  trader.online ? "bg-green" : "bg-dim",
+                )}
               />
-              <Body size={14} color={trader.online ? C.text : C.dim}>
+              <Body
+                className={trader.online ? "text-text" : "text-dim"}
+                size={14}
+              >
                 {trader.online ? "Live trading" : "Flat — no open positions"}
               </Body>
             </View>
@@ -237,17 +226,18 @@ export default function TraderProfileScreen({
                   onPress={() => setTyped(String(preset))}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  className="flex-1 items-center rounded-full py-2.5"
+                  className={cn(
+                    "flex-1 items-center rounded-full py-2.5 border",
+                    active ? "border-brand" : "border-border",
+                  )}
                   style={{
-                    borderWidth: 1,
-                    borderColor: active ? C.brand : C.border,
                     backgroundColor: active ? C.brand : "transparent",
                   }}
                 >
                   <Body
+                    className={active ? "text-brand-soft-ink" : "text-silver"}
                     semibold
                     size={13.5}
-                    color={active ? C.brandSoftInk : C.silver}
                   >
                     {`$${preset}`}
                   </Body>
@@ -259,15 +249,12 @@ export default function TraderProfileScreen({
           {/* The field the presets write into — they are a shortcut to it, not
               an alternative to it, so a tapped preset shows up here too. */}
           <View
-            className="mt-3.5 flex-row items-center rounded-full px-5"
+            className="mt-3.5 flex-row items-center rounded-full px-5 h-[58px] border border-brand"
             style={{
-              height: 58,
-              borderWidth: 1,
-              borderColor: C.brand,
               backgroundColor: "rgba(255,255,255,0.03)",
             }}
           >
-            <Display size={20} color={C.brand}>
+            <Display className="text-[20px] leading-[21px] text-brand">
               $
             </Display>
             <TextInput
@@ -280,20 +267,12 @@ export default function TraderProfileScreen({
               selectionColor={C.brand}
               // Font, size and colour are text properties with no class
               // equivalent on a native input; the box around it is all classes.
-              style={{
-                flex: 1,
-                marginLeft: 10,
-                color: C.text,
-                fontFamily: F.display,
-                fontSize: 20,
-              }}
+              className="flex-1 ml-[10px] text-text font-display text-[20px]"
             />
-            <Body size={14} color={C.dim}>
-              USD
-            </Body>
+            <Body className="text-[14px] text-dim">USD</Body>
           </View>
 
-          <Body size={12.5} color={C.dim} style={{ marginTop: 12 }}>
+          <Body className="text-[12.5px] text-dim mt-[12px]">
             You can change this anytime.
           </Body>
         </Panel>
@@ -302,10 +281,10 @@ export default function TraderProfileScreen({
         <Panel>
           <View className="flex-row items-center gap-3">
             <View className="flex-1">
-              <Body semibold size={15}>
+              <Body className="text-[15px] font-body-semibold">
                 {`Stop if my investment drops below ${moneyShort(stop)}`}
               </Body>
-              <Body size={12.5} color={C.dim} style={{ marginTop: 3 }}>
+              <Body className="text-[12.5px] text-dim mt-[3px]">
                 A safety net to protect your money.
               </Body>
             </View>
@@ -319,7 +298,7 @@ export default function TraderProfileScreen({
 
         {/* What was just agreed to, in words. */}
         <KeyValueList
-          style={{ marginTop: 16 }}
+          className="mt-[16px]"
           rows={[
             {
               label: "Your investment",
@@ -335,14 +314,7 @@ export default function TraderProfileScreen({
           ]}
         />
 
-        <View
-          className="mt-4 flex-row items-center gap-3 rounded-2xl p-4"
-          style={{
-            borderWidth: 1,
-            borderColor: C.brand,
-            backgroundColor: C.brandGlow,
-          }}
-        >
+        <View className="mt-4 flex-row items-center gap-3 rounded-2xl p-4 border border-brand bg-brand-glow">
           <View
             className="h-9 w-9 items-center justify-center rounded-full"
             // A step stronger than the box it sits on, or the disc disappears
@@ -351,7 +323,7 @@ export default function TraderProfileScreen({
           >
             <ShieldCheckIcon size={18} color={C.brand} />
           </View>
-          <Body size={13.5} color={C.brand} style={{ flex: 1, lineHeight: 19 }}>
+          <Body className="text-[13.5px] text-brand flex-1 leading-[19px]">
             You&apos;re always in control. Pause or stop anytime from your
             dashboard.
           </Body>

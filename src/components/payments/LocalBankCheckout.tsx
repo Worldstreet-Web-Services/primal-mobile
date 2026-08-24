@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { Animated, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { BackChevron, CircleAction, Label, PrimaryButton } from "../ui";
 import { NoticeBanner } from "./NoticeBanner";
 import { PlanCard } from "./PlanCard";
@@ -47,7 +47,7 @@ export function LocalBankCheckout({
   onConfirm?: () => void;
   onChangeBank?: () => void;
 }) {
-  const copy = useRef(new Animated.Value(0)).current;
+  const copy = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     const run = Animated.timing(copy, {
@@ -83,24 +83,14 @@ export function LocalBankCheckout({
   return (
     <View>
       <Animated.View
-        style={[
-          { flexDirection: "row", alignItems: "center", marginBottom: 22 },
-          step(0),
-        ]}
+        className="flex-row items-center mb-[22px]"
+        style={step(0)}
       >
         <CircleAction onPress={onBack} accessibilityLabel="Go back">
           <BackChevron color={C.text} />
         </CircleAction>
 
-        <Text
-          style={{
-            flex: 1,
-            textAlign: "center",
-            fontFamily: F.displayBold,
-            fontSize: 17,
-            color: C.text,
-          }}
-        >
+        <Text className="flex-1 text-center font-display-bold text-[17px] text-text">
           Bank Checkout
         </Text>
       </Animated.View>
@@ -114,11 +104,9 @@ export function LocalBankCheckout({
         />
       </Animated.View>
 
-      <Animated.View style={[{ marginTop: 24 }, step(2)]}>
-        <Label style={{ color: C.silver, fontSize: 11 }}>
-          Select method & bank
-        </Label>
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+      <Animated.View className="mt-[24px]" style={step(2)}>
+        <Label className="text-silver text-[11px]">Select method & bank</Label>
+        <View className="flex-row gap-[12px] mt-[12px]">
           <SelectPill
             label={quote.method.label}
             badgeColor={quote.method.color}
@@ -135,30 +123,21 @@ export function LocalBankCheckout({
         </View>
       </Animated.View>
 
-      <Animated.View style={[{ marginTop: 20 }, step(3)]}>
+      <Animated.View className="mt-[20px]" style={step(3)}>
         <NoticeBanner
           tone="info"
           message="Transfers settle in seconds during banking hours. Rates are quoted by the provider and fixed at confirmation."
         />
       </Animated.View>
 
-      <Animated.View style={[{ marginTop: 26 }, step(4)]}>
+      <Animated.View className="mt-[26px]" style={step(4)}>
         <PrimaryButton
           label="Confirm payment"
           height={58}
           uppercase={false}
           onPress={onConfirm}
         />
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 12,
-            lineHeight: 18,
-            textAlign: "center",
-            color: C.sub,
-            marginTop: 16,
-          }}
-        >
+        <Text className="font-body text-[12px] leading-[18px] text-center text-sub mt-[16px]">
           Your subscription unlocks instantly upon transaction confirmation
         </Text>
       </Animated.View>

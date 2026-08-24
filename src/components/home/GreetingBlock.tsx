@@ -1,21 +1,25 @@
 import { type ImageSource } from "expo-image";
-import { Pressable, Text, View, type ViewStyle } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { cn } from "@/lib/cn";
+import { useTokens } from "@/theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BellIcon, PersonIcon } from "../icons";
 import { CircleAction } from "../ui";
 import { Avatar } from "./ProfileHeader";
 
 /**
- * The white face on the header's two round controls.
+ * The face on the header's two round controls.
  *
- * Both the portrait and the bell are solid white discs in the reference, and
- * that is the only bright thing above the fold — on a true-black canvas they
- * are what stop the top of the page reading as empty. Their glyphs are inked
- * `C.ink` for the same reason a metal pill inks its label dark: the disc is the
- * lit surface, so anything on it has to be the shadow.
+ * Both the portrait and the bell are solid discs of the TEXT colour in the
+ * reference, and that is the only bright thing above the fold — on a true-black
+ * canvas they are what stop the top of the page reading as empty. Their glyphs
+ * are inked in the CANVAS colour for the same reason a metal pill inks its
+ * label dark: the disc is the lit surface, so anything on it has to be the
+ * shadow. Stating the pair as two tokens rather than as white and black is what
+ * makes them swap correctly when the theme does.
  */
-const FACE = { backgroundColor: C.text, borderWidth: 0 } as const;
+const FACE = "border-0 bg-text";
 
 /**
  * The top of the page: the member's portrait, the time-of-day greeting over
@@ -33,7 +37,6 @@ export function GreetingBlock({
   unread = false,
   onNotifications,
   onProfilePress,
-  style,
 }: {
   greeting: string;
   /** First name only — this block has room for one line. */
@@ -45,24 +48,24 @@ export function GreetingBlock({
   unread?: boolean;
   onNotifications?: () => void;
   onProfilePress?: () => void;
-  style?: ViewStyle;
 }) {
+  const insets = useSafeAreaInsets();
+  // Both glyphs are SVG `color` props, which no class reaches. `useTokens`
+  // subscribes, so they repaint when the theme changes.
+  const tokens = useTokens();
   return (
     <View
-      style={[
-        {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 13,
-          paddingHorizontal: 18,
-          paddingBottom: 10,
-        },
-        style,
-      ]}
+      className="flex-row items-center gap-4 px-5 pb-3"
+      style={{ paddingTop: insets.top + 6 }}
     >
       {avatar || initial ? (
         <Pressable onPress={onProfilePress}>
-          <Avatar source={avatar} initial={initial} size={46} ring={C.text} />
+          <Avatar
+            source={avatar}
+            initial={initial}
+            size={46}
+            ringClassName="border-text"
+          />
         </Pressable>
       ) : (
         // PLACEHOLDER PORTRAIT. Not an empty ring and not a "?" — a person
@@ -71,41 +74,25 @@ export function GreetingBlock({
         // and this disappears.
         <Pressable
           onPress={onProfilePress}
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: 23,
-            alignItems: "center",
-            justifyContent: "center",
-            ...FACE,
-          }}
+          className={cn(
+            "h-[46px] w-[46px] items-center justify-center rounded-full",
+            FACE,
+          )}
         >
-          <PersonIcon size={26} color={C.ink} filled />
+          <PersonIcon size={26} color={tokens.canvas} filled />
         </Pressable>
       )}
 
-      <View style={{ flex: 1 }}>
+      <View className="flex-1">
         <Text
           numberOfLines={1}
-          style={{
-            fontFamily: F.body,
-            fontSize: 17,
-            lineHeight: 22,
-            letterSpacing: 0.1,
-            color: C.sub,
-          }}
+          className="font-body text-[17px] leading-[22px] tracking-[0.1px] text-sub"
         >
           {greeting}
         </Text>
         <Text
           numberOfLines={1}
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 25,
-            lineHeight: 30,
-            letterSpacing: -0.2,
-            color: C.text,
-          }}
+          className="font-display-bold text-[25px] leading-[30px] tracking-[-0.2px] text-text"
         >
           {name}
         </Text>
@@ -115,11 +102,11 @@ export function GreetingBlock({
         onPress={onNotifications}
         size={46}
         badge={unread}
-        badgeRing={C.text}
-        style={FACE}
+        badgeRingClassName="border-text"
+        className={FACE}
         accessibilityLabel={unread ? "Notifications, unread" : "Notifications"}
       >
-        <BellIcon size={21} color={C.ink} />
+        <BellIcon size={21} color={tokens.canvas} />
       </CircleAction>
     </View>
   );

@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { F } from "../../theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * The feed's section filter: a scrolling row of plain labels, the active one
@@ -36,27 +37,19 @@ export function CategoryTabs({
             onPress={() => onChange?.(i)}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
-            style={{ paddingVertical: 8 }}
+            className="py-[8px]"
           >
             <Text
+              className={cn("text-[13px]", on ? "text-text" : "text-sub")}
               style={{
                 fontFamily: on ? F.bodySemibold : F.body,
-                fontSize: 13,
-                color: on ? C.text : C.sub,
               }}
             >
               {category}
             </Text>
             {/* Drawn only when active, so the row keeps a single baseline. */}
             {on ? (
-              <View
-                style={{
-                  marginTop: 6,
-                  height: 2,
-                  borderRadius: 2,
-                  backgroundColor: C.brand,
-                }}
-              />
+              <View className="mt-[6px] h-[2px] rounded-[2px] bg-brand" />
             ) : null}
           </Pressable>
         );

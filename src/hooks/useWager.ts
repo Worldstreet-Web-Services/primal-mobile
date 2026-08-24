@@ -105,7 +105,12 @@ export function useVaultActions() {
         }
         if (!hash) {
           if (lastSponsorError) {
-            hash = await sendDirectVaultCall({ address, provider, data, value });
+            hash = await sendDirectVaultCall({
+              address,
+              provider,
+              data,
+              value,
+            });
             // A returned tx hash means the node took it — same optimistic
             // moment as bundler acceptance on the sponsored path.
             onAccepted?.();
@@ -147,10 +152,11 @@ export function useVaultActions() {
         // key — and that wall of hex is what used to fill the screen. Show
         // the one-line shortMessage instead.
         const fullMessage = e instanceof Error ? e.message : String(e);
-        const shortMessage =
-          ((e as { shortMessage?: string })?.shortMessage ?? fullMessage)
-            .split("\n")[0]
-            .trim();
+        const shortMessage = (
+          (e as { shortMessage?: string })?.shortMessage ?? fullMessage
+        )
+          .split("\n")[0]
+          .trim();
         // Copy names what the player must DO, never the chain or service that
         // failed — "talking to Base" tells someone playing a game nothing they
         // can act on, and reads as our plumbing leaking onto their screen.

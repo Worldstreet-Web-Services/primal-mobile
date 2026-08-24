@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import UnlockScreen from "@/screens/UnlockScreen";
-import { C } from "@/theme/tokens";
 
 /** Matches the app-lock convention: a few tries, then PIN only. */
 const MAX_PIN_ATTEMPTS = 5;
@@ -115,7 +114,7 @@ export default function Unlock() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <UnlockScreen
         onPin={onPin}
         onBiometrics={runBiometrics}

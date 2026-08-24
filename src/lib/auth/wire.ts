@@ -81,18 +81,21 @@ function providerFor(chainId: number): EIP1193Provider {
  * Point both seams at the live Decane wallet. Safe to call more than once.
  * Pass the session's addresses so reads work before the wallet is unlocked.
  */
-export function wireWallets(addresses?: {
-  evm?: string;
-  solana?: string;
-  tron?: string;
-} | null): void {
+export function wireWallets(
+  addresses?: {
+    evm?: string;
+    solana?: string;
+    tron?: string;
+  } | null,
+): void {
   sessionAddresses = addresses ?? null;
 
   setVaultSigner({
     getAddress: async () => {
       // Signing genuinely needs the unlocked client, but the address itself
       // can come from the session when the wallet hasn't been opened yet.
-      const evm = (await getClient()).getAddresses()?.evm ?? sessionAddresses?.evm;
+      const evm =
+        (await getClient()).getAddresses()?.evm ?? sessionAddresses?.evm;
       if (!evm) throw new Error("No EVM address on this session.");
       return evm as `0x${string}`;
     },

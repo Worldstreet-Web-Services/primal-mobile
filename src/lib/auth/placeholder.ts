@@ -102,7 +102,8 @@ async function read(): Promise<StoredWallet | null> {
     const raw = await SecureStore.getItemAsync(KEY, OPTIONS);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredWallet;
-    if (typeof parsed?.address !== "string" || parsed.address === "") return null;
+    if (typeof parsed?.address !== "string" || parsed.address === "")
+      return null;
     return { ...parsed, connected: parsed.connected !== false };
   } catch {
     // Corrupt, or a keychain that will not open: sign in again.
@@ -154,7 +155,12 @@ export async function signIn(method: AuthMethod): Promise<DecaneSession> {
   const existing = await read();
   const wallet: StoredWallet = existing
     ? { ...existing, method, connected: true }
-    : { address: mintAddress(), method, createdAt: Date.now(), connected: true };
+    : {
+        address: mintAddress(),
+        method,
+        createdAt: Date.now(),
+        connected: true,
+      };
 
   await write(wallet);
   // `isNewUser` tracks the WALLET, not the session: coming back to one that was
@@ -174,7 +180,9 @@ export async function restoreSession(): Promise<DecaneSession | null> {
  * get a genuinely different account out of this module — the stand-in gateway
  * keys membership to the address, so a forgotten wallet is an unpaid one.
  */
-export async function signOut({ forget = false }: { forget?: boolean } = {}): Promise<void> {
+export async function signOut({
+  forget = false,
+}: { forget?: boolean } = {}): Promise<void> {
   const wallet = forget ? null : await read();
 
   if (isWeb) {

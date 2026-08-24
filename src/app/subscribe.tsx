@@ -7,7 +7,6 @@ import { isEntitled } from "@/lib/gateway/types";
 import { refundAddress } from "@/lib/gateway/devRefund";
 import CheckoutSheet from "@/screens/CheckoutSheet";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
-import { C } from "@/theme/tokens";
 
 /**
  * `/subscribe` — the destination `SUBSCRIPTION_ROUTE` has always named.
@@ -85,7 +84,7 @@ export default function Subscribe() {
   }, [refreshEntitlement]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <SubscriptionScreen
         state={primal.state}
         onCheckout={(subscriptionId) => setCheckout(subscriptionId ?? "")}
@@ -100,7 +99,8 @@ export default function Subscribe() {
         onBack={
           barred
             ? () => void leave()
-            : () => (router.canGoBack() ? router.back() : router.replace("/home"))
+            : () =>
+                router.canGoBack() ? router.back() : router.replace("/home")
         }
         backLabel={barred ? "Sign out" : "Close"}
         // A dead session is not a paywall. `replace`, so a signed-out user cannot

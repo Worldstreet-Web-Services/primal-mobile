@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import {
   Screen,
   Card,
@@ -27,25 +27,14 @@ const myCopy = {
 export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
   return (
     <Screen>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          paddingTop: 10,
-        }}
-      >
+      <View className="flex-row items-center gap-[10px] pt-[10px]">
         <Pressable onPress={onBack} hitSlop={10}>
           <BackChevron />
         </Pressable>
         <View
+          className="w-[30px] h-[30px] rounded-[16px] items-center justify-center"
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 16,
             backgroundColor: "rgba(255,255,255,0.08)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <Svg width={15} height={15} viewBox="0 0 24 24">
@@ -67,167 +56,108 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
             />
           </Svg>
         </View>
-        <Display size={20}>Copy trading</Display>
-        <View style={{ flex: 1 }} />
+        <Display className="text-[20px] leading-[21px]">Copy trading</Display>
+        <View className="flex-1" />
         <View
+          className="border rounded-[99px] px-[9px] py-[3px]"
           style={{
-            borderWidth: 1,
             borderColor: "rgba(255,255,255,0.2)",
-            borderRadius: 99,
-            paddingHorizontal: 9,
-            paddingVertical: 3,
           }}
         >
-          <Body size={10} color={C.dim}>
-            Worldstreet
-          </Body>
+          <Body className="text-[10px] text-dim">Worldstreet</Body>
         </View>
       </View>
-      <View style={{ marginTop: 24 }}>
-        <Body size={11.5} color={C.dim}>
-          Trading balance
-        </Body>
-        <Display size={46} style={{ marginTop: 6 }}>
+      <View className="mt-[24px]">
+        <Body className="text-[11.5px] text-dim">Trading balance</Body>
+        <Display className="text-[46px] leading-[48.3px] mt-[6px]">
           $261
-          <Display size={26} color={C.dim}>
+          <Display className="text-[26px] leading-[27.3px] text-dim">
             .20
           </Display>
         </Display>
-        <Mono size={12} color={C.up} style={{ marginTop: 8 }}>
+        <Mono className="text-[12px] text-up mt-[8px]">
           +$11.20 all-time · ≈ ₦401,300
         </Mono>
       </View>
-      <View style={{ marginTop: 16, flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
+      <View className="mt-[16px] flex-row gap-[10px]">
+        <View className="flex-1">
           <MetallicButton label="Top up" height={46} radius={14} size={13} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <GhostButton label="Withdraw" />
         </View>
       </View>
-      <Card
-        style={{
-          marginTop: 16,
-          borderRadius: 16,
-          paddingVertical: 13,
-          paddingHorizontal: 15,
-        }}
-      >
-        <Label style={{ fontSize: 9.5, color: C.accent }}>My copies · 1</Label>
-        <View
-          style={{
-            marginTop: 8,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+      <Card className="mt-[16px] rounded-[16px] py-[13px] px-[15px]">
+        <Label className="text-[9.5px] text-accent">My copies · 1</Label>
+        <View className="mt-[8px] flex-row items-center justify-between">
           <View>
-            <Body size={13.5} semibold>
+            <Body className="text-[13.5px]" semibold>
               {myCopy.name}
             </Body>
-            <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-              {myCopy.sub}
-            </Body>
+            <Body className="text-[11px] text-dim mt-[2px]">{myCopy.sub}</Body>
           </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Mono size={13.5} color={C.up}>
-              {myCopy.pnl}
-            </Mono>
-            <Body size={10.5} color={C.up} style={{ marginTop: 2 }}>
-              {myCopy.pct}
-            </Body>
+          <View className="items-end">
+            <Mono className="text-[13.5px] text-up">{myCopy.pnl}</Mono>
+            <Body className="text-[10.5px] text-up mt-[2px]">{myCopy.pct}</Body>
           </View>
         </View>
       </Card>
-      <View style={{ marginTop: 18 }}>
+      <View className="mt-[18px]">
         <Label>Leaders</Label>
         {leaders.map((l, i) => (
           <View
             key={l.ini}
+            className="flex-row items-center gap-[12px] py-[13px] border-b-rule"
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 13,
               borderBottomWidth: i === leaders.length - 1 ? 0 : 1,
-              borderBottomColor: C.hairline,
             }}
           >
             <View
+              className="w-[42px] h-[42px] rounded-[21px] items-center justify-center"
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
                 backgroundColor: "rgba(255,255,255,0.08)",
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
-              <Text
-                style={{ fontFamily: F.display, fontSize: 14, color: C.accent }}
-              >
+              <Text className="font-display text-[14px] text-accent">
                 {l.ini}
               </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Body size={14} semibold>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-[6px]">
+                <Body className="text-[14px]" semibold>
                   {l.name}
                 </Body>
                 {l.risky ? (
                   <View
+                    className="rounded-[5px] px-[6px] py-[2px]"
                     style={{
                       backgroundColor: "rgba(245,184,61,0.12)",
-                      borderRadius: 5,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontFamily: F.bodySemibold,
-                        fontSize: 9.5,
-                        color: C.amber,
-                      }}
-                    >
+                    <Text className="font-body-semibold text-[9.5px] text-amber">
                       HIGH RISK
                     </Text>
                   </View>
                 ) : null}
               </View>
-              <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
+              <Body className="text-[11px] text-dim mt-[2px]">
                 {l.handle} · Win {l.win} · DD {l.dd}
               </Body>
             </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <Mono size={14} color={C.up}>
-                {l.pnl}
-              </Mono>
-              <View style={{ marginTop: 3 }}>
+            <View className="items-end">
+              <Mono className="text-[14px] text-up">{l.pnl}</Mono>
+              <View className="mt-[3px]">
                 <Spark points={l.spark} color={l.up ? C.up : C.accent} />
               </View>
-              <Body size={9.5} color={C.dim}>
-                {l.copiers}
-              </Body>
+              <Body className="text-[9.5px] text-dim">{l.copiers}</Body>
             </View>
           </View>
         ))}
       </View>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 16 }}
-      >
+      <Body className="text-[11px] text-dim text-center mt-[16px]">
         Mirrors execute against your allocation with your risk caps.
       </Body>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 6, marginBottom: 8 }}
-      >
+      <Body className="text-[11px] text-dim text-center mt-[6px] mb-[8px]">
         Mirror top traders — powered by Worldstreet
       </Body>
     </Screen>

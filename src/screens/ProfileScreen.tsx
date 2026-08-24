@@ -20,6 +20,7 @@ import {
   SectionRule,
 } from "../components/ui";
 import { user } from "../data/mock";
+import { cn } from "@/lib/cn";
 
 /**
  * Truncate for display only — never for anything a user might copy and send to.
@@ -110,43 +111,32 @@ function DetailRow({
 }) {
   const body = (
     <View
+      className="flex-row items-center py-[13px] gap-[12px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 13,
-        gap: 12,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
-      <Body size={12} color={C.sub}>
-        {label}
-      </Body>
-      <View style={{ flex: 1, alignItems: "flex-end" }}>
+      <Body className="text-[12px] text-sub">{label}</Body>
+      <View className="flex-1 items-end">
         {value ? (
           <>
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
+              className="text-[12.5px] text-text"
               style={{
                 fontFamily: mono ? F.mono : F.body,
-                fontSize: 12.5,
-                color: C.text,
               }}
             >
               {value}
             </Text>
             {sub ? (
-              <Body size={10.5} color={C.dim} style={{ marginTop: 3 }}>
-                {sub}
-              </Body>
+              <Body className="text-[10.5px] text-dim mt-[3px]">{sub}</Body>
             ) : null}
           </>
         ) : (
-          <Body size={12} color={C.dim}>
-            {empty}
-          </Body>
+          <Body className="text-[12px] text-dim">{empty}</Body>
         )}
       </View>
       {value && copyKey ? <CopyMark copied={!!copied} /> : null}
@@ -211,28 +201,18 @@ export default function ProfileScreen({
       {onBack ? (
         <BackHeader title="Profile" onBack={onBack} />
       ) : (
-        <Display size={20} style={{ paddingTop: 10 }}>
+        <Display className="text-[20px] leading-[21px] pt-[10px]">
           Profile
         </Display>
       )}
 
       {/* Identity: the person, then how they got here. The avatar carries the
           brand ring so it reads as the same object as the home header's. */}
-      <View
-        style={{
-          alignItems: "center",
-          paddingTop: 22,
-          paddingBottom: 4,
-        }}
-      >
+      <View className="items-center pt-[22px] pb-[4px]">
         <View
+          className="w-[84px] h-[84px] rounded-[44px] border-brand-soft p-[3px]"
           style={{
-            width: 84,
-            height: 84,
-            borderRadius: 44,
             borderWidth: 1.5,
-            borderColor: C.brandSoft,
-            padding: 3,
           }}
         >
           <Image
@@ -241,10 +221,10 @@ export default function ProfileScreen({
             contentFit="cover"
           />
         </View>
-        <Display size={22} style={{ marginTop: 14 }}>
+        <Display className="text-[22px] leading-[23.1px] mt-[14px]">
           {user.name}
         </Display>
-        <Mono size={11} color={C.dim} style={{ marginTop: 6, letterSpacing: 1 }}>
+        <Mono className="text-[11px] text-dim mt-[6px] tracking-[1px]">
           {user.tag.toUpperCase()} · VIA KINGSCHAT
         </Mono>
       </View>
@@ -252,7 +232,7 @@ export default function ProfileScreen({
       <SectionRule space={22} />
 
       <Label>Account</Label>
-      <Card style={{ marginTop: 10, paddingVertical: 2, paddingHorizontal: 16 }}>
+      <Card className="mt-[10px] py-[2px] px-[16px]">
         <DetailRow
           label="Account number"
           value={accountNumber}
@@ -281,55 +261,35 @@ export default function ProfileScreen({
           last
         />
       </Card>
-      <Body size={10.5} color={C.dim} style={{ marginTop: 8, lineHeight: 16 }}>
+      <Body className="text-[10.5px] text-dim mt-[8px] leading-[16px]">
         Tap any row to copy it in full. Check the whole address before you send
         to it.
       </Body>
 
-      <Label style={{ marginTop: 26 }}>Security</Label>
-      <Card style={{ marginTop: 10, paddingVertical: 2, paddingHorizontal: 16 }}>
+      <Label className="mt-[26px]">Security</Label>
+      <Card className="mt-[10px] py-[2px] px-[16px]">
         {securityRows.map((r) => (
           <PressableScale key={r.title} scale={0.99}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: 13,
-                borderBottomWidth: 1,
-                borderBottomColor: C.hairline,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Body size={13.5} semibold>
+            <View className="flex-row items-center gap-[12px] py-[13px] border-b border-b-rule">
+              <View className="flex-1">
+                <Body className="text-[13.5px]" semibold>
                   {r.title}
                 </Body>
-                <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
-                  {r.sub}
-                </Body>
+                <Body className="text-[10.5px] text-dim mt-[2px]">{r.sub}</Body>
               </View>
-              <Body size={15} color={C.dim}>
-                ›
-              </Body>
+              <Body className="text-[15px] text-dim">›</Body>
             </View>
           </PressableScale>
         ))}
 
         {/* The panic switch. Amber, not brand — this is a warning state the
             user has chosen, not an action we are promoting. */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            paddingVertical: 14,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Body size={13.5} semibold>
+        <View className="flex-row items-center gap-[12px] py-[14px]">
+          <View className="flex-1">
+            <Body className="text-[13.5px]" semibold>
               Freeze money-out
             </Body>
-            <Body size={10.5} color={C.dim} style={{ marginTop: 2 }}>
+            <Body className="text-[10.5px] text-dim mt-[2px]">
               {frozen
                 ? "On — every money-out route is blocked"
                 : "Panic switch — blocks every money-out route instantly"}
@@ -340,25 +300,20 @@ export default function ProfileScreen({
             accessibilityRole="switch"
             accessibilityState={{ checked: frozen }}
             accessibilityLabel="Freeze money-out"
+            className={cn(
+              "w-[46px] h-[28px] rounded-[15px] border p-[2px] justify-center",
+              frozen ? "border-amber" : "border-rule",
+            )}
             style={{
-              width: 46,
-              height: 28,
-              borderRadius: 15,
               backgroundColor: frozen ? C.amber : "rgba(255,255,255,0.16)",
-              borderWidth: 1,
-              borderColor: frozen ? C.amber : C.hairline,
-              padding: 2,
               alignItems: frozen ? "flex-end" : "flex-start",
-              justifyContent: "center",
             }}
           >
             <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 11,
-                backgroundColor: frozen ? C.ink : C.text,
-              }}
+              className={cn(
+                "w-[22px] h-[22px] rounded-[11px]",
+                frozen ? "bg-ink" : "bg-text",
+              )}
             />
           </Pressable>
         </View>
@@ -389,16 +344,7 @@ export default function ProfileScreen({
         </Pressable>
       ) : null}
 
-      <Text
-        style={{
-          fontFamily: F.mono,
-          fontSize: 9.5,
-          letterSpacing: 1.2,
-          color: C.dim,
-          textAlign: "center",
-          marginTop: 18,
-        }}
-      >
+      <Text className="font-mono text-[9.5px] tracking-[1.2px] text-dim text-center mt-[18px]">
         KASHPLUS · KEYS SPLIT THREE WAYS
       </Text>
     </Screen>

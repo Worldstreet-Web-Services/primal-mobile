@@ -34,41 +34,27 @@ export function ChartCard({
   const color = quote.down ? C.down : C.up;
 
   return (
-    <View
-      style={{
-        backgroundColor: C.raised,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        paddingTop: 14,
-        paddingBottom: 10,
-        overflow: "hidden",
-      }}
-    >
+    <View className="bg-canvas-raised rounded-[18px] border border-rule pt-[14px] pb-[10px] overflow-hidden">
       <View
+        className="flex-row gap-[8px] px-[14px]"
         style={{
-          flexDirection: "row",
           alignItems: "baseline",
-          gap: 8,
-          paddingHorizontal: 14,
         }}
       >
-        <Body size={13} semibold>
+        <Body className="text-[13px]" semibold>
           {quote.symbol}
         </Body>
-        <Mono size={11.5} color={C.silver}>
-          {quote.price}
-        </Mono>
-        <Mono size={11} color={color}>
+        <Mono className="text-[11.5px] text-silver">{quote.price}</Mono>
+        <Mono className="text-[11px]" color={color}>
           {quote.delta}
         </Mono>
       </View>
 
-      <View style={{ marginTop: 10 }}>
+      <View className="mt-[10px]">
         <AreaChart data={data} height={height} color={color} />
       </View>
 
-      <View style={{ paddingHorizontal: 10, marginTop: 10 }}>
+      <View className="px-[10px] mt-[10px]">
         <SegTabs
           tone="ghost"
           tabs={ranges}

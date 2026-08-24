@@ -16,7 +16,10 @@
  * configured in EAS, and a build should not depend on remembering to fix it
  * in two places.
  */
-const DEAD_HOSTS = new Set(["worldstreetwebservices.com", "www.worldstreetwebservices.com"]);
+const DEAD_HOSTS = new Set([
+  "worldstreetwebservices.com",
+  "www.worldstreetwebservices.com",
+]);
 
 /** Hostname of a URL, or null when it isn't a parseable absolute URL. */
 function hostOf(url: string): string | null {

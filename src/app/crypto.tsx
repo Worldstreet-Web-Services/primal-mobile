@@ -4,7 +4,6 @@ import { View } from "react-native";
 
 import { NavHeader } from "@/components/home";
 import CryptoSpaceScreen from "@/screens/CryptoSpaceScreen";
-import { C } from "@/theme/tokens";
 
 export default function Crypto() {
   // The header floats over the scroll view, so the content starts below it —
@@ -12,7 +11,7 @@ export default function Crypto() {
   const [headerHeight, setHeaderHeight] = useState(0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <CryptoSpaceScreen
         top={headerHeight}
         onBuy={() => router.push("/buy")}

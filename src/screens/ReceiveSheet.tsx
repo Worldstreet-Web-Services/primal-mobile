@@ -106,11 +106,7 @@ export default function ReceiveSheet({
   const { copied, copy } = useCopy();
   // The same hook FiatSpaceScreen and FundBankScreen read. There is exactly one
   // account number in this app and it comes from here.
-  const {
-    phase: bankPhase,
-    account,
-    error: bankError,
-  } = useLinkpayAccount();
+  const { phase: bankPhase, account, error: bankError } = useLinkpayAccount();
   // Bottom-anchored, so the sheet owns its own home-indicator clearance —
   // the route mounts it bare rather than inside a SafeAreaView.
   const insets = useSafeAreaInsets();
@@ -149,46 +145,25 @@ export default function ReceiveSheet({
   );
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
-    >
+    <View className="flex-1 bg-canvas justify-end">
       <Pressable
-        style={{ flex: 1 }}
+        className="flex-1"
         onPress={onClose}
         accessibilityLabel="Dismiss"
       />
       <View
+        className="bg-sheet border-t border-border pt-[12px] px-[22px]"
         style={{
-          backgroundColor: C.sheet,
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
-          borderTopWidth: 1,
-          borderColor: C.border,
-          paddingTop: 12,
-          paddingHorizontal: 22,
           paddingBottom: Math.max(insets.bottom, 16) + 26,
         }}
       >
-        <View
-          style={{
-            width: 36,
-            height: 4,
-            borderRadius: 3,
-            backgroundColor: C.borderStrong,
-            alignSelf: "center",
-            marginBottom: 16,
-          }}
-        />
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <View className="w-[36px] h-[4px] rounded-[3px] bg-border-strong self-center mb-[16px]" />
+        <View className="flex-row items-center justify-between">
           <View>
-            <Display size={21}>Receive</Display>
-            <Body size={11.5} color={C.dim} style={{ marginTop: 3 }}>
+            <Display className="text-[21px] leading-[22.05px]">Receive</Display>
+            <Body className="text-[11.5px] text-dim mt-[3px]">
               {tab === 0
                 ? "Hand this to anyone. It lands as naira."
                 : "Your wallet addresses. What lands stays crypto."}
@@ -258,8 +233,8 @@ export default function ReceiveSheet({
                 >
                   <Label>Account number</Label>
                   <Mono
-                    size={25}
-                    color={C.text}
+                    className="text-[25px] text-text"
+
                     style={{
                       fontFamily: F.monoSemibold,
                       letterSpacing: 3,
@@ -271,7 +246,10 @@ export default function ReceiveSheet({
                   {/* Provenance, and only what came back. A bank with no name
                       on it prints no line rather than a stray separator. */}
                   {bankProvenance.length ? (
-                    <Body size={12} color={C.sub} style={{ marginTop: 8 }}>
+                    <Body
+                      className="text-[12px] text-sub"
+                      style={{ marginTop: 8 }}
+                    >
                       {bankProvenance.join(" · ")}
                     </Body>
                   ) : null}
@@ -299,8 +277,8 @@ export default function ReceiveSheet({
               ) : null}
 
               <Body
-                size={11}
-                color={C.dim}
+                className="text-[11px] text-dim"
+
                 style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
               >
                 Anyone can transfer to this number.{"\n"}It credits to your
@@ -318,8 +296,8 @@ export default function ReceiveSheet({
           ) : (
             <View style={{ marginTop: 24, paddingBottom: 6 }}>
               <Body
-                size={12.5}
-                color={C.dim}
+                className="text-[12.5px] text-dim"
+
                 style={{
                   textAlign: "center",
                   maxWidth: 300,
@@ -351,7 +329,10 @@ export default function ReceiveSheet({
                 />
               ))}
             </View>
-            <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
+            <Body
+              className="text-[11px] text-dim"
+              style={{ marginTop: 10, lineHeight: 16 }}
+            >
               {nw.note}
             </Body>
 
@@ -383,8 +364,8 @@ export default function ReceiveSheet({
                   }}
                 >
                   <Mono
-                    size={12}
-                    color={C.text}
+                    className="text-[12px] text-text"
+
                     style={{
                       flex: 1,
                       lineHeight: 18,
@@ -398,8 +379,8 @@ export default function ReceiveSheet({
               </PressableScale>
             ) : (
               <Body
-                size={12.5}
-                color={C.dim}
+                className="text-[12.5px] text-dim"
+
                 style={{
                   textAlign: "center",
                   marginTop: 16,
@@ -428,7 +409,7 @@ export default function ReceiveSheet({
                 }}
               >
                 <Text style={{ color: C.silver, fontSize: 12 }}>◇</Text>
-                <Body size={11.5} color={C.silver} semibold>
+                <Body className="text-[11.5px] text-silver" semibold>
                   Arrives as crypto, in your custody
                 </Body>
               </View>
@@ -439,13 +420,9 @@ export default function ReceiveSheet({
                   optimistic fill credits against. Until the gateway serves
                   them, promising naira here would be a lie: anything sent
                   to this address stays crypto. */}
-              <Body
-                size={11}
-                color={C.dim}
-                style={{ textAlign: "center", marginTop: 8, lineHeight: 17 }}
-              >
-                Auto-convert to naira arrives with your deposit address —
-                for now this is your wallet, and what lands stays crypto.
+              <Body className="text-[11px] text-dim text-center mt-[8px] leading-[17px]">
+                Auto-convert to naira arrives with your deposit address — for
+                now this is your wallet, and what lands stays crypto.
               </Body>
             </View>
           </View>

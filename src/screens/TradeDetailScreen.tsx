@@ -11,7 +11,7 @@ import {
   Screen,
 } from "@/components/ui";
 import { chartRanges, type TradeDetail } from "@/data/trades";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
 
 /** Clears the floating action bar so the last card is never trapped under it. */
 const BAR_SPACE = 108;
@@ -53,7 +53,7 @@ export default function TradeDetailScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <Screen pad={14} bottom={BAR_SPACE + insets.bottom}>
         <QuotePanel
           pair={position.pair}
@@ -64,7 +64,7 @@ export default function TradeDetailScreen({
           style={{ marginTop: 4 }}
         />
 
-        <View style={{ flexDirection: "row", gap: 6, marginTop: 18 }}>
+        <View className="flex-row gap-[6px] mt-[18px]">
           {ranges.map((r, i) => (
             <Chip
               key={r}
@@ -73,17 +73,17 @@ export default function TradeDetailScreen({
               tone="highlight"
               active={i === active}
               onPress={() => selectRange(i)}
-              style={{ flex: 1 }}
+              className="flex-1"
             />
           ))}
         </View>
 
-        <View style={{ marginTop: 22 }}>
+        <View className="mt-[22px]">
           <CandleChart candles={detail.candles} times={detail.times} />
         </View>
 
         <KeyValueList
-          style={{ marginTop: 24 }}
+          className="mt-[24px]"
           rows={[
             { label: "Entry price", value: detail.entryPrice },
             { label: "Current price", value: detail.currentPrice },
@@ -96,16 +96,7 @@ export default function TradeDetailScreen({
           ]}
         />
 
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 11.5,
-            lineHeight: 17,
-            textAlign: "center",
-            color: C.dim,
-            marginTop: 16,
-          }}
-        >
+        <Text className="font-body text-[11.5px] leading-[17px] text-center text-dim mt-[16px]">
           Copying mirrors {position.trader}&apos;s entries and exits on this
           market. You can stop at any time; open positions stay yours.
         </Text>
@@ -114,13 +105,9 @@ export default function TradeDetailScreen({
       {/* Pinned to the viewport: the decision has to stay reachable however far
           down the chart the user has scrolled. */}
       <View
+        className="absolute left-[14px] right-[14px] flex-row gap-[12px]"
         style={{
-          position: "absolute",
-          left: 14,
-          right: 14,
           bottom: Math.max(insets.bottom, 12),
-          flexDirection: "row",
-          gap: 12,
         }}
       >
         <GhostButton

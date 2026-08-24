@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { isEntitled } from "@/lib/gateway/types";
 import { announceDevMode, skipPaywall } from "@/lib/devMode";
 import { SIGN_IN_ROUTE, SUBSCRIPTION_ROUTE } from "@/lib/routes";
-import { C } from "@/theme/tokens";
 
 /**
  * Entry: the animated splash plays once, then the restored session decides
@@ -66,7 +65,8 @@ export default function Index() {
 
   // Signed in and locked down. Whether KashPlus is satisfied is a separate
   // question, and it belongs to the gateway.
-  if (primal.state === "session_expired") return <Redirect href={SIGN_IN_ROUTE} />;
+  if (primal.state === "session_expired")
+    return <Redirect href={SIGN_IN_ROUTE} />;
 
   // The SIWE handshake and entitlement probe are still in flight. Hold rather
   // than guess: a paying member must never see a paywall flash past on the way
@@ -80,9 +80,11 @@ export default function Index() {
   // is what it is.
   if (primal.state === "unknown" && !primal.error) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <View className="flex-1 bg-canvas">
         <BrandLoading
-          label={creatingWallet ? "Creating your wallet" : "Setting up KashPlus"}
+          label={
+            creatingWallet ? "Creating your wallet" : "Setting up KashPlus"
+          }
         />
       </View>
     );

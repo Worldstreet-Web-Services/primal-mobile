@@ -1,7 +1,6 @@
 import { type ImageSource } from "expo-image";
 import { ScrollView, Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
 import { ArtSlot } from "../home";
 import { PlayIcon } from "../icons";
 import { PressableScale } from "../ui";
@@ -47,14 +46,11 @@ export function EpisodeTile({
       <View
         accessibilityRole="button"
         accessibilityLabel={episode.title}
+        className="overflow-hidden bg-canvas-raised items-center justify-center"
         style={{
           width: size,
           height: size,
           borderRadius: radius,
-          overflow: "hidden",
-          backgroundColor: C.raised,
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         <ArtSlot
@@ -67,14 +63,9 @@ export function EpisodeTile({
         {/* Translucent rather than solid: the cover has to stay legible under
             the control, since the artwork is what identifies the episode. */}
         <View
+          className="absolute w-[42px] h-[42px] rounded-[21px] items-center justify-center"
           style={{
-            position: "absolute",
-            width: 42,
-            height: 42,
-            borderRadius: 21,
             backgroundColor: "rgba(255,255,255,0.28)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           {/* Nudged right: a triangle's optical center sits left of its box. */}
@@ -82,40 +73,26 @@ export function EpisodeTile({
         </View>
 
         {started ? (
-          <View
-            style={{
-              position: "absolute",
-              left: 10,
-              right: 10,
-              bottom: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+          <View className="absolute left-[10px] right-[10px] bottom-[10px] flex-row items-center gap-[8px]">
             <View
+              className="flex-1 h-[3px] rounded-[2px] overflow-hidden"
               style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 2,
                 backgroundColor: "rgba(255,255,255,0.35)",
-                overflow: "hidden",
               }}
             >
               <View
+                className="rounded-[2px]"
                 style={{
                   width: `${Math.min(Math.max(episode.progress!, 0), 1) * 100}%`,
                   height: "100%",
-                  borderRadius: 2,
                   backgroundColor: SCRUB,
                 }}
               />
             </View>
             {episode.elapsed ? (
               <Text
+                className="font-mono text-[8px]"
                 style={{
-                  fontFamily: F.mono,
-                  fontSize: 8,
                   color: "rgba(255,255,255,0.85)",
                 }}
               >

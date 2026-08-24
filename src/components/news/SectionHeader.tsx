@@ -1,6 +1,5 @@
 import { Pressable, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
 import { Body, Display } from "../ui";
 
 /** Section title with its optional "View All" escape hatch on the right. */
@@ -17,24 +16,11 @@ export function SectionHeader({
   style?: { marginTop?: number };
 }) {
   return (
-    <View
-      style={[
-        {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        },
-        style,
-      ]}
-    >
-      <Display size={17}>{title}</Display>
+    <View className="flex-row items-center justify-between" style={style}>
+      <Display className="text-[17px] leading-[17.85px]">{title}</Display>
       {onAction ? (
         <Pressable onPress={onAction} hitSlop={10} accessibilityRole="button">
-          <Body
-            size={12.5}
-            color={C.brand}
-            style={{ fontFamily: F.bodyMedium }}
-          >
+          <Body className="text-[12.5px] text-brand font-body-medium">
             {actionLabel}
           </Body>
         </Pressable>

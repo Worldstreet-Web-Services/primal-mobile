@@ -29,6 +29,7 @@ import {
 import { formatMoney } from "../lib/gateway/money";
 import { isTerminalTransfer } from "../lib/gateway/types";
 import { C } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 
 // Design 2c: fiat space — its own balance, actions, fiat-only activity. The
 // shape is unchanged from the mock build; what changed is that every figure on
@@ -77,40 +78,44 @@ function StatePanel({
 
   return (
     <View
+      className="mt-[26px] border rounded-[20px] p-[18px]"
       style={{
-        marginTop: 26,
         backgroundColor: fill,
-        borderWidth: 1,
         borderColor: edge,
-        borderRadius: 20,
-        padding: 18,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View className="flex-row items-center gap-[8px]">
         {pending ? <PulseDot /> : null}
-        <Display size={18}>{title}</Display>
+        <Display className="text-[18px] leading-[18.9px]">{title}</Display>
       </View>
       <Body
         size={12.5}
-        color={tone === "bad" ? C.down : C.sub}
-        style={{ marginTop: 10, lineHeight: 19 }}
+
+        className={cn(
+          "mt-[10px] leading-[19px]",
+          tone === "bad" ? "text-down" : "text-sub",
+        )}
       >
         {body}
       </Body>
       {action ? (
-        <View style={{ marginTop: 18 }}>
-          <MetallicButton label={action} height={48} radius={14} size={13.5} onPress={onAction} />
+        <View className="mt-[18px]">
+          <MetallicButton
+            label={action}
+            height={48}
+            radius={14}
+            size={13.5}
+            onPress={onAction}
+          />
         </View>
       ) : null}
       {secondary ? (
         <Pressable
           onPress={onSecondary}
           accessibilityRole="button"
-          style={{ marginTop: 14, alignItems: "center", paddingVertical: 6 }}
+          className="mt-[14px] items-center py-[6px]"
         >
-          <Body size={12} color={C.dim}>
-            {secondary}
-          </Body>
+          <Body className="text-[12px] text-dim">{secondary}</Body>
         </Pressable>
       ) : null}
     </View>
@@ -120,32 +125,26 @@ function StatePanel({
 /** The money screen's own shape, held while the figures are still in the air. */
 function BalanceSkeleton() {
   return (
-    <View style={{ marginTop: 26 }}>
-      <Body size={11.5} color={C.dim}>
-        Available balance
-      </Body>
+    <View className="mt-[26px]">
+      <Body className="text-[11.5px] text-dim">Available balance</Body>
       <Pulse width={220} height={40} radius={12} style={{ marginTop: 10 }} />
       <Pulse width={170} height={36} radius={12} style={{ marginTop: 16 }} />
-      <View style={{ marginTop: 18, flexDirection: "row", gap: 10 }}>
+      <View className="mt-[18px] flex-row gap-[10px]">
         <Pulse width="48%" height={46} radius={14} />
         <Pulse width="48%" height={46} radius={14} />
       </View>
-      <View style={{ marginTop: 26 }}>
+      <View className="mt-[26px]">
         <Label>Fiat activity</Label>
         {[0, 1, 2].map((i) => (
           <View
             key={i}
+            className="flex-row items-center gap-[12px] py-[14px] border-b-rule"
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 14,
               borderBottomWidth: i === 2 ? 0 : 1,
-              borderBottomColor: C.hairline,
             }}
           >
             <Pulse width={38} height={38} radius={12} />
-            <View style={{ flex: 1, gap: 7 }}>
+            <View className="flex-1 gap-[7px]">
               <Pulse width="58%" height={11} />
               <Pulse width="36%" height={9} />
             </View>
@@ -256,10 +255,10 @@ export default function FiatSpaceScreen({
 
   const footer = (
     <>
-      <Body size={11} color={C.dim} style={{ textAlign: "center", marginTop: 16 }}>
+      <Body className="text-[11px] text-dim text-center mt-[16px]">
         Balances shown in kobo-true minor units · statements match to the kobo
       </Body>
-      <Body size={11} color={C.dim} style={{ textAlign: "center", marginTop: 8 }}>
+      <Body className="text-[11px] text-dim text-center mt-[8px]">
         Deposits, transfers and your account number — powered by LinkPay
       </Body>
     </>
@@ -397,40 +396,50 @@ export default function FiatSpaceScreen({
   return (
     <Screen top={top}>
       {/* Title and back live in the route's NavHeader now. */}
-      <View style={{ marginTop: 26 }}>
-        <Body size={11.5} color={C.dim}>
-          Available balance
-        </Body>
+      <View className="mt-[26px]">
+        <Body className="text-[11.5px] text-dim">Available balance</Body>
         {/* The skeleton is reserved for a balance still in the air. One that
             arrived without a readable figure gets the em dash and a reason:
             shimmering over it would claim a request is running when the only
             request there was is finished, and it would never resolve. */}
         {available ? (
-          <AmountText value={formatMoney(available)} size={46} style={{ marginTop: 6 }} />
+          <AmountText
+            value={formatMoney(available)}
+            size={46}
+            className="mt-[6px]"
+          />
         ) : balanceError || balance ? (
           <>
-            <Display size={46} color={C.dim} style={{ marginTop: 6 }}>
+            <Display className="text-[46px] leading-[48.3px] text-dim mt-[6px]">
               —
             </Display>
-            <Body size={11.5} color={C.down} style={{ marginTop: 8, lineHeight: 17 }}>
-              {balanceError ?? "KashPlus could not read the balance the gateway sent."}
+            <Body className="text-[11.5px] text-down mt-[8px] leading-[17px]">
+              {balanceError ??
+                "KashPlus could not read the balance the gateway sent."}
             </Body>
             <Pressable
               onPress={reload}
               accessibilityRole="button"
-              style={{ marginTop: 12, alignSelf: "flex-start" }}
+              className="mt-[12px] self-start"
             >
-              <Mono size={10} color={C.silver} style={{ letterSpacing: 1.4 }}>
+              <Mono className="text-[10px] text-silver tracking-[1.4px]">
                 TRY AGAIN
               </Mono>
             </Pressable>
           </>
         ) : (
-          <Pulse width={230} height={40} radius={12} style={{ marginTop: 10 }} />
+          <Pulse
+            width={230}
+            height={40}
+            radius={12}
+            style={{ marginTop: 10 }}
+          />
         )}
 
-        {balance?.ledger && available && balance.ledger.amountMinor !== available.amountMinor ? (
-          <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
+        {balance?.ledger &&
+        available &&
+        balance.ledger.amountMinor !== available.amountMinor ? (
+          <Mono className="text-[12px] text-sub mt-[8px]">
             {formatMoney(balance.ledger)} on the ledger
           </Mono>
         ) : null}
@@ -441,19 +450,8 @@ export default function FiatSpaceScreen({
             accessibilityRole="button"
             accessibilityLabel="Copy account number"
           >
-            <Card
-              style={{
-                marginTop: 14,
-                alignSelf: "flex-start",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 9,
-                paddingVertical: 9,
-                paddingHorizontal: 13,
-                borderRadius: 12,
-              }}
-            >
-              <Mono size={12.5}>
+            <Card className="mt-[14px] self-start flex-row items-center gap-[9px] py-[9px] px-[13px] rounded-[12px]">
+              <Mono className="text-[12.5px]">
                 {accountNumber}
                 {account?.bankName ? ` · ${account.bankName}` : ""}
               </Mono>
@@ -463,15 +461,21 @@ export default function FiatSpaceScreen({
         ) : null}
       </View>
 
-      <View style={{ marginTop: 18, flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <MetallicButton label="Add" height={46} radius={14} size={13} onPress={onAdd} />
+      <View className="mt-[18px] flex-row gap-[10px]">
+        <View className="flex-1">
+          <MetallicButton
+            label="Add"
+            height={46}
+            radius={14}
+            size={13}
+            onPress={onAdd}
+          />
         </View>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <GhostButton label="Send" onPress={onSend} />
         </View>
         {onBills ? (
-          <View style={{ flex: 1 }}>
+          <View className="flex-1">
             <GhostButton label="Bills" onPress={onBills} />
           </View>
         ) : null}
@@ -479,29 +483,25 @@ export default function FiatSpaceScreen({
             screen stay — only the way in is closed — so putting it back is
             re-adding this button, not rebuilding the corridor flow. */}
         {onRemit ? (
-          <View style={{ flex: 1 }}>
+          <View className="flex-1">
             <GhostButton label="Remit" onPress={onRemit} />
           </View>
         ) : null}
       </View>
 
-      <View style={{ marginTop: 20 }}>
+      <View className="mt-[20px]">
         <Label>Fiat activity</Label>
         {activityLoading && activity.length === 0 ? (
           [0, 1, 2].map((i) => (
             <View
               key={i}
+              className="flex-row items-center gap-[12px] py-[14px] border-b-rule"
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: 14,
                 borderBottomWidth: i === 2 ? 0 : 1,
-                borderBottomColor: C.hairline,
               }}
             >
               <Pulse width={38} height={38} radius={12} />
-              <View style={{ flex: 1, gap: 7 }}>
+              <View className="flex-1 gap-[7px]">
                 <Pulse width="58%" height={11} />
                 <Pulse width="36%" height={9} />
               </View>
@@ -509,31 +509,27 @@ export default function FiatSpaceScreen({
             </View>
           ))
         ) : activityError ? (
-          <View style={{ marginTop: 14 }}>
-            <Body size={12.5} color={C.down} style={{ lineHeight: 18 }}>
+          <View className="mt-[14px]">
+            <Body className="text-[12.5px] text-down leading-[18px]">
               {activityError}
             </Body>
             <Pressable
               onPress={reload}
               accessibilityRole="button"
-              style={{ marginTop: 12, alignSelf: "flex-start" }}
+              className="mt-[12px] self-start"
             >
-              <Mono size={10} color={C.silver} style={{ letterSpacing: 1.4 }}>
+              <Mono className="text-[10px] text-silver tracking-[1.4px]">
                 TRY AGAIN
               </Mono>
             </Pressable>
           </View>
         ) : activity.length === 0 ? (
-          <View style={{ marginTop: 8 }}>
+          <View className="mt-[8px]">
             <SectionRule space={14} />
-            <Display size={15} color={C.sub} style={{ textAlign: "center" }}>
+            <Display className="text-[15px] leading-[15.75px] text-sub text-center">
               Nothing has moved yet.
             </Display>
-            <Body
-              size={12}
-              color={C.dim}
-              style={{ marginTop: 8, textAlign: "center", lineHeight: 18 }}
-            >
+            <Body className="text-[12px] text-dim mt-[8px] text-center leading-[18px]">
               {accountNumber
                 ? "Send money to the account number above and it will show up here."
                 : "Deposits and payouts will show up here."}
@@ -541,7 +537,11 @@ export default function FiatSpaceScreen({
           </View>
         ) : (
           activity.map((entry, i) => (
-            <ActivityRow key={entry.key} entry={entry} last={i === activity.length - 1} />
+            <ActivityRow
+              key={entry.key}
+              entry={entry}
+              last={i === activity.length - 1}
+            />
           ))
         )}
       </View>

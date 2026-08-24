@@ -4,7 +4,7 @@ import { View } from "react-native";
 
 import { NavHeader } from "@/components/home";
 import FiatSpaceScreen from "@/screens/FiatSpaceScreen";
-import { C } from "@/theme/tokens";
+
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // The LinkPay-powered fiat space: account number, deposits, activity.
@@ -12,7 +12,7 @@ export default function Fiat() {
   const [headerHeight, setHeaderHeight] = useState(0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <FiatSpaceScreen
         top={headerHeight}
         onAdd={() => router.push("/fund")}

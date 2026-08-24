@@ -2,16 +2,14 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import KycScreen from "@/screens/KycScreen";
-import { C } from "@/theme/tokens";
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 
 // Opening the LinkPay naira account: name, phone, email, BVN. The screen owns
 // the idempotency key and the resumable statuses; this route only decides where
 // the user goes when it is done.
 export default function Kyc() {
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.canvas }}>
+    <SafeAreaView className="flex-1 bg-canvas">
       <KycScreen
         onBack={() => router.back()}
         onDone={() => router.dismissTo("/fiat")}

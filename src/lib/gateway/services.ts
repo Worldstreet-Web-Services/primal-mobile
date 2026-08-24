@@ -99,7 +99,14 @@ function bool(source: Raw, ...names: string[]): boolean | null {
 function readList(raw: unknown): Raw[] {
   if (Array.isArray(raw)) return raw.map(asRaw);
   const outer = asRaw(raw);
-  for (const key of ["data", "items", "results", "records", "providers", "products"]) {
+  for (const key of [
+    "data",
+    "items",
+    "results",
+    "records",
+    "providers",
+    "products",
+  ]) {
     const value = outer[key];
     if (Array.isArray(value)) return value.map(asRaw);
     // One more level: { data: { items: [...] } } is a real envelope shape.
@@ -140,7 +147,10 @@ function readMoney(value: unknown, fallbackCurrency: string): Money | null {
     if (/^-?\d+$/.test(raw)) return { amountMinor: raw, currency };
     if (/^-?\d*\.\d+$/.test(raw)) {
       try {
-        return { amountMinor: parseMinor(raw, currency, { precision: "truncate" }), currency };
+        return {
+          amountMinor: parseMinor(raw, currency, { precision: "truncate" }),
+          currency,
+        };
       } catch {
         return null;
       }
@@ -150,7 +160,8 @@ function readMoney(value: unknown, fallbackCurrency: string): Money | null {
 
   if (value !== null && typeof value === "object") {
     const node = asRaw(value);
-    const nodeCurrency = str(node, "currency", "currencyCode", "currency_code") ?? currency;
+    const nodeCurrency =
+      str(node, "currency", "currencyCode", "currency_code") ?? currency;
     const minor = pick(
       node,
       "amountMinor",
@@ -274,11 +285,21 @@ export interface VasTransaction {
   updatedAt: WireTimestamp;
 }
 
-function readProvider(row: Raw, fallback: { serviceType: string; category: string; country: string }): VasProvider | null {
+function readProvider(
+  row: Raw,
+  fallback: { serviceType: string; category: string; country: string },
+): VasProvider | null {
   const id =
     str(row, "id", "serviceProviderId", "service_provider_id", "providerId") ??
     str(row, "provider_id", "uuid", "code");
-  const name = str(row, "name", "providerName", "provider_name", "shortName", "short_name");
+  const name = str(
+    row,
+    "name",
+    "providerName",
+    "provider_name",
+    "shortName",
+    "short_name",
+  );
   if (!id || !name) return null;
 
   return {
@@ -286,10 +307,16 @@ function readProvider(row: Raw, fallback: { serviceType: string; category: strin
     name,
     shortName: str(row, "shortName", "short_name"),
     providerUuid: str(row, "provider_id", "providerUuid", "provider_uuid"),
-    serviceType: str(row, "serviceType", "service_type") ?? fallback.serviceType,
-    category: str(row, "category", "serviceCategory", "service_category") ?? fallback.category,
-    country: str(row, "country", "countryCode", "country_code") ?? fallback.country,
-    logoUrl: str(row, "logoUrl", "logo_url", "logo", "imageUrl", "image_url") ?? undefined,
+    serviceType:
+      str(row, "serviceType", "service_type") ?? fallback.serviceType,
+    category:
+      str(row, "category", "serviceCategory", "service_category") ??
+      fallback.category,
+    country:
+      str(row, "country", "countryCode", "country_code") ?? fallback.country,
+    logoUrl:
+      str(row, "logoUrl", "logo_url", "logo", "imageUrl", "image_url") ??
+      undefined,
     requiresValidation: bool(row, "requiresValidation", "requires_validation"),
   };
 }
@@ -313,14 +340,25 @@ function readProduct(row: Raw, currency: string): VasProduct | null {
     pick(row, "amount", "price", "amountMinor", "amount_minor", "cost"),
     currency,
   );
-  const explicitlyFixed = bool(row, "fixedAmount", "fixed_amount", "isAmountFixed", "is_amount_fixed");
+  const explicitlyFixed = bool(
+    row,
+    "fixedAmount",
+    "fixed_amount",
+    "isAmountFixed",
+    "is_amount_fixed",
+  );
 
   return {
     code,
     name,
     serviceProviderId:
-      str(row, "serviceProviderId", "service_provider_id", "providerId", "provider_id") ??
-      undefined,
+      str(
+        row,
+        "serviceProviderId",
+        "service_provider_id",
+        "providerId",
+        "provider_id",
+      ) ?? undefined,
     amount: amount ?? undefined,
     dataSize: str(row, "dataSize", "data_size", "size"),
     validity: str(row, "validity", "duration", "period", "expiry"),
@@ -349,9 +387,21 @@ function readToken(row: Raw): string | null {
   ];
 
   const scopes: Raw[] = [row];
-  for (const key of ["metadata", "meta", "extra", "details", "delivery", "result", "data"]) {
+  for (const key of [
+    "metadata",
+    "meta",
+    "extra",
+    "details",
+    "delivery",
+    "result",
+    "data",
+  ]) {
     const nested = row[key];
-    if (nested !== null && typeof nested === "object" && !Array.isArray(nested)) {
+    if (
+      nested !== null &&
+      typeof nested === "object" &&
+      !Array.isArray(nested)
+    ) {
       scopes.push(asRaw(nested));
     }
   }
@@ -365,32 +415,74 @@ function readToken(row: Raw): string | null {
   return null;
 }
 
-function readTransaction(raw: unknown, fallbackCurrency: string): VasTransaction {
+function readTransaction(
+  raw: unknown,
+  fallbackCurrency: string,
+): VasTransaction {
   const outer = asRaw(raw);
   // The create response has been seen both bare and wrapped in `transaction`.
-  const inner = pick(outer, "transaction", "serviceTransaction", "service_transaction", "data");
-  const row = inner !== undefined && typeof inner === "object" ? asRaw(inner) : outer;
+  const inner = pick(
+    outer,
+    "transaction",
+    "serviceTransaction",
+    "service_transaction",
+    "data",
+  );
+  const row =
+    inner !== undefined && typeof inner === "object" ? asRaw(inner) : outer;
 
   const currency =
-    str(row, "currency", "currencyCode", "currency_code") ?? normalizeCurrency(fallbackCurrency);
-  const amount = readMoney(pick(row, "amount", "amountMinor", "amount_minor"), currency);
-  const fee = readMoney(pick(row, "fee", "feeMinor", "fee_minor", "charge"), currency);
+    str(row, "currency", "currencyCode", "currency_code") ??
+    normalizeCurrency(fallbackCurrency);
+  const amount = readMoney(
+    pick(row, "amount", "amountMinor", "amount_minor"),
+    currency,
+  );
+  const fee = readMoney(
+    pick(row, "fee", "feeMinor", "fee_minor", "charge"),
+    currency,
+  );
   const total = readMoney(
-    pick(row, "totalDebit", "total_debit", "total", "debit", "totalAmount", "total_amount"),
+    pick(
+      row,
+      "totalDebit",
+      "total_debit",
+      "total",
+      "debit",
+      "totalAmount",
+      "total_amount",
+    ),
     currency,
   );
 
   return {
     id: str(row, "id", "transactionId", "transaction_id", "reference", "ref"),
-    status: asTransferStatus(pick(row, "status", "state", "transactionStatus", "transaction_status")),
+    status: asTransferStatus(
+      pick(row, "status", "state", "transactionStatus", "transaction_status"),
+    ),
     amount,
     fee,
     totalDebit: total ?? withFee(amount, fee),
     serviceType: str(row, "serviceType", "service_type"),
-    serviceCategory: str(row, "serviceCategory", "service_category", "category"),
+    serviceCategory: str(
+      row,
+      "serviceCategory",
+      "service_category",
+      "category",
+    ),
     serviceProviderId: str(row, "serviceProviderId", "service_provider_id"),
-    serviceProviderName: str(row, "serviceProviderName", "service_provider_name", "providerName"),
-    serviceProductCode: str(row, "serviceProductCode", "service_product_code", "productCode"),
+    serviceProviderName: str(
+      row,
+      "serviceProviderName",
+      "service_provider_name",
+      "providerName",
+    ),
+    serviceProductCode: str(
+      row,
+      "serviceProductCode",
+      "service_product_code",
+      "productCode",
+    ),
     destinationIdentifier: str(
       row,
       "destinationIdentifier",
@@ -399,14 +491,45 @@ function readTransaction(raw: unknown, fallbackCurrency: string): VasTransaction
       "customerReference",
       "customer_reference",
     ),
-    customerName: str(row, "customerName", "customer_name", "accountName", "account_name"),
+    customerName: str(
+      row,
+      "customerName",
+      "customer_name",
+      "accountName",
+      "account_name",
+    ),
     narration: str(row, "narration", "description"),
-    reference: str(row, "reference", "ref", "providerReference", "provider_reference"),
+    reference: str(
+      row,
+      "reference",
+      "ref",
+      "providerReference",
+      "provider_reference",
+    ),
     serviceToken: readToken(row),
-    tokenUnits: str(row, "units", "tokenUnits", "token_units", "unitsPurchased"),
-    failureReason: str(row, "failureReason", "failure_reason", "reason", "message", "error"),
+    tokenUnits: str(
+      row,
+      "units",
+      "tokenUnits",
+      "token_units",
+      "unitsPurchased",
+    ),
+    failureReason: str(
+      row,
+      "failureReason",
+      "failure_reason",
+      "reason",
+      "message",
+      "error",
+    ),
     createdAt: (pick(row, "createdAt", "created_at") ?? null) as WireTimestamp,
-    updatedAt: (pick(row, "updatedAt", "updated_at", "settledAt", "settled_at") ?? null) as WireTimestamp,
+    updatedAt: (pick(
+      row,
+      "updatedAt",
+      "updated_at",
+      "settledAt",
+      "settled_at",
+    ) ?? null) as WireTimestamp,
   };
 }
 
@@ -465,10 +588,14 @@ const DESTINATIONS: Record<DestinationKind, DestinationSpec> = {
   },
 };
 
-export const destinationSpec = (kind: DestinationKind): DestinationSpec => DESTINATIONS[kind];
+export const destinationSpec = (kind: DestinationKind): DestinationSpec =>
+  DESTINATIONS[kind];
 
 /** Strip the formatting people type. Never mutates meaning, only spacing. */
-export function normalizeDestination(kind: DestinationKind, raw: string): string {
+export function normalizeDestination(
+  kind: DestinationKind,
+  raw: string,
+): string {
   const trimmed = raw.trim();
   if (kind === "account") return trimmed.replace(/\s+/g, " ");
   return trimmed.replace(/[\s\-()]/g, "");
@@ -479,7 +606,11 @@ export function normalizeDestination(kind: DestinationKind, raw: string): string
  * `08031234567` becomes `2348031234567`, which is what the upstream expects.
  * Everything else is sent exactly as typed, minus separators.
  */
-export function wireDestination(kind: DestinationKind, raw: string, country = "NG"): string {
+export function wireDestination(
+  kind: DestinationKind,
+  raw: string,
+  country = "NG",
+): string {
   const cleaned = normalizeDestination(kind, raw);
   if (kind !== "phone" || normalizeCurrency(country) !== "NG") return cleaned;
   const digits = cleaned.replace(/\D/g, "");
@@ -502,12 +633,15 @@ export function validateDestination(
 
   if (kind === "phone" && normalizeCurrency(country) === "NG") {
     const local = value.replace(/\D/g, "").replace(/^234/, "0");
-    if (!/^0\d{10}$/.test(local)) return "A Nigerian number is 11 digits, starting 0.";
+    if (!/^0\d{10}$/.test(local))
+      return "A Nigerian number is 11 digits, starting 0.";
     return null;
   }
 
-  if (value.length < spec.minLength) return `That looks short for a ${spec.label.toLowerCase()}.`;
-  if (value.length > spec.maxLength) return `That looks long for a ${spec.label.toLowerCase()}.`;
+  if (value.length < spec.minLength)
+    return `That looks short for a ${spec.label.toLowerCase()}.`;
+  if (value.length > spec.maxLength)
+    return `That looks long for a ${spec.label.toLowerCase()}.`;
   return null;
 }
 
@@ -522,16 +656,42 @@ export function validateDestination(
  * deliberate choice.
  */
 const NG_PREFIXES: Readonly<Record<string, string>> = {
-  "0803": "MTN", "0806": "MTN", "0813": "MTN", "0816": "MTN", "0703": "MTN",
-  "0706": "MTN", "0810": "MTN", "0814": "MTN", "0903": "MTN", "0906": "MTN",
-  "0913": "MTN", "0916": "MTN", "0704": "MTN",
-  "0802": "Airtel", "0808": "Airtel", "0812": "Airtel", "0708": "Airtel",
-  "0701": "Airtel", "0902": "Airtel", "0907": "Airtel", "0901": "Airtel",
-  "0904": "Airtel", "0912": "Airtel",
-  "0805": "Glo", "0807": "Glo", "0815": "Glo", "0705": "Glo", "0905": "Glo",
-  "0915": "Glo", "0811": "Glo",
-  "0809": "9mobile", "0817": "9mobile", "0818": "9mobile", "0908": "9mobile",
-  "0909": "9mobile", "0918": "9mobile",
+  "0803": "MTN",
+  "0806": "MTN",
+  "0813": "MTN",
+  "0816": "MTN",
+  "0703": "MTN",
+  "0706": "MTN",
+  "0810": "MTN",
+  "0814": "MTN",
+  "0903": "MTN",
+  "0906": "MTN",
+  "0913": "MTN",
+  "0916": "MTN",
+  "0704": "MTN",
+  "0802": "Airtel",
+  "0808": "Airtel",
+  "0812": "Airtel",
+  "0708": "Airtel",
+  "0701": "Airtel",
+  "0902": "Airtel",
+  "0907": "Airtel",
+  "0901": "Airtel",
+  "0904": "Airtel",
+  "0912": "Airtel",
+  "0805": "Glo",
+  "0807": "Glo",
+  "0815": "Glo",
+  "0705": "Glo",
+  "0905": "Glo",
+  "0915": "Glo",
+  "0811": "Glo",
+  "0809": "9mobile",
+  "0817": "9mobile",
+  "0818": "9mobile",
+  "0908": "9mobile",
+  "0909": "9mobile",
+  "0918": "9mobile",
 };
 
 /** The network a Nigerian number was issued on, or `null` if unlisted. */
@@ -548,12 +708,25 @@ export function detectNetwork(phone: string, country = "NG"): string | null {
  * Compared on first word, case-insensitively — feeds spell it "MTN Nigeria",
  * "MTN NG" and "Mtn".
  */
-export function networkMismatch(providerName: string, phone: string, country = "NG"): string | null {
+export function networkMismatch(
+  providerName: string,
+  phone: string,
+  country = "NG",
+): string | null {
   const detected = detectNetwork(phone, country);
   if (!detected) return null;
-  const head = providerName.trim().split(/[\s\-_]/)[0]?.toLowerCase() ?? "";
+  const head =
+    providerName
+      .trim()
+      .split(/[\s\-_]/)[0]
+      ?.toLowerCase() ?? "";
   const target = detected.toLowerCase();
-  if (head === "" || head === target || target.startsWith(head) || head.startsWith(target)) {
+  if (
+    head === "" ||
+    head === target ||
+    target.startsWith(head) ||
+    head.startsWith(target)
+  ) {
     return null;
   }
   return detected;
@@ -709,7 +882,9 @@ export interface ListProvidersOptions {
   signal?: AbortSignal;
 }
 
-export async function listProviders(options: ListProvidersOptions): Promise<VasProvider[]> {
+export async function listProviders(
+  options: ListProvidersOptions,
+): Promise<VasProvider[]> {
   const country = options.country ?? "NG";
   const raw = await get<unknown>("/v1/linkpay/services/providers", {
     query: {
@@ -738,7 +913,9 @@ export interface ListProductsOptions {
   signal?: AbortSignal;
 }
 
-export async function listProducts(options: ListProductsOptions): Promise<VasProduct[]> {
+export async function listProducts(
+  options: ListProductsOptions,
+): Promise<VasProduct[]> {
   const raw = await get<unknown>("/v1/linkpay/services/products", {
     query: {
       serviceProviderId: options.serviceProviderId,
@@ -760,7 +937,11 @@ function isFatalSweepError(error: unknown): boolean {
   if (SessionExpiredError.is(error) || AbortedError.is(error)) return true;
   if (isEntitlementError(error)) return true;
   if (ApiError.is(error)) {
-    return error.statusCode === 401 || error.statusCode === 403 || error.statusCode === 429;
+    return (
+      error.statusCode === 401 ||
+      error.statusCode === 403 ||
+      error.statusCode === 429
+    );
   }
   // A network failure mid-sweep would otherwise silently shrink the catalogue.
   return NetworkError.is(error);
@@ -777,7 +958,12 @@ async function probeCandidate(
     const spelled = spelling(category);
     let providers: VasProvider[];
     try {
-      providers = await listProviders({ serviceType, category: spelled, country, signal });
+      providers = await listProviders({
+        serviceType,
+        category: spelled,
+        country,
+        signal,
+      });
     } catch (error) {
       if (isFatalSweepError(error)) throw error;
       // 400 (unknown category), 404, 502 from the provider: this spelling is
@@ -814,7 +1000,12 @@ async function sweep(
       const index = cursor;
       cursor += 1;
       if (index >= CANDIDATES.length) return;
-      const category = await probeCandidate(CANDIDATES[index], spelling, country, signal);
+      const category = await probeCandidate(
+        CANDIDATES[index],
+        spelling,
+        country,
+        signal,
+      );
       if (category) {
         found.push(category);
         onCategory?.(category);
@@ -823,7 +1014,10 @@ async function sweep(
   };
 
   await Promise.all(
-    Array.from({ length: Math.min(SWEEP_CONCURRENCY, CANDIDATES.length) }, worker),
+    Array.from(
+      { length: Math.min(SWEEP_CONCURRENCY, CANDIDATES.length) },
+      worker,
+    ),
   );
 
   // Workers finish out of order; the shelf order is a product decision.
@@ -854,12 +1048,15 @@ export interface DiscoverOptions {
  * empty array means the account genuinely has no services, which the UI has to
  * be able to say out loud.
  */
-export async function discoverCatalog(options: DiscoverOptions = {}): Promise<VasCategory[]> {
+export async function discoverCatalog(
+  options: DiscoverOptions = {},
+): Promise<VasCategory[]> {
   const country = options.country ?? "NG";
 
   if (!options.force && catalogCache && catalogCache.country === country) {
     if (Date.now() - catalogCache.at < CATALOG_TTL_MS) {
-      for (const category of catalogCache.categories) options.onCategory?.(category);
+      for (const category of catalogCache.categories)
+        options.onCategory?.(category);
       return catalogCache.categories;
     }
   }
@@ -967,7 +1164,8 @@ const stemFor = (scope: string, fingerprint: string): string =>
  * minted afresh — only read off an old row, so an upgrade can still resume, and
  * still release, a purchase the build before it left in the air.
  */
-const legacyStem = (fingerprint: string): string => `linkpay.vas.${fingerprint}`;
+const legacyStem = (fingerprint: string): string =>
+  `linkpay.vas.${fingerprint}`;
 
 /**
  * The idempotency slot for ONE ATTEMPT at one intended purchase — feed it to
@@ -992,8 +1190,14 @@ const slotFor = (stem: string, attempt: number): string => `${stem}.${attempt}`;
 const slotOf = (row: PurchaseAttempt): string => slotFor(row.stem, row.attempt);
 
 /** The slot a fresh attempt at `intent` would reserve, for this account. */
-export async function purchaseSlot(intent: PurchaseIntent, attempt = 0): Promise<string> {
-  return slotFor(stemFor(await currentScope(), purchaseFingerprint(intent)), attempt);
+export async function purchaseSlot(
+  intent: PurchaseIntent,
+  attempt = 0,
+): Promise<string> {
+  return slotFor(
+    stemFor(await currentScope(), purchaseFingerprint(intent)),
+    attempt,
+  );
 }
 
 /* ------------------------------------------------ in-flight purchase record */
@@ -1107,22 +1311,30 @@ let attemptMemory: AttemptRecord | null = null;
 
 function readAttempt(value: unknown): PurchaseAttempt | null {
   const row = asRaw(value);
-  const fingerprint = typeof row.fingerprint === "string" ? row.fingerprint : null;
+  const fingerprint =
+    typeof row.fingerprint === "string" ? row.fingerprint : null;
   const attempt =
-    typeof row.attempt === "number" && Number.isInteger(row.attempt) && row.attempt >= 0
+    typeof row.attempt === "number" &&
+    Number.isInteger(row.attempt) &&
+    row.attempt >= 0
       ? row.attempt
       : null;
   if (!fingerprint || attempt === null) return null;
   return {
     fingerprint,
-    stem: typeof row.stem === "string" && row.stem !== "" ? row.stem : legacyStem(fingerprint),
+    stem:
+      typeof row.stem === "string" && row.stem !== ""
+        ? row.stem
+        : legacyStem(fingerprint),
     attempt,
     transactionId:
       typeof row.transactionId === "string" && row.transactionId !== ""
         ? row.transactionId
         : null,
     startedAt:
-      typeof row.startedAt === "number" && Number.isFinite(row.startedAt) ? row.startedAt : 0,
+      typeof row.startedAt === "number" && Number.isFinite(row.startedAt)
+        ? row.startedAt
+        : 0,
     // A row written before this field existed reads as "never observed
     // missing", which is the answer that keeps a key rather than dropping one.
     missingSince:
@@ -1155,8 +1367,12 @@ async function readAttempts(): Promise<AttemptRecord | null> {
     return attemptMemory;
   }
   try {
-    const raw = await SecureStore.getItemAsync(attemptsKeyFor(scope), STORE_OPTIONS);
-    const rows = raw === null ? await adoptUnscopedAttempts(scope) : parseAttempts(raw);
+    const raw = await SecureStore.getItemAsync(
+      attemptsKeyFor(scope),
+      STORE_OPTIONS,
+    );
+    const rows =
+      raw === null ? await adoptUnscopedAttempts(scope) : parseAttempts(raw);
     attemptMemory = { scope, rows };
     return attemptMemory;
   } catch {
@@ -1167,7 +1383,9 @@ async function readAttempts(): Promise<AttemptRecord | null> {
 function parseAttempts(raw: string): PurchaseAttempt[] {
   const parsed: unknown = JSON.parse(raw);
   return Array.isArray(parsed)
-    ? parsed.map(readAttempt).filter((row): row is PurchaseAttempt => row !== null)
+    ? parsed
+        .map(readAttempt)
+        .filter((row): row is PurchaseAttempt => row !== null)
     : [];
 }
 
@@ -1188,7 +1406,9 @@ function parseAttempts(raw: string): PurchaseAttempt[] {
  * destination in them) and the only lookup they enable is one the gateway
  * authorises against the bearer of whoever is asking.
  */
-async function adoptUnscopedAttempts(scope: string): Promise<PurchaseAttempt[]> {
+async function adoptUnscopedAttempts(
+  scope: string,
+): Promise<PurchaseAttempt[]> {
   let rows: PurchaseAttempt[];
   try {
     const legacy = await SecureStore.getItemAsync(ATTEMPTS_KEY, STORE_OPTIONS);
@@ -1242,7 +1462,9 @@ async function loadAttempts(): Promise<AttemptRecord> {
  * simply refills; the other order would leave a key with no row, which is the
  * one the next purchase spends by mistake.
  */
-async function boundAttempts(rows: PurchaseAttempt[]): Promise<PurchaseAttempt[]> {
+async function boundAttempts(
+  rows: PurchaseAttempt[],
+): Promise<PurchaseAttempt[]> {
   if (rows.length <= ATTEMPT_LIMIT) return rows;
 
   let over = rows.length - ATTEMPT_LIMIT;
@@ -1269,7 +1491,10 @@ async function boundAttempts(rows: PurchaseAttempt[]): Promise<PurchaseAttempt[]
   return kept;
 }
 
-async function saveAttempts(scope: string, rows: PurchaseAttempt[]): Promise<void> {
+async function saveAttempts(
+  scope: string,
+  rows: PurchaseAttempt[],
+): Promise<void> {
   const bounded = await boundAttempts(rows);
   attemptMemory = { scope, rows: bounded };
   if (isWeb) return;
@@ -1292,7 +1517,8 @@ async function rememberAttempt(next: PurchaseAttempt): Promise<void> {
   // purchase for every other one in flight, each of whose key the next
   // identical purchase would then reuse.
   if (!record) return;
-  const previous = record.rows.find((row) => row.fingerprint === next.fingerprint) ?? null;
+  const previous =
+    record.rows.find((row) => row.fingerprint === next.fingerprint) ?? null;
   // Re-sending the SAME attempt keeps the clock it started on, so "you placed
   // this at 08:10" stays true across every retry of it.
   const startedAt =
@@ -1378,13 +1604,18 @@ export async function planPurchase(
 ): Promise<PurchasePlan> {
   const fingerprint = purchaseFingerprint(intent);
   const record = await loadAttempts();
-  const prior = record.rows.find((row) => row.fingerprint === fingerprint) ?? null;
+  const prior =
+    record.rows.find((row) => row.fingerprint === fingerprint) ?? null;
   // A row keeps the stem it was written under; only a fingerprint with no
   // history at all starts under this account's.
   const stem = prior?.stem ?? stemFor(record.scope, fingerprint);
 
   if (prior?.transactionId) {
-    const snapshot = await lookUpAttempt(prior, intent.amount.currency, options.signal);
+    const snapshot = await lookUpAttempt(
+      prior,
+      intent.amount.currency,
+      options.signal,
+    );
 
     if (snapshot) {
       if (!isTerminalTransfer(snapshot.status)) {
@@ -1421,7 +1652,8 @@ export async function planPurchase(
       // Stamped once and never re-stamped: re-dating it on every tap would push
       // the confirmation window out ahead of the person tapping and turn a
       // delay into a wedge.
-      if (prior.missingSince === 0) await noteMissingTransaction(prior, Date.now());
+      if (prior.missingSince === 0)
+        await noteMissingTransaction(prior, Date.now());
       return resendPlan(prior);
     }
 
@@ -1503,7 +1735,9 @@ async function lookUpAttempt(
     } catch (error) {
       if (!isGoneForGood(error, row.startedAt)) throw error;
       if (read + 1 >= MISSING_READS) return null;
-      await sleep(MISSING_READ_GAPS_MS[Math.min(read, MISSING_READ_GAPS_MS.length - 1)]);
+      await sleep(
+        MISSING_READ_GAPS_MS[Math.min(read, MISSING_READ_GAPS_MS.length - 1)],
+      );
     }
   }
 }
@@ -1537,7 +1771,10 @@ function isGoneForGood(error: unknown, startedAt: number): boolean {
  * this call started is a different question, and a stale finding against it
  * could retire a live attempt.
  */
-async function noteMissingTransaction(row: PurchaseAttempt, at: number): Promise<void> {
+async function noteMissingTransaction(
+  row: PurchaseAttempt,
+  at: number,
+): Promise<void> {
   const record = await readAttempts();
   // Unreadable: the finding is simply not kept, so the next call has to make it
   // again from scratch. That errs towards holding the key, which is the side to
@@ -1546,7 +1783,8 @@ async function noteMissingTransaction(row: PurchaseAttempt, at: number): Promise
   await saveAttempts(
     record.scope,
     record.rows.map((existing) =>
-      slotOf(existing) === slotOf(row) && existing.transactionId === row.transactionId
+      slotOf(existing) === slotOf(row) &&
+      existing.transactionId === row.transactionId
         ? { ...existing, missingSince: at }
         : existing,
     ),
@@ -1562,7 +1800,11 @@ async function noteMissingTransaction(row: PurchaseAttempt, at: number): Promise
  */
 async function resendPlan(row: PurchaseAttempt): Promise<PurchasePlan> {
   const slot = slotOf(row);
-  return { action: "send", slot, idempotencyKey: await reserveIdempotencyKey(slot, "vas") };
+  return {
+    action: "send",
+    slot,
+    idempotencyKey: await reserveIdempotencyKey(slot, "vas"),
+  };
 }
 
 async function sendPlan(
@@ -1582,7 +1824,11 @@ async function sendPlan(
     startedAt: Date.now(),
     missingSince: 0,
   });
-  return { action: "send", slot, idempotencyKey: await reserveIdempotencyKey(slot, "vas") };
+  return {
+    action: "send",
+    slot,
+    idempotencyKey: await reserveIdempotencyKey(slot, "vas"),
+  };
 }
 
 /**
@@ -1615,7 +1861,8 @@ export async function notePurchaseAccepted(
             // transaction the read side denies is the case that eventually has
             // to free this fingerprint, and it still takes a second corroborated
             // finding, a minute later, before any key is released.
-            missingSince: row.transactionId === transactionId ? row.missingSince : 0,
+            missingSince:
+              row.transactionId === transactionId ? row.missingSince : 0,
           }
         : row,
     ),
@@ -1705,10 +1952,14 @@ export async function purchase(
 ): Promise<VasTransaction> {
   const key = options.idempotencyKey;
   if (typeof key !== "string" || key.length < 8 || key.length > 128) {
-    throw new PurchaseInputError("An idempotency key of 8–128 characters is required.");
+    throw new PurchaseInputError(
+      "An idempotency key of 8–128 characters is required.",
+    );
   }
   if (!isPayableAmount(intent.amount)) {
-    throw new PurchaseInputError("Amount must be a positive integer in minor units.");
+    throw new PurchaseInputError(
+      "Amount must be a positive integer in minor units.",
+    );
   }
   if (!intent.serviceProviderId || !intent.destinationIdentifier) {
     throw new PurchaseInputError("Provider and destination are both required.");
@@ -1724,7 +1975,9 @@ export async function purchase(
       amountMinor: intent.amount.amountMinor,
       currency: normalizeCurrency(intent.amount.currency),
     },
-    ...(intent.serviceProductCode ? { serviceProductCode: intent.serviceProductCode } : {}),
+    ...(intent.serviceProductCode
+      ? { serviceProductCode: intent.serviceProductCode }
+      : {}),
     ...(intent.narration ? { narration: intent.narration } : {}),
   };
 
@@ -1759,7 +2012,8 @@ export interface PollOptions {
   timeoutMs?: number;
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Follow a purchase from REQUESTED to a terminal state.
@@ -1848,25 +2102,43 @@ export async function pollTransaction(
 /* -------------------------------------------------------------- narration */
 
 /** One line of plain English per state, for the tracking card. */
-export function describeStatus(status: TransferStatus): { title: string; detail: string } {
+export function describeStatus(status: TransferStatus): {
+  title: string;
+  detail: string;
+} {
   switch (status) {
     case "REQUESTED":
       return { title: "Placed", detail: "Sent to the provider." };
     case "SUBMITTED":
-      return { title: "With the provider", detail: "Waiting for them to accept it." };
+      return {
+        title: "With the provider",
+        detail: "Waiting for them to accept it.",
+      };
     case "PROCESSING":
-      return { title: "Delivering", detail: "The provider is fulfilling it now." };
+      return {
+        title: "Delivering",
+        detail: "The provider is fulfilling it now.",
+      };
     case "SETTLED":
     case "DELIVERED":
       return { title: "Delivered", detail: "The provider confirmed it." };
     case "FAILED":
-      return { title: "Not delivered", detail: "The provider could not fulfil it." };
+      return {
+        title: "Not delivered",
+        detail: "The provider could not fulfil it.",
+      };
     case "REVERSED":
-      return { title: "Reversed", detail: "The debit was returned to your balance." };
+      return {
+        title: "Reversed",
+        detail: "The debit was returned to your balance.",
+      };
     default:
       // A status this build has never heard of. Say so rather than guessing at
       // success and letting someone walk away from a bill they still owe.
-      return { title: "In progress", detail: "Awaiting a status we recognise." };
+      return {
+        title: "In progress",
+        detail: "Awaiting a status we recognise.",
+      };
   }
 }
 

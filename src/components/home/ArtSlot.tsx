@@ -61,21 +61,19 @@ export function ArtSlot({
 function GlassObject({ size, tint }: { size: number; tint: string }) {
   return (
     <View
+      className="items-center justify-center"
       style={{
         width: "100%",
         height: "100%",
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
       <View
+        className="absolute opacity-[0.13]"
         style={{
-          position: "absolute",
           width: size * 0.86,
           height: size * 0.86,
           borderRadius: size,
           backgroundColor: tint,
-          opacity: 0.13,
         }}
       />
       <LinearGradient
@@ -93,20 +91,19 @@ function GlassObject({ size, tint }: { size: number; tint: string }) {
         }}
       >
         <View
+          className="absolute opacity-[0.55]"
           style={{
-            position: "absolute",
             top: size * 0.1,
             left: size * 0.12,
             width: size * 0.38,
             height: size * 0.2,
             borderRadius: size * 0.2,
             backgroundColor: tint,
-            opacity: 0.55,
           }}
         />
         <View
+          className="absolute"
           style={{
-            position: "absolute",
             bottom: size * 0.08,
             right: size * 0.1,
             width: size * 0.18,

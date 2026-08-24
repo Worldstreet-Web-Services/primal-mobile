@@ -2,13 +2,13 @@ import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
 
-import { PageHeader } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
+import { NavHeader } from "@/components/home";
 import FundingOptions from "@/components/shared/funding-options";
 import CopyTradingScreen from "@/screens/CopyTradingScreen";
-import { C } from "@/theme/tokens";
 
 export default function CopyTrading() {
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [funding, setFunding] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -27,10 +27,11 @@ export default function CopyTrading() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <PageHeader title="Copy Trading" onBack={() => router.back()} />
+    <View className="flex-1 bg-canvas">
+      {/* <PageHeader title="Copy Trading" onBack={() => router.back()} /> */}
 
       <CopyTradingScreen
+        top={headerHeight}
         refreshing={refreshing}
         onRefresh={refresh}
         onDeposit={() => setFunding(true)}
@@ -52,6 +53,15 @@ export default function CopyTrading() {
           replaces the option list rather than stacking a second modal on top of
           it, so its back arrow returns to the list and only × or a drag ends
           the flow. */}
+
+      <NavHeader
+        wordmark="COPY TRADING"
+        tagline="POWERED BY ARK"
+        direction="column"
+        unread
+        onBack={() => router.back()}
+        onHeightChange={setHeaderHeight}
+      />
       <Sheet
         visible={funding}
         onClose={() => setFunding(false)}

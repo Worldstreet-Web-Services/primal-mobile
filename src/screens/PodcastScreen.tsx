@@ -8,6 +8,7 @@ import { CategoryTabs, SectionHeader } from "@/components/news";
 import {
   AuthorRail,
   EpisodeGrid,
+  useMiniPlayerClearance,
   type Author,
   type Episode,
 } from "@/components/podcast";
@@ -18,7 +19,7 @@ import {
   nowPlaying as defaultNowPlaying,
   podcastTabs,
 } from "@/data/podcast";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
 
 /** Page gutter. Every rail escapes it, so it has to be shared. */
 const GUTTER = 18;
@@ -58,32 +59,25 @@ export default function PodcastScreen({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState(0);
+  // Room for the docked player, and none when nothing is playing.
+  const clearance = useMiniPlayerClearance();
 
   // Two tiles and a peek of the third, so the rail reads as scrollable.
   const tileSize = Math.round((width - GUTTER * 2 - 12) / 2.35);
   const cardWidth = width - GUTTER * 2;
 
   return (
-    <Screen pad={GUTTER} top={insets.top + 20} bottom={insets.bottom + 40}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Display
-            size={34}
-            style={{ fontFamily: F.displayBold, letterSpacing: -0.4 }}
-          >
+    <Screen
+      pad={GUTTER}
+      top={insets.top + 20}
+      bottom={insets.bottom + clearance + 40}
+    >
+      <View className="flex-row items-start gap-[12px]">
+        <View className="flex-1">
+          <Display className="text-[34px] leading-[35.7px] font-display-bold tracking-[-0.4px]">
             {heading.toUpperCase()}
           </Display>
-          <Body
-            size={16}
-            color={C.sub}
-            style={{ marginTop: 2, fontFamily: F.display }}
-          >
+          <Body className="text-[16px] text-sub mt-[2px] font-display">
             {subheading}
           </Body>
         </View>
@@ -106,7 +100,7 @@ export default function PodcastScreen({
         </CircleAction>
       </View>
 
-      <View style={{ marginTop: 26 }}>
+      <View className="mt-[26px]">
         <MediaCard
           item={featured}
           width={cardWidth}
@@ -117,7 +111,7 @@ export default function PodcastScreen({
 
       <SectionHeader title="Listen To Podcast" style={{ marginTop: 34 }} />
 
-      <View style={{ marginTop: 6 }}>
+      <View className="mt-[6px]">
         <CategoryTabs
           categories={tabs}
           active={tab}
@@ -126,7 +120,7 @@ export default function PodcastScreen({
         />
       </View>
 
-      <View style={{ marginTop: 16 }}>
+      <View className="mt-[16px]">
         <EpisodeGrid
           episodes={episodes}
           size={tileSize}
@@ -137,7 +131,7 @@ export default function PodcastScreen({
 
       <SectionHeader title="Top Authors" style={{ marginTop: 32 }} />
 
-      <View style={{ marginTop: 16 }}>
+      <View className="mt-[16px]">
         <AuthorRail authors={authors} bleed={GUTTER} onOpen={onOpenAuthor} />
       </View>
     </Screen>

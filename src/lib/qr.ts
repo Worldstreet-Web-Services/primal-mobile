@@ -139,7 +139,10 @@ function utf8(text: string): number[] {
 function pickVersion(byteLength: number): number {
   for (let v = 1; v <= 10; v++) {
     const spec = SPECS[v];
-    const dataCw = spec.groups.reduce((n, [blocks, per]) => n + blocks * per, 0);
+    const dataCw = spec.groups.reduce(
+      (n, [blocks, per]) => n + blocks * per,
+      0,
+    );
     const headerBits = 4 + (v >= 10 ? 16 : 8);
     if (dataCw * 8 - headerBits >= byteLength * 8) return v;
   }

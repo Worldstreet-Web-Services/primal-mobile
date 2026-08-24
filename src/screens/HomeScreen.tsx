@@ -7,15 +7,13 @@ import {
   GreetingBlock,
   PortfolioCard,
   SectionTitle,
-  TAB_BAR_CLEARANCE,
-  TabBar,
   type ActivityItem,
   type FeatureTileItem,
   type PortfolioDelta,
   type PortfolioView,
 } from "@/components/home";
+import { useMiniPlayerClearance } from "@/components/podcast";
 import { Screen } from "@/components/ui";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 /** Page gutter. The media rail escapes it, so it has to be shared. */
 const GUTTER = 14;
@@ -80,8 +78,10 @@ export default function HomeScreen({
   onDeposit,
   onTransfer,
 }: HomeScreenProps) {
+  const clearance = useMiniPlayerClearance();
+
   return (
-    <SafeAreaView className="flex-1">
+    <View className="flex-1 bg-canvas">
       <GreetingBlock
         greeting={greeting}
         name={name}
@@ -91,7 +91,8 @@ export default function HomeScreen({
         onProfilePress={onOpenProfile}
       />
 
-      <Screen pad={GUTTER} top={top} bottom={TAB_BAR_CLEARANCE + 24}>
+      {/* Bottom padding clears the docked podcast bar when one is up. */}
+      <Screen bottom={40 + clearance}>
         <PortfolioCard
           view={portfolio}
           hidden={masked}
@@ -104,18 +105,18 @@ export default function HomeScreen({
 
         <SectionTitle style={{ marginTop: 30 }}>{sectionLabel}</SectionTitle>
 
-        <View style={{ marginTop: 14 }}>
+        <View className="mt-[14px]">
           <FeatureTileGrid items={features} onOpen={onOpenFeature} />
         </View>
 
         <SectionTitle style={{ marginTop: 32 }}>{activityLabel}</SectionTitle>
 
-        <View style={{ marginTop: 14 }}>
+        <View className="mt-[14px]">
           <ActivityCard items={activity} />
         </View>
       </Screen>
 
-      <TabBar active={tab} onSelect={onSelectTab} />
-    </SafeAreaView>
+      {/* <TabBar active={tab} onSelect={onSelectTab} /> */}
+    </View>
   );
 }

@@ -1,8 +1,6 @@
 import { Image, type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
-import { F } from "../../theme/tokens";
-
 /**
  * Round asset/network mark. Renders the supplied logo when there is one and a
  * colored disc carrying the symbol's initial when there isn't — so a token can
@@ -32,18 +30,17 @@ export function TokenBadge({
 
   return (
     <View
+      className="items-center justify-center"
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
         backgroundColor: color,
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
       <Text
+        className="font-mono-semibold"
         style={{
-          fontFamily: F.monoSemibold,
           fontSize: size * 0.44,
           color: "#FFFFFF",
         }}

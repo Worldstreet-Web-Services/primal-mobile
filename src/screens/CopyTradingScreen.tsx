@@ -36,7 +36,6 @@ const GUTTER = 16;
  * of slack), the page scrolls the difference rather than swallowing the card —
  * see the root view below for what makes that possible.
  */
-const MIN_LIST_ROWS = 2;
 
 export interface CopyTradingScreenProps {
   /** The trading wallet. Preformatted — the UI never does the math. */
@@ -59,6 +58,7 @@ export interface CopyTradingScreenProps {
       a round trip through the profile. */
   onCopy?: (id: string) => void;
   onOpenPositions?: () => void;
+  top?: number;
 }
 
 /** Section heading, with the optional way out to the full list. */
@@ -73,9 +73,7 @@ function SectionHeader({
 }) {
   return (
     <View className="mb-3.5 mt-7 flex-row items-center justify-between">
-      <Body semibold size={17}>
-        {title}
-      </Body>
+      <Body className="text-[17px] font-body-semibold">{title}</Body>
       {/* Drawn as a plain label until something is behind it — a chevron that
           answers a tap with nothing is worse than no chevron. */}
       {action ? (
@@ -87,9 +85,7 @@ function SectionHeader({
           accessibilityLabel={onPress ? `${action} ${title}` : undefined}
           className="flex-row items-center gap-1"
         >
-          <Body size={13.5} color={C.sub}>
-            {action}
-          </Body>
+          <Body className="text-[13.5px] text-sub">{action}</Body>
           <ChevronRightIcon size={14} color={C.sub} />
         </Pressable>
       ) : null}
@@ -131,6 +127,7 @@ export default function CopyTradingScreen({
   onOpenTrader,
   onCopy,
   onOpenPositions,
+  top = 0,
 }: CopyTradingScreenProps) {
   const copyingLine =
     copyingCount > 0
@@ -149,7 +146,7 @@ export default function CopyTradingScreen({
     // and that bounce is the pull.
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ flexGrow: 1 }}
+      contentContainerStyle={{ flexGrow: 1, marginTop: top }}
       showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
@@ -183,19 +180,17 @@ export default function CopyTradingScreen({
           paddingBottom: insets.bottom + 16,
         }}
       >
-        <Body size={13.5} color={C.dim} style={{ textAlign: "center" }}>
+        {/* <Body className="text-[13.5px] text-dim text-center">
           Copy top traders. Grow together.
-        </Body>
+        </Body> */}
 
         <View className="mt-5 flex-row items-center gap-3 rounded-3xl border border-white/10 bg-canvas-raised p-4">
           <Glyph>
             <WalletIcon size={22} color={C.silver} />
           </Glyph>
           <View className="flex-1">
-            <Body size={13} color={C.dim}>
-              {portfolio.label}
-            </Body>
-            <Display size={24} style={{ marginTop: 2 }}>
+            <Body className="text-[13px] text-dim">{portfolio.label}</Body>
+            <Display className="text-[24px] leading-[25.2px] mt-[2px]">
               {portfolio.amount}
             </Display>
           </View>
@@ -216,10 +211,10 @@ export default function CopyTradingScreen({
               <UsersIcon size={21} color={C.silver} />
             </Glyph>
             <View className="flex-1">
-              <Body semibold size={15}>
+              <Body className="text-[15px] font-body-semibold">
                 Your Copy Positions
               </Body>
-              <Body size={12.5} color={C.dim} style={{ marginTop: 2 }}>
+              <Body className="text-[12.5px] text-dim mt-[2px]">
                 {copyingLine}
               </Body>
             </View>

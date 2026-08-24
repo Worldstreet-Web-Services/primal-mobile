@@ -1,7 +1,7 @@
 import { View } from "react-native";
 
 import type { FeaturedArticle } from "../../data/news";
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { ArtSlot } from "../home";
 import { Body, PressableScale } from "../ui";
 import { ArticleMeta } from "./ArticleMeta";
@@ -29,24 +29,23 @@ export function FeaturedStory({
   return (
     <PressableScale scale={0.99} onPress={() => onPress?.(article.key)}>
       <Body
-        size={14.5}
-        style={{ fontFamily: F.bodySemibold, lineHeight: 21 }}
+        className="text-[14.5px] font-body-semibold leading-[21px]"
+
         numberOfLines={3}
       >
         {article.title}
       </Body>
 
-      <View style={{ marginTop: 10 }}>
+      <View className="mt-[10px]">
         <ArticleMeta channel={article.channel} age={article.age} />
       </View>
 
-      <View style={{ flexDirection: "row", gap: GAP, marginTop: 12 }}>
+      <View className="flex-row mt-[12px]" style={{ gap: GAP }}>
         <View
+          className="flex-1 overflow-hidden"
           style={{
-            flex: 1,
             height: GALLERY_H,
             borderRadius: RADIUS,
-            overflow: "hidden",
             // Ground under the art, so an empty well still reads as a frame
             // rather than a placeholder floating on the canvas.
             backgroundColor: C.raised,
@@ -60,15 +59,13 @@ export function FeaturedStory({
           />
         </View>
 
-        <View style={{ flex: 1, gap: GAP }}>
+        <View className="flex-1" style={{ gap: GAP }}>
           {rest.slice(0, 2).map((image, i) => (
             <View
               key={i}
+              className="flex-1 overflow-hidden bg-canvas-raised"
               style={{
-                flex: 1,
                 borderRadius: RADIUS,
-                overflow: "hidden",
-                backgroundColor: C.raised,
               }}
             >
               <ArtSlot

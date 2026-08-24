@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Body, Display, Keypad, PinDots } from "@/components/ui";
 import { setPinPrompt } from "@/lib/auth/decane";
 import * as storage from "@/lib/auth/storage";
-import { C } from "@/theme/tokens";
 
 /**
  * The PIN sheet the Decane SDK opens when it reaches the PIN unlock tier.
@@ -39,7 +38,8 @@ const PinPromptContext = createContext<PinPromptApi | null>(null);
 
 export function usePinPrompt(): PinPromptApi {
   const ctx = useContext(PinPromptContext);
-  if (!ctx) throw new Error("usePinPrompt must be used inside <PinPromptProvider>");
+  if (!ctx)
+    throw new Error("usePinPrompt must be used inside <PinPromptProvider>");
   return ctx;
 }
 
@@ -171,34 +171,24 @@ export function PinPromptProvider({ children }: { children: React.ReactNode }) {
           would leave that promise hanging forever. */}
       <Modal visible={visible} animationType="slide" transparent={false}>
         <View
+          className="flex-1 bg-canvas px-[24px]"
           style={{
-            flex: 1,
-            backgroundColor: C.canvas,
-            paddingHorizontal: 24,
             paddingTop: insets.top + 24,
             paddingBottom: Math.max(insets.bottom, 16) + 18,
           }}
         >
-          <Display size={26}>{title}</Display>
-          <Body
-            size={13.5}
-            color={C.sub}
-            style={{ marginTop: 10, lineHeight: 21 }}
-          >
+          <Display className="text-[26px] leading-[27.3px]">{title}</Display>
+          <Body className="text-[13.5px] text-sub mt-[10px] leading-[21px]">
             {subtitle}
           </Body>
 
-          <View style={{ marginTop: 40 }}>
+          <View className="mt-[40px]">
             <PinDots filled={pin.length} shake={shake} />
           </View>
 
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
+          <View className="flex-1 items-center justify-center">
             {error ? (
-              <Body size={12.5} color={C.down}>
-                {error}
-              </Body>
+              <Body className="text-[12.5px] text-down">{error}</Body>
             ) : null}
           </View>
 

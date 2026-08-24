@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 import type { Feature } from "./FeatureCard";
@@ -27,26 +27,9 @@ export interface FeatureTileItem extends Feature {
 /** Corner marker for anything that is not `live`. Absent on live tiles. */
 function StatusChip({ status }: { status: Exclude<FeatureStatus, "live"> }) {
   return (
-    <View
-      style={{
-        position: "absolute",
-        top: 7,
-        right: 7,
-        paddingHorizontal: 6,
-        paddingVertical: 2.5,
-        borderRadius: 6,
-        backgroundColor: C.inset,
-      }}
-    >
+    <View className="absolute top-[7px] right-[7px] px-[6px] py-[2.5px] rounded-[6px] bg-canvas-inset">
       {/* 9pt is the floor `dim` was re-derived against — 4.67:1 on `inset`. */}
-      <Text
-        style={{
-          fontFamily: F.mono,
-          fontSize: 9,
-          letterSpacing: 1.1,
-          color: C.dim,
-        }}
-      >
+      <Text className="font-mono text-[9px] tracking-[1.1px] text-dim">
         {status === "preview" ? "PREVIEW" : "SOON"}
       </Text>
     </View>
@@ -73,20 +56,12 @@ export function FeatureTile({
 
   const body = (
     <View
+      className="rounded-[18px] bg-canvas-raised border border-rule items-center justify-center px-[8px] gap-[10px] overflow-hidden"
       style={{
         // Slightly wider than tall, per the reference. A square tile at three
         // columns leaves a hole between the artwork and the label; this crops
         // that hole out without shrinking either.
         aspectRatio: 1.16,
-        borderRadius: 18,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 8,
-        gap: 10,
-        overflow: "hidden",
         // A doorway that does not open reads as recessed rather than as broken.
         opacity: dead ? 0.55 : 1,
       }}
@@ -96,27 +71,18 @@ export function FeatureTile({
           flat panel they read as stickers; the well is the light they stand
           in, and it is what makes six of them read as one set. */}
       <View
+        className="bg-canvas-inset items-center justify-center"
         style={{
           width: artSize + 16,
           height: artSize + 16,
           borderRadius: (artSize + 16) / 2,
-          backgroundColor: C.inset,
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         <ArtSlot source={item.artwork} size={artSize} tint={C.green} />
       </View>
       <Text
         numberOfLines={2}
-        style={{
-          fontFamily: F.bodySemibold,
-          fontSize: 13,
-          lineHeight: 16,
-          letterSpacing: 0.1,
-          color: C.text,
-          textAlign: "center",
-        }}
+        className="font-body-semibold text-[13px] leading-[16px] tracking-[0.1px] text-text text-center"
       >
         {item.title}
       </Text>
@@ -177,9 +143,8 @@ export function FeatureTileGrid({
 
   return (
     <View
+      className="flex-row flex-wrap"
       style={{
-        flexDirection: "row",
-        flexWrap: "wrap",
         marginHorizontal: -half,
         marginVertical: -half,
       }}

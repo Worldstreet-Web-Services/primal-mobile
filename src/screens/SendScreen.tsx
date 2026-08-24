@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, Pressable, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -34,7 +40,8 @@ import {
   type Bank,
   type Money,
 } from "../lib/gateway/types";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * Design 4d, rewired: a naira payout to a Nigerian bank account.
@@ -93,13 +100,22 @@ function overBalance(amount: Money | null, balance: Money | null): boolean {
 }
 
 function monogram(name: string): string {
-  const words = name.replace(/[^A-Za-z ]/g, "").trim().split(/\s+/);
+  const words = name
+    .replace(/[^A-Za-z ]/g, "")
+    .trim()
+    .split(/\s+/);
   if (words.length === 0 || words[0] === "") return "??";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return `${words[0][0]}${words[1][0]}`.toUpperCase();
 }
 
-function Check({ size = 13, color = C.brandSoft }: { size?: number; color?: string }) {
+function Check({
+  size = 13,
+  color = C.brandSoft,
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -130,15 +146,28 @@ function Forward({ color = C.dim }: { color?: string }) {
 }
 
 /** Header with a tracked subline — the register's provenance, one line, dim. */
-function Head({ title, sub, onBack }: { title: string; sub: string; onBack?: () => void }) {
+function Head({
+  title,
+  sub,
+  onBack,
+}: {
+  title: string;
+  sub: string;
+  onBack?: () => void;
+}) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 10 }}>
-      <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
+    <View className="flex-row items-center gap-[12px] pt-[10px]">
+      <Pressable
+        onPress={onBack}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
         <BackChevron />
       </Pressable>
-      <View style={{ flex: 1 }}>
-        <Display size={20}>{title}</Display>
-        <Mono size={9.5} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.4 }}>
+      <View className="flex-1">
+        <Display className="text-[20px] leading-[21px]">{title}</Display>
+        <Mono className="text-[9.5px] text-dim mt-[3px] tracking-[1.4px]">
           {sub}
         </Mono>
       </View>
@@ -159,13 +188,10 @@ function Panel({
 }) {
   return (
     <View
+      className="bg-canvas-raised border rounded-[20px] overflow-hidden"
       style={[
         {
-          backgroundColor: C.raised,
-          borderWidth: 1,
           borderColor: accent ? "rgba(131,190,96,0.32)" : C.hairline,
-          borderRadius: 20,
-          overflow: "hidden",
         },
         style,
       ]}
@@ -179,24 +205,20 @@ function Panel({
 function Tile({ text, accent }: { text: string; accent?: boolean }) {
   return (
     <View
+      className={cn(
+        "w-[42px] h-[42px] border items-center justify-center",
+        accent ? "bg-brand-glow" : "bg-canvas-inset",
+      )}
       style={{
-        width: 42,
-        height: 42,
         borderRadius: accent ? 21 : 14,
-        backgroundColor: accent ? C.brandGlow : C.inset,
-        borderWidth: 1,
         borderColor: accent ? "rgba(131,190,96,0.28)" : C.hairline,
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
       <Text
-        style={{
-          fontFamily: F.monoSemibold,
-          fontSize: 12.5,
-          letterSpacing: 0.8,
-          color: accent ? C.brandSoft : C.silver,
-        }}
+        className={cn(
+          "font-mono-semibold text-[12.5px] tracking-[0.8px]",
+          accent ? "text-brand-soft" : "text-silver",
+        )}
       >
         {text}
       </Text>
@@ -234,7 +256,7 @@ export default function SendScreen({
   // The one motion moment: the figure settles onto its new value instead of
   // snapping to it. Entry, backspace and the first render all use the same
   // spring, so the panel reads like a mechanism rather than a text field.
-  const settle = useRef(new Animated.Value(0)).current;
+  const settle = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     settle.setValue(0);
     Animated.spring(settle, {
@@ -265,7 +287,9 @@ export default function SendScreen({
         if (SessionExpiredError.is(err)) {
           // The app state moves elsewhere, but this screen must not sit on a
           // skeleton forever waiting for a list that is never coming.
-          setBanksError("Your KashPlus session ended. Sign in again to continue.");
+          setBanksError(
+            "Your KashPlus session ended. Sign in again to continue.",
+          );
           setBanksLoading(false);
           return;
         }
@@ -326,7 +350,9 @@ export default function SendScreen({
       setStep("review");
     } catch (err) {
       if (SessionExpiredError.is(err)) {
-        setResolveError("Your KashPlus session ended. Sign in again to continue.");
+        setResolveError(
+          "Your KashPlus session ended. Sign in again to continue.",
+        );
         return;
       }
       if (isEntitlementError(err)) {
@@ -366,18 +392,9 @@ export default function SendScreen({
       <Screen keyboardShouldPersistTaps="handled">
         <Head title="Send" sub="NAIRA · BANK PAYOUT" onBack={onBack} />
 
-        <View style={{ marginTop: 22 }}>
+        <View className="mt-[22px]">
           <Label>Destination bank</Label>
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: C.raised,
-              borderWidth: 1,
-              borderColor: C.hairline,
-              borderRadius: 14,
-              paddingHorizontal: 14,
-            }}
-          >
+          <View className="mt-[12px] bg-canvas-raised border border-rule rounded-[14px] px-[14px]">
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -385,7 +402,7 @@ export default function SendScreen({
               placeholderTextColor={C.dim}
               autoCapitalize="none"
               autoCorrect={false}
-              style={{ height: 48, color: C.text, fontFamily: F.body, fontSize: 14.5 }}
+              className="h-[48px] text-text font-body text-[14.5px]"
             />
           </View>
         </View>
@@ -395,18 +412,13 @@ export default function SendScreen({
             {[0, 1, 2, 3].map((i) => (
               <View
                 key={i}
+                className="flex-row items-center gap-[14px] py-[15px] px-[16px] border-b-rule"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  paddingVertical: 15,
-                  paddingHorizontal: 16,
                   borderBottomWidth: i === 3 ? 0 : 1,
-                  borderBottomColor: C.hairline,
                 }}
               >
                 <Pulse width={42} height={42} radius={14} />
-                <View style={{ flex: 1, gap: 7 }}>
+                <View className="flex-1 gap-[7px]">
                   <Pulse width="55%" height={11} />
                   <Pulse width="30%" height={9} />
                 </View>
@@ -414,21 +426,25 @@ export default function SendScreen({
             ))}
           </Panel>
         ) : banksError ? (
-          <View style={{ marginTop: 22 }}>
-            <Body size={12.5} color={C.down} style={{ lineHeight: 18 }}>
+          <View className="mt-[22px]">
+            <Body className="text-[12.5px] text-down leading-[18px]">
               {banksError}
             </Body>
-            <View style={{ marginTop: 16 }}>
+            <View className="mt-[16px]">
               <GhostButton label="Try again" onPress={() => loadBanks()} />
             </View>
           </View>
         ) : filtered.length === 0 ? (
-          <View style={{ marginTop: 30, alignItems: "center" }}>
-            <Display size={15} color={C.sub} style={{ textAlign: "center" }}>
-              {banks.length === 0 ? "No banks came back." : `No bank matches "${query.trim()}".`}
+          <View className="mt-[30px] items-center">
+            <Display className="text-[15px] leading-[15.75px] text-sub text-center">
+              {banks.length === 0
+                ? "No banks came back."
+                : `No bank matches "${query.trim()}".`}
             </Display>
-            <Mono size={9} color={C.dim} style={{ marginTop: 10, letterSpacing: 1.6 }}>
-              {banks.length === 0 ? "TRY AGAIN IN A MOMENT" : "CHECK THE SPELLING"}
+            <Mono className="text-[9px] text-dim mt-[10px] tracking-[1.6px]">
+              {banks.length === 0
+                ? "TRY AGAIN IN A MOMENT"
+                : "CHECK THE SPELLING"}
             </Mono>
           </View>
         ) : (
@@ -446,22 +462,21 @@ export default function SendScreen({
                   }}
                 >
                   <View
+                    className="flex-row items-center gap-[14px] py-[14px] px-[16px] border-b-rule"
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 14,
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
                       borderBottomWidth: i === shown.length - 1 ? 0 : 1,
-                      borderBottomColor: C.hairline,
                     }}
                   >
                     <Tile text={monogram(b.name)} />
-                    <View style={{ flex: 1 }}>
-                      <Body size={14} semibold style={{ letterSpacing: 0.2 }} numberOfLines={1}>
+                    <View className="flex-1">
+                      <Body
+                        className="text-[14px] font-body-semibold tracking-[0.2px]"
+
+                        numberOfLines={1}
+                      >
                         {b.name}
                       </Body>
-                      <Mono size={11} color={C.dim} style={{ marginTop: 3 }}>
+                      <Mono className="text-[11px] text-dim mt-[3px]">
                         {b.country ?? "Nigeria"} · NUBAN
                       </Mono>
                     </View>
@@ -471,12 +486,9 @@ export default function SendScreen({
               ))}
             </Panel>
             {filtered.length > MAX_BANK_ROWS ? (
-              <Mono
-                size={9}
-                color={C.dim}
-                style={{ marginTop: 12, letterSpacing: 1.4, textAlign: "center" }}
-              >
-                {filtered.length - MAX_BANK_ROWS} MORE · KEEP TYPING TO NARROW IT DOWN
+              <Mono className="text-[9px] text-dim mt-[12px] tracking-[1.4px] text-center">
+                {filtered.length - MAX_BANK_ROWS} MORE · KEEP TYPING TO NARROW
+                IT DOWN
               </Mono>
             ) : null}
           </>
@@ -490,63 +502,72 @@ export default function SendScreen({
   if (step === "account") {
     const complete = nuban.length === NUBAN_LENGTH;
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
-          <Head title="Send" sub="TO A BANK ACCOUNT" onBack={() => setStep("bank")} />
+      <View className="flex-1 bg-canvas">
+        <View className="px-[22px]">
+          <Head
+            title="Send"
+            sub="TO A BANK ACCOUNT"
+            onBack={() => setStep("bank")}
+          />
         </View>
 
-        <View style={{ paddingHorizontal: 20, marginTop: 18 }}>
+        <View className="px-[20px] mt-[18px]">
           <Panel>
             <Pressable
               onPress={() => setStep("bank")}
               accessibilityRole="button"
               accessibilityLabel="Change bank"
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: C.hairline,
-              }}
+              className="flex-row items-center gap-[14px] py-[14px] px-[16px] border-b border-b-rule"
             >
               <Tile text={monogram(bank?.name ?? "")} />
-              <View style={{ flex: 1 }}>
-                <Body size={14} semibold numberOfLines={1}>
+              <View className="flex-1">
+                <Body
+                  className="text-[14px] font-body-semibold"
+                  numberOfLines={1}
+                >
                   {bank?.name ?? "Pick a bank"}
                 </Body>
-                <Mono size={11} color={C.dim} style={{ marginTop: 3 }}>
+                <Mono className="text-[11px] text-dim mt-[3px]">
                   {bank?.country ?? "Nigeria"} · NUBAN
                 </Mono>
               </View>
-              <Mono size={9} color={C.sub} style={{ letterSpacing: 1.4 }}>
+              <Mono className="text-[9px] text-sub tracking-[1.4px]">
                 CHANGE
               </Mono>
             </Pressable>
-            <View style={{ paddingVertical: 16, paddingHorizontal: 16 }}>
-              <Label style={{ letterSpacing: 1.6 }}>Account number</Label>
+            <View className="py-[16px] px-[16px]">
+              <Label className="tracking-[1.6px]">Account number</Label>
               <Text
-                style={{
-                  fontFamily: F.monoSemibold,
-                  fontSize: 20,
-                  letterSpacing: 3,
-                  color: nuban ? C.text : C.dim,
-                  marginTop: 10,
-                }}
+                className={cn(
+                  "font-mono-semibold text-[20px] tracking-[3px] mt-[10px]",
+                  nuban ? "text-text" : "text-dim",
+                )}
               >
                 {groupNuban(nuban) || "0000 000 000"}
               </Text>
-              <Mono size={10.5} color={resolveError ? C.down : C.dim} style={{ marginTop: 8 }}>
-                {resolveError ?? "10-digit NUBAN · the rail runs the name enquiry"}
+              <Mono
+                size={10.5}
+
+                className={cn(
+                  "mt-[8px]",
+                  resolveError ? "text-down" : "text-dim",
+                )}
+              >
+                {resolveError ??
+                  "10-digit NUBAN · the rail runs the name enquiry"}
               </Mono>
             </View>
           </Panel>
         </View>
 
-        <View style={{ marginTop: "auto", paddingHorizontal: 22, paddingBottom: 36 }}>
+        <View
+          className="px-[22px] pb-[36px]"
+          style={{
+            marginTop: "auto",
+          }}
+        >
           <Keypad onKey={handleNuban} />
-          <View style={{ marginTop: 18 }}>
+          <View className="mt-[18px]">
             <MetallicButton
               label="Check the name"
               loading={resolving}
@@ -573,67 +594,46 @@ export default function SendScreen({
           }}
         />
 
-        <Label style={{ color: C.brandSoft, marginTop: 26 }}>Name enquiry</Label>
+        <Label className="text-brand-soft mt-[26px]">Name enquiry</Label>
         <Panel accent style={{ marginTop: 12 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-              paddingVertical: 16,
-              paddingHorizontal: 16,
-            }}
-          >
+          <View className="flex-row items-center gap-[14px] py-[16px] px-[16px]">
             <View
+              className="w-[42px] h-[42px] rounded-[21px] bg-brand-glow border items-center justify-center"
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
-                backgroundColor: C.brandGlow,
-                borderWidth: 1,
                 borderColor: "rgba(131,190,96,0.34)",
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
               <Check size={17} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Body size={15} semibold style={{ letterSpacing: 0.3 }}>
+            <View className="flex-1">
+              <Body className="text-[15px] font-body-semibold tracking-[0.3px]">
                 {accountName}
               </Body>
-              <Mono size={11} color={C.sub} style={{ marginTop: 3, letterSpacing: 0.4 }}>
+              <Mono className="text-[11px] text-sub mt-[3px] tracking-[0.4px]">
                 {bank?.name} · {groupNuban(nuban)}
               </Mono>
             </View>
           </View>
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: C.hairline,
-              paddingVertical: 11,
-              paddingHorizontal: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <View className="border-t border-t-rule py-[11px] px-[16px] flex-row items-center gap-[6px]">
             <Check size={11} />
-            <Mono size={9} color={C.brandSoft} style={{ letterSpacing: 1.4 }}>
+            <Mono className="text-[9px] text-brand-soft tracking-[1.4px]">
               RETURNED BY {(bank?.name ?? "THE BANK").toUpperCase()}
             </Mono>
           </View>
         </Panel>
 
-        <Body size={12.5} color={C.sub} style={{ marginTop: 16, lineHeight: 19 }}>
-          This is the name the bank holds against that number. A bank transfer cannot be recalled
-          once it is sent, so read it before you go on.
+        <Body className="text-[12.5px] text-sub mt-[16px] leading-[19px]">
+          This is the name the bank holds against that number. A bank transfer
+          cannot be recalled once it is sent, so read it before you go on.
         </Body>
 
         <SectionRule space={22} />
 
-        <MetallicButton label="Yes — that's them" onPress={() => setStep("amount")} />
-        <View style={{ marginTop: 12 }}>
+        <MetallicButton
+          label="Yes — that's them"
+          onPress={() => setStep("amount")}
+        />
+        <View className="mt-[12px]">
           <GhostButton
             label="No — change the number"
             onPress={() => {
@@ -674,9 +674,13 @@ export default function SendScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <View style={{ paddingHorizontal: 22 }}>
-        <Head title="Send" sub="TO A BANK ACCOUNT" onBack={() => setStep("review")} />
+    <View className="flex-1 bg-canvas">
+      <View className="px-[22px]">
+        <Head
+          title="Send"
+          sub="TO A BANK ACCOUNT"
+          onBack={() => setStep("review")}
+        />
       </View>
 
       <Panel
@@ -692,80 +696,86 @@ export default function SendScreen({
         }}
       >
         <Tile text={monogram(accountName ?? "")} accent />
-        <View style={{ flex: 1 }}>
-          <Body size={13.5} semibold style={{ letterSpacing: 0.2 }} numberOfLines={1}>
+        <View className="flex-1">
+          <Body
+            className="text-[13.5px] font-body-semibold tracking-[0.2px]"
+
+            numberOfLines={1}
+          >
             {accountName}
           </Body>
-          <Mono size={11} color={C.sub} style={{ marginTop: 3 }}>
+          <Mono className="text-[11px] text-sub mt-[3px]">
             {bank?.name} · {maskAccount(nuban)}
           </Mono>
         </View>
-        <Mono size={8.5} color={C.brandSoft} style={{ letterSpacing: 1.4 }}>
+        <Mono className="text-[8.5px] text-brand-soft tracking-[1.4px]">
           VERIFIED
         </Mono>
       </Panel>
 
       {/* The instrument: the figure, and what backs it. */}
-      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 20, paddingVertical: 20 }}>
+      <View className="flex-1 justify-center px-[20px] py-[20px]">
         <Panel style={{ paddingVertical: 24, paddingHorizontal: 20 }}>
-          <Label style={{ letterSpacing: 2, textAlign: "center" }}>You're sending</Label>
+          <Label className="tracking-[2px] text-center">You're sending</Label>
           <Animated.View
+            className="mt-[14px] items-center"
             style={{
-              marginTop: 14,
-              alignItems: "center",
               opacity: settle,
               transform: [{ translateY: lift }],
             }}
           >
             <Text
+              className="font-mono-semibold text-[40px] tracking-[-0.5px]"
               style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 40,
-                letterSpacing: -0.5,
                 color: overdrawn ? C.down : digits ? C.text : C.dim,
               }}
             >
-              <Text style={{ fontSize: 26, color: C.sub }}>₦</Text>
+              <Text className="text-[26px] text-sub">₦</Text>
               {fmt(digits || "0")}
             </Text>
           </Animated.View>
           <Mono
             size={11.5}
-            color={overdrawn ? C.down : C.dim}
-            style={{ marginTop: 8, textAlign: "center", letterSpacing: 0.4 }}
+
+            className={cn(
+              "mt-[8px] text-center tracking-[0.4px]",
+              overdrawn ? "text-down" : "text-dim",
+            )}
           >
-            {overdrawn ? "More than your available balance" : "Whole naira · kobo-true"}
+            {overdrawn
+              ? "More than your available balance"
+              : "Whole naira · kobo-true"}
           </Mono>
 
           <SectionRule space={18} />
 
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
+          <View className="flex-row justify-between">
+            <Mono className="text-[9px] text-dim tracking-[1.4px]">
               AVAILABLE
             </Mono>
             {available ? (
-              <Mono size={11.5} color={C.silver}>
+              <Mono className="text-[11.5px] text-silver">
                 {formatMoney(available)}
               </Mono>
             ) : (
               <Pulse width={90} height={11} />
             )}
           </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-            <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
-              FEE
-            </Mono>
-            <Mono size={11.5} color={C.sub}>
-              Priced at confirm
-            </Mono>
+          <View className="flex-row justify-between mt-[8px]">
+            <Mono className="text-[9px] text-dim tracking-[1.4px]">FEE</Mono>
+            <Mono className="text-[11.5px] text-sub">Priced at confirm</Mono>
           </View>
         </Panel>
       </View>
 
-      <View style={{ paddingHorizontal: 22, paddingBottom: 36 }}>
+      <View className="px-[22px] pb-[36px]">
         <Keypad onKey={handleAmount} />
-        <View style={{ marginTop: 18 }}>
-          <MetallicButton label="Continue" disabled={!canContinue} onPress={commit} />
+        <View className="mt-[18px]">
+          <MetallicButton
+            label="Continue"
+            disabled={!canContinue}
+            onPress={commit}
+          />
         </View>
       </View>
     </View>

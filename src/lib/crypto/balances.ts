@@ -79,7 +79,8 @@ async function evmNetworkRows(
   ]);
 
   const rows: RawRow[] = [];
-  if (native && nativeRaw > 0n) rows.push({ token: native, rawBalance: nativeRaw });
+  if (native && nativeRaw > 0n)
+    rows.push({ token: native, rawBalance: nativeRaw });
   tokenResults.forEach((r, i) => {
     // A failed item read is a transient RPC issue, not a zero balance — skip
     // the token this round rather than quietly understating money.
@@ -128,7 +129,9 @@ async function solanaRows(owner: string): Promise<RawRow[]> {
   const entries = TOKEN_CATALOG.filter((t) => t.network === "solana-mainnet");
   const native = entries.find((t) => t.address === null);
   const byMint = new Map(
-    entries.filter((t) => t.address !== null).map((t) => [t.address as string, t]),
+    entries
+      .filter((t) => t.address !== null)
+      .map((t) => [t.address as string, t]),
   );
 
   const [bal, accounts] = await Promise.all([
@@ -150,7 +153,8 @@ async function solanaRows(owner: string): Promise<RawRow[]> {
 
   const rows: RawRow[] = [];
   const lamports = BigInt(bal.value ?? 0);
-  if (native && lamports > 0n) rows.push({ token: native, rawBalance: lamports });
+  if (native && lamports > 0n)
+    rows.push({ token: native, rawBalance: lamports });
   // An owner can hold several token accounts on the SAME mint (verified live:
   // one wallet, two USDC accounts) — sum per mint or the list shows dupes.
   const perMint = new Map<string, bigint>();
@@ -244,7 +248,9 @@ export async function fetchHoldings(
 
 /** Whether a row needs its network spelled out ("· Base"): every token row,
  * and native coins living off their home chain. */
-export function needsNetworkSuffix(h: Pick<Holding, "symbol" | "network" | "address">): boolean {
+export function needsNetworkSuffix(
+  h: Pick<Holding, "symbol" | "network" | "address">,
+): boolean {
   return h.address !== null || NATIVE_HOME[h.symbol] !== h.network;
 }
 

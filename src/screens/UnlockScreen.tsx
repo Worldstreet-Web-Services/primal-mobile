@@ -58,23 +58,8 @@ export default function UnlockScreen({
     }
   };
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        paddingHorizontal: 22,
-        paddingTop: 20,
-        paddingBottom: 30,
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-        }}
-      >
+    <View className="flex-1 bg-canvas px-[22px] pt-[20px] pb-[30px]">
+      <View className="flex-1 items-center justify-center gap-[16px]">
         <View
           style={{
             shadowColor: C.brand,
@@ -86,14 +71,10 @@ export default function UnlockScreen({
         >
           <Logo height={104} />
         </View>
-        <Display size={36} style={{ letterSpacing: 0.5 }}>
+        <Display className="text-[36px] leading-[37.8px] tracking-[0.5px]">
           KashPlus
         </Display>
-        <Body
-          size={14}
-          color={C.sub}
-          style={{ textAlign: "center", lineHeight: 21 }}
-        >
+        <Body className="text-[14px] text-sub text-center leading-[21px]">
           One account. One balance.{"\n"}Every rail.
         </Body>
       </View>
@@ -108,23 +89,14 @@ export default function UnlockScreen({
           session is re-established — so the wait gets its own state rather
           than a frozen keypad that reads as a dropped tap. */}
       {checking ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 9,
-            marginTop: 20,
-          }}
-        >
+        <View className="flex-row items-center justify-center gap-[9px] mt-[20px]">
           <Spinner color={C.brandSoft} />
-          <Label style={{ textAlign: "center" }}>Unlocking…</Label>
+          <Label className="text-center">Unlocking…</Label>
         </View>
       ) : (
         <Label
+          className="text-center mt-[20px]"
           style={{
-            textAlign: "center",
-            marginTop: 20,
             color: error ? C.down : undefined,
           }}
         >
@@ -132,19 +104,15 @@ export default function UnlockScreen({
             (biometricsAvailable ? "Or enter your PIN" : "Enter your PIN")}
         </Label>
       )}
-      <View style={{ marginTop: 14 }}>
+      <View className="mt-[14px]">
         <PinDots filled={pin.length} shake={shake} />
       </View>
       {/* Dimmed, not unmounted: the keypad keeps its place so the screen does
           not jump, and `handleKey` already ignores presses while checking. */}
-      <View style={{ marginTop: 22, opacity: checking ? 0.35 : 1 }}>
+      <View className="mt-[22px]" style={{ opacity: checking ? 0.35 : 1 }}>
         <Keypad onKey={handleKey} />
       </View>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", lineHeight: 17, marginTop: 14 }}
-      >
+      <Body className="text-[11px] text-dim text-center leading-[17px] mt-[14px]">
         Signed in a secure enclave, unlocked by your passkey
       </Body>
     </View>

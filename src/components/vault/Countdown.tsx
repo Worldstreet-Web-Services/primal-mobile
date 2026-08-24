@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -60,8 +60,8 @@ export function Countdown({ deadlineMs }: { deadlineMs: number | null }) {
 
   // 0 calm, 1 urgent. Colour interpolation has to run on the JS driver, so
   // the breath below rides the same driver to stay composable with it.
-  const heat = useRef(new Animated.Value(0)).current;
-  const breath = useRef(new Animated.Value(0)).current;
+  const heat = useMemo(() => new Animated.Value(0), []);
+  const breath = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     Animated.timing(heat, {
@@ -110,21 +110,22 @@ export function Countdown({ deadlineMs }: { deadlineMs: number | null }) {
         : "START A GAME AND THE CLOCK IS YOURS";
 
   return (
-    <View style={{ alignItems: "center" }}>
-      <View style={{ alignItems: "center", justifyContent: "center" }}>
+    <View className="items-center">
+      <View className="items-center justify-center">
         {active ? (
           // Dark until the round is nearly over: the light only arrives with
           // the urgency, and then it swells and falls. A radial falloff, so
           // it reads as light in the case rather than a lit pill.
           <Animated.View
             pointerEvents="none"
+            className="absolute w-[280px] h-[130px]"
             style={{
-              position: "absolute",
-              width: 280,
-              height: 130,
               opacity: Animated.multiply(
                 heat,
-                breath.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+                breath.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.5, 1],
+                }),
               ),
               transform: [
                 {
@@ -138,13 +139,25 @@ export function Countdown({ deadlineMs }: { deadlineMs: number | null }) {
           >
             <Svg width="100%" height="100%">
               <Defs>
-                <RadialGradient id="clockHeat" cx="50%" cy="50%" rx="50%" ry="50%">
+                <RadialGradient
+                  id="clockHeat"
+                  cx="50%"
+                  cy="50%"
+                  rx="50%"
+                  ry="50%"
+                >
                   <Stop offset="0" stopColor={C.down} stopOpacity={0.3} />
                   <Stop offset="0.55" stopColor={C.down} stopOpacity={0.12} />
                   <Stop offset="1" stopColor={C.down} stopOpacity={0} />
                 </RadialGradient>
               </Defs>
-              <Rect x="0" y="0" width="100%" height="100%" fill="url(#clockHeat)" />
+              <Rect
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill="url(#clockHeat)"
+              />
             </Svg>
           </Animated.View>
         ) : null}

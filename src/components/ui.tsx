@@ -18,7 +18,8 @@ import {
   ViewStyle,
 } from "react-native";
 import Svg, { Path, Polyline } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { cn } from "../lib/cn";
+import { C, F, metalStops } from "../theme/tokens";
 import { KashPlusLoader } from "./KashPlusMark";
 
 export function Screen({
@@ -48,7 +49,7 @@ export function Screen({
 }) {
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.canvas }}
+      className="flex-1 bg-canvas"
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       contentContainerStyle={{
         paddingHorizontal: pad,
@@ -91,7 +92,7 @@ export function PressableScale({
   /** Set when the press target itself is the control, not something inside it. */
   accessibilityLabel?: string;
 }) {
-  const v = useRef(new Animated.Value(1)).current;
+  const v = useMemo(() => new Animated.Value(1), []);
   const to = (value: number) =>
     Animated.spring(v, {
       toValue: value,
@@ -214,8 +215,9 @@ export function CircleAction({
   children,
   size = 40,
   badge = false,
-  badgeRing = C.canvas,
+  badgeRingClassName = "border-canvas",
   accessibilityLabel,
+  className,
   style,
 }: {
   onPress?: () => void;
@@ -228,9 +230,10 @@ export function CircleAction({
    * border — its whole job is to hold a gap between the dot and whatever it
    * overlaps, so on a button with a filled face this has to be that face.
    */
-  badgeRing?: string;
+  badgeRingClassName?: string;
   accessibilityLabel?: string;
   /** Override the outline — a fill, where the button sits over artwork. */
+  className?: string;
   style?: ViewStyle;
 }) {
   return (
@@ -239,35 +242,22 @@ export function CircleAction({
       hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius: PILL,
-          borderWidth: 1,
-          borderColor: C.border,
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        style,
-      ]}
+      className={cn(
+        "items-center justify-center rounded-full border border-border",
+        className,
+      )}
+      // Size is a caller-supplied number.
+      style={[{ width: size, height: size }, style]}
     >
       {children}
       {badge ? (
+        // Green, not the brand: an unread dot is a liveness signal, and green
+        // is the colour this app signals liveness in.
         <View
-          style={{
-            position: "absolute",
-            top: 6,
-            right: 7,
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            // Green, not the gold brand: an unread dot is a liveness signal,
-            // and `C.green` is the colour this app signals liveness in.
-            backgroundColor: C.green,
-            borderWidth: 1.5,
-            borderColor: badgeRing,
-          }}
+          className={cn(
+            "absolute right-[7px] top-[6px] h-2 w-2 rounded-full border-[1.5px] bg-green",
+            badgeRingClassName,
+          )}
         />
       ) : null}
     </Pressable>
@@ -278,12 +268,8 @@ export function Shine() {
   return (
     <View
       pointerEvents="none"
+      className="absolute top-[0px] left-[12px] right-[12px] h-[1px]"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 12,
-        right: 12,
-        height: 1,
         backgroundColor: "rgba(255,255,255,0.28)",
       }}
     />
@@ -316,34 +302,20 @@ export function MetalFill({
   return (
     <View
       pointerEvents="none"
+      className="absolute top-[0px] left-[0px] right-[0px] bottom-[0px] overflow-hidden"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
         borderRadius: radius,
-        overflow: "hidden",
       }}
     >
       <LinearGradient
         colors={C.metal}
-        locations={C.metalStops}
+        locations={metalStops}
         start={METAL_ANGLE.start}
         end={METAL_ANGLE.end}
         style={{ flex: 1 }}
       />
       {shine ? (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 6,
-            right: 6,
-            height: 1,
-            backgroundColor: C.metalShine,
-          }}
-        />
+        <View className="absolute top-[0px] left-[6px] right-[6px] h-[1px] bg-metal-shine" />
       ) : null}
     </View>
   );
@@ -351,24 +323,20 @@ export function MetalFill({
 
 export function Card({
   children,
+  className,
   style,
 }: {
   children?: React.ReactNode;
+  className?: string;
   style?: ViewStyle;
 }) {
   return (
     <View
-      style={[
-        {
-          backgroundColor: C.card,
-          borderWidth: 1,
-          borderColor: C.border,
-          borderRadius: 20,
-          padding: 16,
-          overflow: "hidden",
-        },
-        style,
-      ]}
+      className={cn(
+        "overflow-hidden rounded-[20px] border border-border bg-card p-4",
+        className,
+      )}
+      style={style}
     >
       <Shine />
       {children}
@@ -424,46 +392,34 @@ export function MetallicButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: loading }}
+      className={cn(disabled && !loading && "opacity-45")}
       style={{
-        // Glow picks up the fill — a white halo around gold reads as haze.
+        // `shadowColor` is a value RN reads directly — no utility maps to it.
+        // The glow picks up the fill; a white halo around the brand reads as
+        // haze rather than lift.
         shadowColor: C.brand,
         shadowOpacity: 0.35,
         shadowRadius: 14,
         shadowOffset: { width: 0, height: 8 },
         elevation: 6,
-        opacity: disabled && !loading ? 0.45 : 1,
       }}
     >
       <View
-        style={{
-          height,
-          borderRadius: radius,
-          backgroundColor: C.brand,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
+        className="items-center justify-center overflow-hidden bg-brand"
+        // Both are caller-supplied numbers.
+        style={{ height, borderRadius: radius }}
       >
+        {/* The specular hairline along the top edge. */}
         <View
           pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 1,
-            left: 10,
-            right: 10,
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.5)",
-          }}
+          className="absolute left-2.5 right-2.5 top-px h-px bg-metal-shine"
         />
         {loading ? (
           <Spinner color={C.brandInk} />
         ) : (
           <Text
-            style={{
-              color: C.brandInk,
-              fontFamily: F.bodySemibold,
-              fontSize: size,
-            }}
+            className="font-body-semibold text-brand-ink"
+            style={{ fontSize: size }}
           >
             {label}
           </Text>
@@ -530,7 +486,13 @@ const BEVEL = {
   outline: {
     ring: ["#4E4E51", "#4E4E51"] as [string, string],
     fill: ["transparent", "transparent"] as [string, string],
-    text: C.text,
+    // A GETTER, not a value. `BEVEL` is module scope, so a plain `C.text` here
+    // is read once at import — before the app has settled its theme — and the
+    // label bakes to whatever palette happened to be active then. Every
+    // theme-dependent value on a module-scope constant has to defer like this.
+    get text() {
+      return C.text;
+    },
   },
 } as const;
 
@@ -731,15 +693,11 @@ export function GhostButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: loading }}
+      className="bg-card border border-border items-center justify-center"
       style={[
         {
           height,
           borderRadius: radius,
-          backgroundColor: C.card,
-          borderWidth: 1,
-          borderColor: C.border,
-          alignItems: "center",
-          justifyContent: "center",
           opacity: disabled && !loading ? 0.45 : 1,
         },
         style,
@@ -760,23 +718,20 @@ export function GhostButton({
 
 export function Label({
   children,
+  className,
   style,
 }: {
   children: React.ReactNode;
+  className?: string;
   style?: TextStyle;
 }) {
   return (
     <Text
-      style={[
-        {
-          fontFamily: F.mono,
-          fontSize: 10,
-          letterSpacing: 1.5,
-          color: C.dim,
-          textTransform: "uppercase",
-        },
-        style,
-      ]}
+      className={cn(
+        "font-mono text-[10px] uppercase tracking-[1.5px] text-dim",
+        className,
+      )}
+      style={style}
     >
       {children}
     </Text>
@@ -785,28 +740,31 @@ export function Label({
 
 export function Mono({
   children,
-  size = 12,
-  color = C.silver,
+  size,
+  color,
+  className,
   style,
 }: {
   children: React.ReactNode;
+  /** @deprecated Use `className="text-[13px]"`. Kept for unmigrated callers. */
   size?: number;
+  /** @deprecated Use `className="text-up"`. Kept for unmigrated callers. */
   color?: string;
+  className?: string;
   style?: TextStyle;
 }) {
   return (
     <Text
+      className={cn("font-mono text-[12px] text-silver", className)}
       style={[
-        {
-          fontFamily: F.mono,
-          fontSize: size,
-          color,
-          // The app is one family now, and Urbanist has no monospace cut — so
-          // the column alignment figures need comes from the numeral set
-          // instead. Without this a balance changes width as its digits change,
-          // and a column of amounts stops lining up.
-          fontVariant: ["tabular-nums"],
-        },
+        // No utility maps to this, and it is what keeps a column of amounts
+        // from changing width as its digits change. The app is one family now
+        // and Urbanist has no monospace cut, so the alignment comes from the
+        // numeral set rather than the face.
+        { fontVariant: ["tabular-nums"] as const },
+        // Inline wins over className in NativeWind, so these still override.
+        size !== undefined ? { fontSize: size } : null,
+        color !== undefined ? { color } : null,
         style,
       ]}
     >
@@ -817,28 +775,34 @@ export function Mono({
 
 export function Display({
   children,
-  size = 34,
-  color = C.text,
+  size,
+  color,
   numberOfLines,
+  className,
   style,
 }: {
   children: React.ReactNode;
+  /** @deprecated Use `className="text-[28px] leading-[30px]"`. */
   size?: number;
+  /** @deprecated Use `className="text-brand"`. */
   color?: string;
   /** Clamp to this many lines, ellipsizing the overflow. */
   numberOfLines?: number;
+  className?: string;
   style?: TextStyle;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
+      className={cn(
+        "font-display text-[34px] leading-[36px] text-text",
+        className,
+      )}
       style={[
-        {
-          fontFamily: F.display,
-          fontSize: size,
-          color,
-          lineHeight: size * 1.05,
-        },
+        // The 1.05 ratio has to be computed from whatever size is passed, so it
+        // cannot be a class while this prop still exists.
+        size !== undefined ? { fontSize: size, lineHeight: size * 1.05 } : null,
+        color !== undefined ? { color } : null,
         style,
       ]}
     >
@@ -855,31 +819,38 @@ export function Display({
 export function AmountText({
   value,
   size = 40,
-  color = C.text,
+  color,
   emphasizeCents = true,
+  className,
   style,
 }: {
   value: string;
+  /** Drives the tail size too, so it stays a number rather than a class. */
   size?: number;
+  /** @deprecated Use `className="text-up"`. */
   color?: string;
   emphasizeCents?: boolean;
+  className?: string;
   style?: TextStyle;
 }) {
   const dot = emphasizeCents ? value.lastIndexOf(".") : -1;
 
   if (dot === -1) {
     return (
-      <Display size={size} color={color} style={style}>
+      <Display size={size} color={color} className={className} style={style}>
         {value}
       </Display>
     );
   }
 
   return (
-    <Display size={size} color={color} style={style}>
+    <Display size={size} color={color} className={className} style={style}>
       {value.slice(0, dot)}
+      {/* The decimals drop a size and a rung of contrast so the whole units
+          carry the glance. Size is computed off `size`, hence the style. */}
       <Text
-        style={{ fontFamily: F.display, fontSize: size * 0.55, color: C.sub }}
+        className="font-display text-figure-tail"
+        style={{ fontSize: size * 0.55 }}
       >
         {value.slice(dot)}
       </Text>
@@ -889,29 +860,36 @@ export function AmountText({
 
 export function Body({
   children,
-  size = 13,
-  color = C.text,
+  size,
+  color,
   semibold,
   numberOfLines,
+  className,
   style,
 }: {
   children: React.ReactNode;
+  /** @deprecated Use `className="text-[12.5px]"`. */
   size?: number;
+  /** @deprecated Use `className="text-dim"`. */
   color?: string;
+  /** @deprecated Use `className="font-body-semibold"`. */
   semibold?: boolean;
   /** Clamp to this many lines, ellipsizing the overflow. */
   numberOfLines?: number;
+  className?: string;
   style?: TextStyle;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
+      className={cn(
+        "font-body text-[13px] text-text",
+        semibold && "font-body-semibold",
+        className,
+      )}
       style={[
-        {
-          fontFamily: semibold ? F.bodySemibold : F.body,
-          fontSize: size,
-          color,
-        },
+        size !== undefined ? { fontSize: size } : null,
+        color !== undefined ? { color } : null,
         style,
       ]}
     >
@@ -945,23 +923,15 @@ export function BackHeader({
   onBack?: () => void;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        // Breathing room below the safe area — the routes wrap this in a
-        // SafeAreaView, so 10 put the title hard against the Dynamic Island.
-        // Matches the +6..+10 the floating headers add over `insets.top`.
-        paddingTop: 18,
-        paddingBottom: 4,
-      }}
-    >
+    // Breathing room below the safe area — the routes wrap this in a
+    // SafeAreaView, so pt-1 put the title hard against the Dynamic Island.
+    // Matches the +6..+10 the floating headers add over `insets.top`.
+    <View className="flex-row items-center gap-2.5 pb-1 pt-[18px]">
       <Pressable onPress={onBack} hitSlop={10}>
         <BackChevron />
       </Pressable>
-      <Display size={20}>{title}</Display>
-      <View style={{ flex: 1 }} />
+      <Display className="text-[20px] leading-[21px]">{title}</Display>
+      <View className="flex-1" />
       {right}
     </View>
   );
@@ -974,7 +944,7 @@ export function PulseDot({
   color?: string;
   size?: number;
 }) {
-  const v = useRef(new Animated.Value(1)).current;
+  const v = useMemo(() => new Animated.Value(1), []);
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -1008,18 +978,12 @@ export function PulseDot({
 
 export function ProgressBar({ pct }: { pct: number }) {
   return (
-    <View
-      style={{
-        height: 6,
-        borderRadius: 99,
-        backgroundColor: "rgba(255,255,255,0.1)",
-        overflow: "hidden",
-      }}
-    >
+    <View className="h-1.5 overflow-hidden rounded-[99px] bg-card">
       <LinearGradient
         colors={["#7a7a7a", "#e8e8ea"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
+        // `colors` is a prop, not a style; the width is computed from `pct`.
         style={{ height: 6, width: (pct + "%") as any, borderRadius: 99 }}
       />
     </View>
@@ -1218,23 +1182,16 @@ export function PinDots({
 
   return (
     <Animated.View
-      style={{
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 16,
-        transform: [{ translateX: x }],
-      }}
+      className="flex-row justify-center gap-4"
+      // Driven by the shake sequence, so it cannot be a class.
+      style={{ transform: [{ translateX: x }] }}
     >
       {[0, 1, 2, 3].map((i) => (
         <Animated.View
           key={i}
-          style={{
-            width: 25,
-            height: 25,
-            borderRadius: 50,
-            overflow: "hidden",
-            backgroundColor: i < filled ? undefined : ground,
-          }}
+          className="h-[25px] w-[25px] overflow-hidden rounded-full"
+          // Interpolated between the resting and rejected grounds.
+          style={{ backgroundColor: i < filled ? undefined : ground }}
         >
           {/* Filled dots are milled beads, not white pips — same light source
               as every other metal face on the screen. */}
@@ -1248,28 +1205,22 @@ export function PinDots({
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 export function Keypad({ onKey }: { onKey: (k: string) => void }) {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+    <View className="flex-row flex-wrap gap-2.5">
       {KEYS.map((k, i) => (
         <Pressable
           key={i}
           disabled={!k}
           onPress={() => onKey(k)}
-          style={{
-            width: "31%",
-            flexGrow: 1,
-            height: 56,
-            borderRadius: 16,
-            backgroundColor: k && k !== "del" ? C.key : "transparent",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className={cn(
+            "h-14 w-[31%] grow items-center justify-center rounded-2xl",
+            k && k !== "del" ? "bg-key" : "bg-transparent",
+          )}
         >
           <Text
-            style={{
-              fontFamily: F.display,
-              fontSize: 21,
-              color: k === "del" ? C.silver : C.text,
-            }}
+            className={cn(
+              "font-display text-[21px]",
+              k === "del" ? "text-silver" : "text-text",
+            )}
           >
             {k === "del" ? "\u232b" : k}
           </Text>
@@ -1303,52 +1254,38 @@ export function TxRow({
   const inFlow = dir === "in";
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 12,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
-      }}
+      className={cn(
+        "flex-row items-center gap-3 py-3",
+        last ? "border-b-0" : "border-b border-b-rule",
+      )}
     >
       <View
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 12,
-          backgroundColor: inFlow ? C.upBg : "rgba(255,255,255,0.08)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        className={cn(
+          "h-[38px] w-[38px] items-center justify-center rounded-xl",
+          inFlow ? "bg-up-tint" : "bg-card",
+        )}
       >
-        <Text style={{ fontSize: 15, color: inFlow ? C.up : C.silver }}>
+        <Text className={cn("text-[15px]", inFlow ? "text-up" : "text-silver")}>
           {icon}
         </Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Body size={13.5} semibold>
-          {title}
-        </Body>
-        <Body size={11.5} color={C.dim} style={{ marginTop: 2 }}>
-          {sub}
-        </Body>
+      <View className="flex-1">
+        <Body className="font-body-semibold text-[13.5px]">{title}</Body>
+        <Body className="mt-0.5 text-[11.5px] text-dim">{sub}</Body>
       </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <Mono size={13} color={credit ? C.up : C.text}>
+      <View className="items-end">
+        <Mono className={cn("text-[13px]", credit ? "text-up" : "text-text")}>
           {amount}
         </Mono>
         {status ? (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              marginTop: 2,
-            }}
-          >
+          <View className="mt-0.5 flex-row items-center gap-1">
             {pending ? <PulseDot /> : null}
-            <Body size={10.5} color={pending ? C.amber : C.dim}>
+            <Body
+              className={cn(
+                "text-[10.5px]",
+                pending ? "text-amber" : "text-dim",
+              )}
+            >
               {status}
             </Body>
           </View>
@@ -1364,6 +1301,7 @@ export function Chip({
   onPress,
   tone = "silver",
   compact = false,
+  className,
   style,
 }: {
   label: string;
@@ -1377,45 +1315,49 @@ export function Chip({
   tone?: "silver" | "brand" | "highlight";
   /** Tighter padding, for a row that has to fit many (a range picker). */
   compact?: boolean;
+  className?: string;
   style?: ViewStyle;
 }) {
-  const accent =
+  const accentBorder =
     tone === "brand"
-      ? C.brandSoft
+      ? "border-brand-soft"
       : tone === "highlight"
-        ? C.highlight
-        : C.accent;
+        ? "border-highlight"
+        : "border-accent";
+  const accentText =
+    tone === "brand"
+      ? "text-brand-soft"
+      : tone === "highlight"
+        ? "text-highlight"
+        : "text-text";
   const activeFill =
     tone === "brand"
-      ? C.brandGlow
+      ? "bg-brand-glow"
       : tone === "highlight"
-        ? "transparent"
-        : "rgba(255,255,255,0.1)";
+        ? "bg-transparent"
+        : "bg-card";
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
-      style={[
-        {
-          paddingHorizontal: compact ? 8 : 15,
-          paddingVertical: compact ? 8 : 9,
-          borderRadius: PILL,
-          borderWidth: 1,
-          borderColor: active ? accent : compact ? "transparent" : C.border,
-          backgroundColor: active ? activeFill : C.card,
-          alignItems: "center",
-        },
-        style,
-      ]}
+      className={cn(
+        "items-center rounded-full border",
+        compact ? "px-2 py-2" : "px-[15px] py-[9px]",
+        active
+          ? cn(accentBorder, activeFill)
+          : cn(compact ? "border-transparent" : "border-border", "bg-card"),
+        className,
+      )}
+      style={style}
     >
       <Text
-        style={{
-          fontFamily: F.bodySemibold,
-          fontSize: compact ? 11.5 : 12,
-          color: active ? (tone === "silver" ? "#e8e8ea" : accent) : C.silver,
-        }}
+        className={cn(
+          "font-body-semibold",
+          compact ? "text-[11.5px]" : "text-[12px]",
+          active ? accentText : "text-silver",
+        )}
       >
         {label}
       </Text>
@@ -1431,37 +1373,32 @@ export function Chip({
 export function KeyValueRow({
   label,
   value,
-  /** Accent for the value — a P&L figure, a warning. */
-  valueColor = C.text,
+  valueColor,
+  valueClassName,
   last = false,
 }: {
   label: string;
   value: string;
+  /** @deprecated Use `valueClassName="text-up"`. */
   valueColor?: string;
+  /** Accent for the value — a P&L figure, a warning. */
+  valueClassName?: string;
   last?: boolean;
 }) {
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 15,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
-      }}
+      className={cn(
+        "flex-row items-center gap-3 py-[15px]",
+        last ? "border-b-0" : "border-b border-b-rule",
+      )}
     >
+      <Text className="flex-1 font-body text-[13.5px] text-sub">{label}</Text>
       <Text
-        style={{ flex: 1, fontFamily: F.body, fontSize: 13.5, color: C.sub }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          fontFamily: F.bodySemibold,
-          fontSize: 14,
-          color: valueColor,
-        }}
+        className={cn(
+          "font-body-semibold text-[14px] text-text",
+          valueClassName,
+        )}
+        style={valueColor !== undefined ? { color: valueColor } : null}
       >
         {value}
       </Text>
@@ -1473,29 +1410,28 @@ export interface KeyValue {
   label: string;
   /** Preformatted — the UI never does the math. */
   value: string;
+  /** @deprecated Use `valueClassName`. */
   valueColor?: string;
+  valueClassName?: string;
 }
 
 /** The rows above, grouped into one card. */
 export function KeyValueList({
   rows,
+  className,
   style,
 }: {
   rows: KeyValue[];
+  className?: string;
   style?: ViewStyle;
 }) {
   return (
     <View
-      style={[
-        {
-          backgroundColor: C.raised,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 16,
-        },
-        style,
-      ]}
+      className={cn(
+        "rounded-[18px] border border-rule bg-canvas-raised px-4",
+        className,
+      )}
+      style={style}
     >
       {rows.map((row, i) => (
         <KeyValueRow
@@ -1503,6 +1439,7 @@ export function KeyValueList({
           label={row.label}
           value={row.value}
           valueColor={row.valueColor}
+          valueClassName={row.valueClassName}
           last={i === rows.length - 1}
         />
       ))}
@@ -1771,7 +1708,7 @@ export function Pulse({
   radius?: number;
   style?: ViewStyle;
 }) {
-  const v = useRef(new Animated.Value(0.3)).current;
+  const v = useMemo(() => new Animated.Value(0.3), []);
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -1793,11 +1730,8 @@ export function Pulse({
 
   return (
     <Animated.View
-      style={[
-        { width, height, borderRadius: radius, backgroundColor: C.inset },
-        { opacity: v },
-        style,
-      ]}
+      className="bg-canvas-inset"
+      style={[{ width, height, borderRadius: radius }, { opacity: v }, style]}
     />
   );
 }
@@ -1818,12 +1752,9 @@ export function SectionRule({
 }) {
   return (
     <View
-      style={{
-        height: 1,
-        backgroundColor: C.hairline,
-        marginVertical: space,
-        marginHorizontal: inset,
-      }}
+      className="h-px bg-rule"
+      // Both margins are caller-supplied numbers.
+      style={{ marginVertical: space, marginHorizontal: inset }}
     />
   );
 }
@@ -1852,7 +1783,8 @@ export function Toggle({
   const KNOB = 24;
   const travel = W - KNOB - 6;
 
-  const x = useRef(new Animated.Value(value ? 1 : 0)).current;
+  // Seeded from the initial `value` only; the effect below drives it after.
+  const x = useMemo(() => new Animated.Value(value ? 1 : 0), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     Animated.timing(x, {
       toValue: value ? 1 : 0,
@@ -1868,26 +1800,22 @@ export function Toggle({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value, disabled }}
       hitSlop={8}
-      style={{
-        width: W,
-        height: H,
-        borderRadius: H / 2,
-        padding: 3,
-        justifyContent: "center",
-        backgroundColor: value ? C.brand : C.card,
-        borderWidth: 1,
-        borderColor: value ? "transparent" : C.border,
-        opacity: disabled ? 0.45 : 1,
-      }}
+      className={cn(
+        "justify-center border p-[3px]",
+        value ? "border-transparent bg-brand" : "border-border bg-card",
+        disabled && "opacity-45",
+      )}
+      // Track geometry is derived from the knob travel below, so it stays here.
+      style={{ width: W, height: H, borderRadius: H / 2 }}
     >
       <Animated.View
+        // Ink-dark on the brand fill so the knob reads as a cut in the track
+        // rather than a second bright object beside the label.
+        className={value ? "bg-brand-ink" : "bg-silver"}
         style={{
           width: KNOB,
           height: KNOB,
           borderRadius: KNOB / 2,
-          // Ink-dark on the brand fill so the knob reads as a cut in the track
-          // rather than a second bright object beside the label.
-          backgroundColor: value ? C.brandInk : C.silver,
           transform: [
             {
               translateX: x.interpolate({

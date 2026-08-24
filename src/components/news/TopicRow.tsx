@@ -1,7 +1,7 @@
 import { View } from "react-native";
 
 import type { Article } from "../../data/news";
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { ArtSlot } from "../home";
 import { Body, PressableScale } from "../ui";
 import { ArticleMeta } from "./ArticleMeta";
@@ -26,24 +26,20 @@ export function TopicRow({
   return (
     <PressableScale scale={0.99} onPress={() => onPress?.(article.key)}>
       <View
+        className="flex-row items-center gap-[14px] py-[14px] border-b-rule"
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 14,
-          paddingVertical: 14,
           borderBottomWidth: divider ? 1 : 0,
-          borderBottomColor: C.hairline,
         }}
       >
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <Body
-            size={13.5}
+            className="text-[13.5px] font-body-semibold leading-[19px]"
+
             numberOfLines={2}
-            style={{ fontFamily: F.bodySemibold, lineHeight: 19 }}
           >
             {article.title}
           </Body>
-          <View style={{ marginTop: 8 }}>
+          <View className="mt-[8px]">
             <ArticleMeta channel={article.channel} age={article.age} />
           </View>
         </View>

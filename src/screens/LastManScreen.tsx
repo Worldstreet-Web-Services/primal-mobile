@@ -44,6 +44,7 @@ import {
   warmSponsorEndpoints,
 } from "../lib/vault/wager";
 import { featuredGame, useVaultStore } from "../store/vault";
+import { cn } from "@/lib/cn";
 
 // Design 3d preview figures — what the screen shows while the vault gateway
 // can't be reached, so demos still have a round to look at. Tagged OFFLINE
@@ -65,32 +66,20 @@ function ethLabel(m: Money): string | null {
 /** Small tracked pill in the header: what the room is doing right now. */
 function StatePill({ tone, label }: { tone: "live" | "quiet"; label: string }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 7,
-        paddingHorizontal: 11,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        backgroundColor: C.raised,
-      }}
-    >
+    <View className="flex-row items-center gap-[7px] px-[11px] py-[6px] rounded-[999px] border border-rule bg-canvas-raised">
       {tone === "live" ? (
         <PulseDot color={C.live} size={5} />
       ) : (
-        <View
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: 3,
-            backgroundColor: C.dim,
-          }}
-        />
+        <View className="w-[5px] h-[5px] rounded-[3px] bg-dim" />
       )}
-      <Mono size={9.5} color={tone === "live" ? C.silver : C.dim} style={{ letterSpacing: 1.6 }}>
+      <Mono
+        size={9.5}
+
+        className={cn(
+          "tracking-[1.6px]",
+          tone === "live" ? "text-silver" : "text-dim",
+        )}
+      >
         {label}
       </Mono>
     </View>
@@ -269,7 +258,9 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
         : formatUsd(potUsd)
       : "$0"
     : preview.pot;
-  const minWagerLabel = featured ? featured.minWager.formattedUsd : `$${PLAY_TARGET_USD}`;
+  const minWagerLabel = featured
+    ? featured.minWager.formattedUsd
+    : `$${PLAY_TARGET_USD}`;
   // Secondary unit under the USD hero — dim, small, never the headline.
   const potEth = featured ? ethLabel(featured.pot) : null;
   // Nothing on the floor yet: a designed statement, not a $0 and a dead clock.
@@ -335,28 +326,24 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
   const lastWinner = winners[0];
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <Screen>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            paddingTop: 10,
-          }}
-        >
+        <View className="flex-row items-center gap-[12px] pt-[10px]">
           <Pressable onPress={onBack} hitSlop={10}>
             <BackChevron />
           </Pressable>
-          <Mono size={11} color={C.sub} style={{ letterSpacing: 2.4 }}>
+          <Mono className="text-[11px] text-sub tracking-[2.4px]">
             THE LAST MAN
           </Mono>
-          <View style={{ flex: 1 }} />
+          <View className="flex-1" />
           {live ? (
             featured ? (
               <StatePill tone="live" label={`GAME #${featured.gameId}`} />
             ) : (
-              <StatePill tone="quiet" label={connected ? "LOBBY" : "CONNECTING"} />
+              <StatePill
+                tone="quiet"
+                label={connected ? "LOBBY" : "CONNECTING"}
+              />
             )
           ) : (
             <StatePill tone="quiet" label="OFFLINE PREVIEW" />
@@ -365,26 +352,19 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
 
         {/* The pot under museum glass: a raised case, a pool of light behind
             the figure, and the clock sharing the same plinth. */}
-        <View
-          style={{
-            marginTop: 26,
-            borderRadius: 28,
-            backgroundColor: C.raised,
-            borderWidth: 1,
-            borderColor: C.hairline,
-            overflow: "hidden",
-            paddingTop: 26,
-            paddingBottom: 24,
-            paddingHorizontal: 20,
-            alignItems: "center",
-          }}
-        >
+        <View className="mt-[26px] rounded-[28px] bg-canvas-raised border border-rule overflow-hidden pt-[26px] pb-[24px] px-[20px] items-center">
           <Shine />
           <Svg
             pointerEvents="none"
             width="100%"
             height="100%"
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
           >
             <Defs>
               <RadialGradient id="potLight" cx="50%" cy="26%" rx="62%" ry="52%">
@@ -392,31 +372,28 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
               </RadialGradient>
             </Defs>
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#potLight)" />
+            <Rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="url(#potLight)"
+            />
           </Svg>
 
           {emptyTable ? (
-            <View style={{ alignItems: "center", paddingVertical: 12 }}>
-              <Label style={{ letterSpacing: 2.6 }}>THE FLOOR IS OPEN</Label>
-              <Display size={27} style={{ marginTop: 12, textAlign: "center" }}>
+            <View className="items-center py-[12px]">
+              <Label className="tracking-[2.6px]">THE FLOOR IS OPEN</Label>
+              <Display className="text-[27px] leading-[28.35px] mt-[12px] text-center">
                 {"No pot on\nthe table"}
               </Display>
-              <Body
-                size={12}
-                color={C.dim}
-                style={{
-                  marginTop: 12,
-                  textAlign: "center",
-                  lineHeight: 18,
-                  maxWidth: 260,
-                }}
-              >
+              <Body className="text-[12px] text-dim mt-[12px] text-center leading-[18px] max-w-[260px]">
                 {`Open one with a $${PLAY_TARGET_USD} stake. The clock starts with you, and so does the crown.`}
               </Body>
             </View>
           ) : (
             <>
-              <Label style={{ letterSpacing: 2.6 }}>IN THE POT</Label>
+              <Label className="tracking-[2.6px]">IN THE POT</Label>
               <Svg width="100%" height={72} style={{ marginTop: 10 }}>
                 <Defs>
                   <SvgGradient id="pot" x1="0" y1="0" x2="0" y2="1">
@@ -440,37 +417,26 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 </SvgText>
               </Svg>
               {potEth ? (
-                <Mono size={11} color={C.dim} style={{ marginTop: 2, letterSpacing: 0.6 }}>
+                <Mono className="text-[11px] text-dim mt-[2px] tracking-[0.6px]">
                   {`≈ ${potEth}`}
                 </Mono>
               ) : null}
               <View
+                className="h-[1px] bg-rule my-[22px]"
                 style={{
                   alignSelf: "stretch",
-                  height: 1,
-                  backgroundColor: C.hairline,
-                  marginVertical: 22,
                 }}
               />
               {live ? (
-                <Countdown deadlineMs={featured ? featured.endTime * 1000 : null} />
+                <Countdown
+                  deadlineMs={featured ? featured.endTime * 1000 : null}
+                />
               ) : (
-                <View style={{ alignItems: "center" }}>
-                  <Text
-                    style={{
-                      fontFamily: F.monoSemibold,
-                      fontSize: 48,
-                      letterSpacing: 2,
-                      color: C.amber,
-                    }}
-                  >
+                <View className="items-center">
+                  <Text className="font-mono-semibold text-[48px] tracking-[2px] text-amber">
                     {preview.clock}
                   </Text>
-                  <Mono
-                    size={10}
-                    color={C.dim}
-                    style={{ marginTop: 12, letterSpacing: 2 }}
-                  >
+                  <Mono className="text-[10px] text-dim mt-[12px] tracking-[2px]">
                     UNTIL THE POT PAYS OUT
                   </Mono>
                 </View>
@@ -484,50 +450,42 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             and once is enough. */}
         {!emptyTable && (
           <Card
+            className="mt-[18px] flex-row items-center gap-[14px] rounded-[20px] py-[15px] px-[16px] bg-canvas-raised"
             style={{
-              marginTop: 18,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-              borderRadius: 20,
-              paddingVertical: 15,
-              paddingHorizontal: 16,
-              backgroundColor: C.raised,
               borderColor: iAmKing ? "rgba(124,231,176,0.28)" : C.hairline,
             }}
           >
             <View
+              className={cn(
+                "w-[44px] h-[44px] rounded-[22px] border items-center justify-center",
+                iAmKing ? "bg-up-tint" : "bg-canvas-inset",
+              )}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: iAmKing ? C.upBg : C.inset,
-                borderWidth: 1,
                 borderColor: iAmKing ? "rgba(124,231,176,0.32)" : C.hairline,
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
               <Text
-                style={{
-                  fontFamily: F.monoSemibold,
-                  fontSize: 13,
-                  letterSpacing: 0.5,
-                  color: iAmKing ? C.up : C.silver,
-                }}
+                className={cn(
+                  "font-mono-semibold text-[13px] tracking-[0.5px]",
+                  iAmKing ? "text-up" : "text-silver",
+                )}
               >
                 {iAmKing ? "YOU" : kingInitials}
               </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Body size={14} semibold color={iAmKing ? C.up : C.text}>
+            <View className="flex-1">
+              <Body
+                className={iAmKing ? "text-up" : "text-text"}
+                size={14}
+                semibold
+              >
                 {iAmKing
                   ? "You hold the crown"
                   : kingLabel
                     ? `${kingLabel} holds the crown`
                     : "No king yet"}
               </Body>
-              <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
+              <Body className="text-[11px] text-dim mt-[3px]">
                 {iAmKing ? "Outlast the clock and the pot is yours" : kingSub}
               </Body>
             </View>
@@ -538,34 +496,19 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             the pot's chrome. */}
         {showClaim && (
           <View
+            className="mt-[12px] flex-row items-center gap-[14px] rounded-[20px] border bg-up-tint py-[15px] px-[16px]"
             style={{
-              marginTop: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-              borderRadius: 20,
-              borderWidth: 1,
               borderColor: "rgba(124,231,176,0.26)",
-              backgroundColor: C.upBg,
-              paddingVertical: 15,
-              paddingHorizontal: 16,
             }}
           >
-            <View style={{ flex: 1 }}>
-              <Mono size={9.5} color={C.up} style={{ letterSpacing: 1.8, opacity: 0.75 }}>
+            <View className="flex-1">
+              <Mono className="text-[9.5px] text-up tracking-[1.8px] opacity-[0.75]">
                 YOUR WINNINGS
               </Mono>
-              <Text
-                style={{
-                  fontFamily: F.monoSemibold,
-                  fontSize: 20,
-                  color: C.up,
-                  marginTop: 5,
-                }}
-              >
+              <Text className="font-mono-semibold text-[20px] text-up mt-[5px]">
                 {claimAmount}
               </Text>
-              <Body size={11} color={C.dim} style={{ marginTop: 4 }}>
+              <Body className="text-[11px] text-dim mt-[4px]">
                 A payout that couldn&apos;t reach you. Claim to collect it.
               </Body>
             </View>
@@ -573,24 +516,14 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
               <View
                 accessibilityRole="button"
                 accessibilityLabel="Claim winnings"
+                className="rounded-[999px] border py-[10px] px-[18px]"
                 style={{
-                  borderRadius: 999,
-                  borderWidth: 1,
                   borderColor: "rgba(124,231,176,0.45)",
                   backgroundColor: "rgba(124,231,176,0.12)",
-                  paddingVertical: 10,
-                  paddingHorizontal: 18,
                   opacity: claiming ? 0.6 : 1,
                 }}
               >
-                <Text
-                  style={{
-                    fontFamily: F.monoSemibold,
-                    fontSize: 11.5,
-                    letterSpacing: 1.4,
-                    color: C.up,
-                  }}
-                >
+                <Text className="font-mono-semibold text-[11.5px] tracking-[1.4px] text-up">
                   {claiming ? "CLAIMING…" : "CLAIM"}
                 </Text>
               </View>
@@ -598,12 +531,8 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
           </View>
         )}
 
-        <View style={{ marginTop: 26 }}>
-          <Body
-            size={11.5}
-            color={C.dim}
-            style={{ textAlign: "center", lineHeight: 18, marginBottom: 14 }}
-          >
+        <View className="mt-[26px]">
+          <Body className="text-[11.5px] text-dim text-center leading-[18px] mb-[14px]">
             {live && featured
               ? `Wager ${minWagerLabel} to take the crown and reset the clock.\nOutlast everyone and half the pot is yours.`
               : live
@@ -621,7 +550,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             />
           </View>
           {live && featured && (
-            <View style={{ marginTop: 12 }}>
+            <View className="mt-[12px]">
               <GhostButton
                 label={`Open your own table · $${PLAY_TARGET_USD}`}
                 onPress={handleStart}
@@ -629,19 +558,11 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
             </View>
           )}
           {actionError && (
-            <Body
-              size={12}
-              color={C.down}
-              style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
-            >
+            <Body className="text-[12px] text-down mt-[12px] text-center leading-[17px]">
               {actionError}
             </Body>
           )}
-          <Mono
-            size={9.5}
-            color={C.dim}
-            style={{ marginTop: 14, textAlign: "center", letterSpacing: 1.6 }}
-          >
+          <Mono className="text-[9.5px] text-dim mt-[14px] text-center tracking-[1.6px]">
             {live && featured && minWagerEth
               ? `≈ ${minWagerEth.toUpperCase()} · SIGNED WITH FACE ID`
               : "ON-CHAIN · SIGNED WITH FACE ID"}
@@ -650,30 +571,15 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
 
         {/* The room's other tables: pot, min, clock — a card in mono. */}
         {live && others.length > 0 && (
-          <View style={{ marginTop: 26 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 12,
-              }}
-            >
-              <Label style={{ letterSpacing: 2.4 }}>OTHER TABLES</Label>
-              <View style={{ flex: 1, height: 1, backgroundColor: C.hairline }} />
-              <Mono size={10} color={C.dim} style={{ letterSpacing: 1.4 }}>
+          <View className="mt-[26px]">
+            <View className="flex-row items-center gap-[10px] mb-[12px]">
+              <Label className="tracking-[2.4px]">OTHER TABLES</Label>
+              <View className="flex-1 h-[1px] bg-rule" />
+              <Mono className="text-[10px] text-dim tracking-[1.4px]">
                 {String(others.length).padStart(2, "0")}
               </Mono>
             </View>
-            <Card
-              style={{
-                borderRadius: 20,
-                paddingVertical: 2,
-                paddingHorizontal: 16,
-                backgroundColor: C.raised,
-                borderColor: C.hairline,
-              }}
-            >
+            <Card className="rounded-[20px] py-[2px] px-[16px] bg-canvas-raised border-rule">
               {others.map((g, i) => {
                 const secs = Math.max(0, g.endTime - now / 1000);
                 const clockColor =
@@ -689,46 +595,28 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                       borderTopColor: C.hairline,
                     }}
                   >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        paddingVertical: 14,
-                      }}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Label style={{ fontSize: 9, letterSpacing: 1.6 }}>POT</Label>
-                        <Text
-                          style={{
-                            fontFamily: F.monoSemibold,
-                            fontSize: 17,
-                            color: C.text,
-                            marginTop: 3,
-                          }}
-                        >
+                    <View className="flex-row items-center gap-[12px] py-[14px]">
+                      <View className="flex-1">
+                        <Label className="text-[9px] tracking-[1.6px]">
+                          POT
+                        </Label>
+                        <Text className="font-mono-semibold text-[17px] text-text mt-[3px]">
                           {g.pot.formattedUsd}
                         </Text>
-                        <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
+                        <Body className="text-[11px] text-dim mt-[3px]">
                           {`Min ${g.minWager.formattedUsd} · king ${truncateAddress(g.king)}`}
                         </Body>
                       </View>
-                      <View style={{ alignItems: "flex-end" }}>
+                      <View className="items-end">
                         <Text
+                          className="font-mono-semibold text-[15px] tracking-[1px]"
                           style={{
-                            fontFamily: F.monoSemibold,
-                            fontSize: 15,
-                            letterSpacing: 1,
                             color: clockColor,
                           }}
                         >
                           {formatClock(secs)}
                         </Text>
-                        <Mono
-                          size={9.5}
-                          color={C.dim}
-                          style={{ marginTop: 4, letterSpacing: 1.2 }}
-                        >
+                        <Mono className="text-[9.5px] text-dim mt-[4px] tracking-[1.2px]">
                           {`#${g.gameId}`}
                         </Mono>
                       </View>
@@ -740,18 +628,14 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
           </View>
         )}
 
-        <View style={{ marginTop: 26, alignItems: "center", gap: 8 }}>
-          <View style={{ width: 32, height: 1, backgroundColor: C.hairline }} />
+        <View className="mt-[26px] items-center gap-[8px]">
+          <View className="w-[32px] h-[1px] bg-rule" />
           {live && lastWinner && (
-            <Mono
-              size={9.5}
-              color={C.dim}
-              style={{ textAlign: "center", letterSpacing: 1.5, marginTop: 4 }}
-            >
+            <Mono className="text-[9.5px] text-dim text-center tracking-[1.5px] mt-[4px]">
               {`LAST POT ${formatUsd(lastWinner.pot.usdValue)} · WON BY ${truncateAddress(lastWinner.winner).toUpperCase()} · ${timeAgo(lastWinner.settledAt).toUpperCase()}`}
             </Mono>
           )}
-          <Body size={11} color={C.dim} style={{ textAlign: "center", marginTop: 4 }}>
+          <Body className="text-[11px] text-dim text-center mt-[4px]">
             Many pots, many clocks — KashPlus
           </Body>
         </View>

@@ -69,16 +69,28 @@ async function realCapability(): Promise<BiometricCapability> {
   // Enrolled hardware we are not allowed to touch is hardware we do not have.
   const available = hasHardware && isEnrolled && !IS_EXPO_GO;
 
-  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+  if (
+    types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)
+  ) {
     return { available, kind: "face", label: "Face ID", placeholder: false };
   }
   if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-    return { available, kind: "fingerprint", label: "Fingerprint", placeholder: false };
+    return {
+      available,
+      kind: "fingerprint",
+      label: "Fingerprint",
+      placeholder: false,
+    };
   }
   if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
     return { available, kind: "iris", label: "Iris", placeholder: false };
   }
-  return { available: false, kind: "none", label: "Biometrics", placeholder: false };
+  return {
+    available: false,
+    kind: "none",
+    label: "Biometrics",
+    placeholder: false,
+  };
 }
 
 /**
@@ -103,7 +115,12 @@ export async function getCapability(): Promise<BiometricCapability> {
   if (isWeb) {
     return placeholderAuth
       ? PLACEHOLDER_CAPABILITY
-      : { available: false, kind: "none", label: "Biometrics", placeholder: false };
+      : {
+          available: false,
+          kind: "none",
+          label: "Biometrics",
+          placeholder: false,
+        };
   }
 
   const real = await realCapability();
@@ -145,7 +162,9 @@ async function placeholderAuthenticate(): Promise<BiometricOutcome> {
   return { ok: true };
 }
 
-export async function authenticate(promptMessage: string): Promise<BiometricOutcome> {
+export async function authenticate(
+  promptMessage: string,
+): Promise<BiometricOutcome> {
   // The stand-in is reached only when the real check is genuinely unavailable,
   // which is the same test `getCapability` published. Asking the hardware first
   // means a device that CAN do this always does.

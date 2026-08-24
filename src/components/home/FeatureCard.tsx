@@ -1,7 +1,7 @@
 import { type ImageSource } from "expo-image";
 import { Text, View, type ViewStyle } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
 
@@ -50,16 +50,9 @@ export function FeatureCard({
       <View
         accessibilityRole="button"
         accessibilityLabel={feature.title}
+        className="rounded-[16px] bg-canvas-raised border border-rule px-[12px] py-[12px] justify-between overflow-hidden"
         style={{
           height,
-          borderRadius: 16,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          justifyContent: "space-between",
-          overflow: "hidden",
         }}
       >
         <ArtSlot
@@ -73,13 +66,7 @@ export function FeatureCard({
             show at their own footers. */}
         <Text
           numberOfLines={2}
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 15,
-            lineHeight: 18,
-            letterSpacing: 0.2,
-            color: C.text,
-          }}
+          className="font-display-bold text-[15px] leading-[18px] tracking-[0.2px] text-text"
         >
           {feature.title.toUpperCase()}
         </Text>
@@ -126,7 +113,7 @@ export function FeatureGrid({
   return (
     <View style={{ gap: rowGap }}>
       {chunks.map((row, i) => (
-        <View key={i} style={{ flexDirection: "row", gap }}>
+        <View key={i} className="flex-row" style={{ gap }}>
           {row.map((feature) => (
             <FeatureCard
               key={feature.key}

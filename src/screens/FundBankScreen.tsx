@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -26,7 +26,8 @@ import {
 } from "../lib/gateway/linkpay";
 import { formatMoney } from "../lib/gateway/money";
 import { SessionExpiredError, type Deposit } from "../lib/gateway/types";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * Money in, by bank transfer.
@@ -96,23 +97,21 @@ function DetailRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={"Copy " + label}
+      className="flex-row items-center justify-between gap-[12px] py-[13px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        paddingVertical: 13,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
-      <Mono size={10} color={C.dim} style={{ letterSpacing: 1.3 }}>
+      <Mono className="text-[10px] text-dim tracking-[1.3px]">
         {label.toUpperCase()}
       </Mono>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
-        <Mono size={12.5} color={C.text}>
-          {value}
-        </Mono>
+      <View
+        className="flex-row items-center gap-[10px]"
+        style={{
+          flexShrink: 1,
+        }}
+      >
+        <Mono className="text-[12.5px] text-text">{value}</Mono>
         <CopyMark copied={copied} />
       </View>
     </Pressable>
@@ -142,31 +141,36 @@ function Gate({
         : C.border;
   return (
     <View
+      className="mt-[28px] border rounded-[20px] p-[20px] overflow-hidden"
       style={{
-        marginTop: 28,
         backgroundColor: tone === "bad" ? "rgba(246,165,165,0.08)" : C.raised,
-        borderWidth: 1,
         borderColor: edge,
-        borderRadius: 20,
-        padding: 20,
-        overflow: "hidden",
       }}
     >
       <Shine />
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+      <View className="flex-row items-center gap-[9px]">
         {pending ? <PulseDot /> : null}
-        <Display size={18}>{title}</Display>
+        <Display className="text-[18px] leading-[18.9px]">{title}</Display>
       </View>
       <Body
         size={12.5}
-        color={tone === "bad" ? C.down : C.sub}
-        style={{ marginTop: 12, lineHeight: 19 }}
+
+        className={cn(
+          "mt-[12px] leading-[19px]",
+          tone === "bad" ? "text-down" : "text-sub",
+        )}
       >
         {body}
       </Body>
       {action ? (
-        <View style={{ marginTop: 20 }}>
-          <MetallicButton label={action} height={48} radius={14} size={13.5} onPress={onAction} />
+        <View className="mt-[20px]">
+          <MetallicButton
+            label={action}
+            height={48}
+            radius={14}
+            size={13.5}
+            onPress={onAction}
+          />
         </View>
       ) : null}
     </View>
@@ -221,7 +225,7 @@ export default function FundBankScreen({
 
   // The account card is placed, not rendered: it rises and settles once, the
   // way a teller slides a card across the counter. The one motion moment here.
-  const place = useRef(new Animated.Value(0)).current;
+  const place = useMemo(() => new Animated.Value(0), []);
 
   // `unentitled` only — a payment still in flight, or an entitlement still
   // propagating, is `activating` and gets the wait below instead of a paywall.
@@ -283,7 +287,9 @@ export default function FundBankScreen({
           return false;
         }
 
-        const fresh = deposits.find((d) => d.id !== "" && !seen.current!.has(d.id));
+        const fresh = deposits.find(
+          (d) => d.id !== "" && !seen.current!.has(d.id),
+        );
         const followed = tracking.current
           ? deposits.find((d) => d.id === tracking.current)
           : undefined;
@@ -339,10 +345,10 @@ export default function FundBankScreen({
   };
 
   const header = (title: string, sub?: string) => (
-    <View style={{ paddingHorizontal: 0 }}>
+    <View className="px-[0px]">
       <BackHeader title={title} onBack={onBack} />
       {sub ? (
-        <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+        <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
           {sub}
         </Body>
       ) : null}
@@ -355,7 +361,7 @@ export default function FundBankScreen({
     return (
       <Screen>
         {header("Bank transfer")}
-        <View style={{ marginTop: 26, gap: 14 }}>
+        <View className="mt-[26px] gap-[14px]">
           <Pulse height={120} radius={22} />
           <Pulse height={56} radius={16} />
           <Pulse width="60%" height={12} />
@@ -493,42 +499,24 @@ export default function FundBankScreen({
     return (
       <Screen center>
         <View
+          className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: C.upBg,
-            borderWidth: 1,
             borderColor: "rgba(124,231,176,0.35)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <CheckSeal />
         </View>
-        <Display size={23} style={{ marginTop: 20 }}>
+        <Display className="text-[23px] leading-[24.15px] mt-[20px]">
           Credited to your balance
         </Display>
-        <Text
-          style={{
-            fontFamily: F.monoSemibold,
-            fontSize: 30,
-            lineHeight: 38,
-            color: C.up,
-            marginTop: 14,
-          }}
-        >
+        <Text className="font-mono-semibold text-[30px] leading-[38px] text-up mt-[14px]">
           {formatMoney(credited.amount)}
         </Text>
-        <Body
-          size={12.5}
-          color={C.sub}
-          style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}
-        >
+        <Body className="text-[12.5px] text-sub mt-[10px] text-center leading-[19px]">
           {credited.senderName ? `From ${credited.senderName}.\n` : ""}
           Spend it anywhere in the app.
         </Body>
-        <View style={{ marginTop: 30, alignSelf: "stretch" }}>
+        <View className="mt-[30px]" style={{ alignSelf: "stretch" }}>
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </Screen>
@@ -541,7 +529,9 @@ export default function FundBankScreen({
   const detected = incoming?.status === "DETECTED";
   const rejected = incoming?.status === "REJECTED";
   const checkedAgo =
-    lastChecked === null ? null : Math.max(0, Math.round((now - lastChecked) / 1000));
+    lastChecked === null
+      ? null
+      : Math.max(0, Math.round((now - lastChecked) / 1000));
 
   // Nothing is being asked any more. A `watchStartedAt` of `null` is the moment
   // before the effect arms the watch, and that reads as watching, not as
@@ -567,7 +557,9 @@ export default function FundBankScreen({
     stoppedAt !== null ||
     (watchStartedAt !== null && now - watchStartedAt >= WATCH_ENDS_MS);
 
-  const amountSuffix = incoming?.amount ? ` · ${formatMoney(incoming.amount)}` : "";
+  const amountSuffix = incoming?.amount
+    ? ` · ${formatMoney(incoming.amount)}`
+    : "";
   // The stop is stated either way; the deadline is named only when the clock
   // says so. A stop with time left on it — a lost session is the one that
   // reaches this screen — gets the same honest "not watching any more" without
@@ -605,42 +597,40 @@ export default function FundBankScreen({
       )}
 
       <Animated.View
+        className="mt-[18px]"
         style={{
-          marginTop: 18,
           opacity: place,
           transform: [
-            { translateY: place.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
-            { scale: place.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
+            {
+              translateY: place.interpolate({
+                inputRange: [0, 1],
+                outputRange: [22, 0],
+              }),
+            },
+            {
+              scale: place.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.97, 1],
+              }),
+            },
           ],
         }}
       >
-        <View
-          style={{
-            backgroundColor: C.raised,
-            borderWidth: 1,
-            borderColor: C.border,
-            borderRadius: 24,
-            overflow: "hidden",
-          }}
-        >
+        <View className="bg-canvas-raised border border-border rounded-[24px] overflow-hidden">
           <Shine />
 
           {/* Header band: whose account this is, and that it does not expire. */}
           <View
+            className="px-[18px] pt-[16px] pb-[14px] bg-brand-glow border-b"
             style={{
-              paddingHorizontal: 18,
-              paddingTop: 16,
-              paddingBottom: 14,
-              backgroundColor: C.brandGlow,
-              borderBottomWidth: 1,
               borderBottomColor: "rgba(131,190,96,0.28)",
             }}
           >
-            <Label style={{ color: C.brandSoft }}>Your naira account</Label>
-            <Body size={13.5} semibold style={{ marginTop: 7 }}>
+            <Label className="text-brand-soft">Your naira account</Label>
+            <Body className="text-[13.5px] font-body-semibold mt-[7px]">
               {account?.accountName ?? "In your name"}
             </Body>
-            <Mono size={10} color={C.dim} style={{ marginTop: 6, letterSpacing: 1.2 }}>
+            <Mono className="text-[10px] text-dim mt-[6px] tracking-[1.2px]">
               PERMANENT · NO EXPIRY
             </Mono>
           </View>
@@ -651,29 +641,18 @@ export default function FundBankScreen({
             onPress={() => void copy("number", number.replace(/\s/g, ""))}
             accessibilityRole="button"
             accessibilityLabel="Copy account number"
-            style={{ paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18 }}
+            className="px-[18px] pt-[20px] pb-[18px]"
           >
             <Label>Account number</Label>
-            <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 27,
-                lineHeight: 34,
-                letterSpacing: 2.5,
-                color: C.text,
-                marginTop: 9,
-              }}
-            >
+            <Text className="font-mono-semibold text-[27px] leading-[34px] tracking-[2.5px] text-text mt-[9px]">
               {number || "—"}
             </Text>
-            <View style={{ marginTop: 12, alignSelf: "flex-start" }}>
+            <View className="mt-[12px] self-start">
               <CopyMark copied={copied === "number"} label="COPY NUMBER" />
             </View>
           </Pressable>
 
-          <View
-            style={{ paddingHorizontal: 18, borderTopWidth: 1, borderTopColor: C.hairline }}
-          >
+          <View className="px-[18px] border-t border-t-rule">
             <DetailRow
               label="Bank"
               value={account?.bankName ?? "—"}
@@ -691,53 +670,44 @@ export default function FundBankScreen({
         </View>
       </Animated.View>
 
-      <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
-        Transfers are credited once the provider confirms them. KashPlus does not ask you for an
-        exact figure — send whatever you mean to send.
+      <Body className="text-[11.5px] text-dim mt-[14px] leading-[17.5px]">
+        Transfers are credited once the provider confirms them. KashPlus does
+        not ask you for an exact figure — send whatever you mean to send.
       </Body>
 
-      <View
-        style={{
-          marginTop: 22,
-          paddingTop: 18,
-          borderTopWidth: 1,
-          borderTopColor: C.hairline,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 9,
-          }}
-        >
+      <View className="mt-[22px] pt-[18px] border-t border-t-rule">
+        <View className="flex-row items-center justify-center gap-[9px]">
           {/* The pulse means "a request is going out on a timer". Once the
               watch has run out that is no longer true, so the dot goes with
               it — a dot that keeps beating over a dead poll is the whole
               defect, not a decoration. */}
           {detected ? (
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.up }} />
+            <View className="w-[6px] h-[6px] rounded-[3px] bg-up" />
           ) : rejected || watchEnded ? null : (
             <PulseDot />
           )}
           <Body
             size={13}
-            color={rejected ? C.down : watchEnded ? C.sub : detected ? C.up : C.silver}
-            style={{ flexShrink: 1, lineHeight: 18 }}
+            color={
+              rejected
+                ? C.down
+                : watchEnded
+                  ? C.sub
+                  : detected
+                    ? C.up
+                    : C.silver
+            }
+            className="leading-[18px]"
+            style={{ flexShrink: 1 }}
           >
             {watchLine}
           </Body>
         </View>
-        <Mono
-          size={10}
-          color={C.dim}
-          style={{ textAlign: "center", marginTop: 8, letterSpacing: 1.2 }}
-        >
+        <Mono className="text-[10px] text-dim text-center mt-[8px] tracking-[1.2px]">
           {monoLine}
         </Mono>
         {feedError ? (
-          <Body size={11.5} color={C.down} style={{ textAlign: "center", marginTop: 10 }}>
+          <Body className="text-[11.5px] text-down text-center mt-[10px]">
             {feedError}
           </Body>
         ) : null}
@@ -745,7 +715,7 @@ export default function FundBankScreen({
             transfer, where the poll ends early and the user's next move is
             usually to send another one. */}
         {watchEnded ? (
-          <View style={{ marginTop: 14 }}>
+          <View className="mt-[14px]">
             <GhostButton label="Check now" onPress={restartWatch} />
           </View>
         ) : null}

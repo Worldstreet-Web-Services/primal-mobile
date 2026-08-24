@@ -1,6 +1,6 @@
 import { Text, View, type ViewStyle } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { TrendDownIcon, TrendUpIcon } from "../icons";
 import { AmountText, PulseDot } from "../ui";
 
@@ -34,45 +34,23 @@ export function QuotePanel({
 
   return (
     <View
-      style={[
-        {
-          backgroundColor: C.raised,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 18,
-          paddingTop: 16,
-          paddingBottom: 22,
-        },
-        style,
-      ]}
+      className="bg-canvas-raised rounded-[18px] border border-rule px-[18px] pt-[16px] pb-[22px]"
+      style={style}
     >
       {live ? (
-        <View style={{ marginBottom: 12 }}>
+        <View className="mb-[12px]">
           <PulseDot color={C.live} size={8} />
         </View>
       ) : null}
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Text
-          style={{
-            fontFamily: F.display,
-            fontSize: 17,
-            letterSpacing: 0.2,
-            color: C.sub,
-          }}
-        >
+      <View className="flex-row items-center gap-[10px]">
+        <Text className="font-display text-[17px] tracking-[0.2px] text-sub">
           {pair}
         </Text>
         {delta ? (
           <View
+            className="flex-row items-center gap-[4px] px-[8px] py-[4px] rounded-[8px]"
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 8,
               backgroundColor: down ? "rgba(246,165,165,0.12)" : C.upBg,
             }}
           >
@@ -82,7 +60,10 @@ export function QuotePanel({
               <TrendUpIcon size={12} color={tone} />
             )}
             <Text
-              style={{ fontFamily: F.bodySemibold, fontSize: 12.5, color: tone }}
+              className="font-body-semibold text-[12.5px]"
+              style={{
+                color: tone,
+              }}
             >
               {delta}
             </Text>
@@ -91,20 +72,12 @@ export function QuotePanel({
       </View>
 
       {label ? (
-        <Text
-          style={{
-            fontFamily: F.mono,
-            fontSize: 11,
-            letterSpacing: 1.8,
-            color: C.dim,
-            marginTop: 8,
-          }}
-        >
+        <Text className="font-mono text-[11px] tracking-[1.8px] text-dim mt-[8px]">
           {label.toUpperCase()}
         </Text>
       ) : null}
 
-      <View style={{ marginTop: 6 }}>
+      <View className="mt-[6px]">
         <AmountText value={price} size={40} />
       </View>
     </View>

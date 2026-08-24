@@ -25,8 +25,14 @@ import {
   type VasProduct,
   type VasProvider,
 } from "../lib/gateway/services";
-import { formatMoney, MoneyError, parseMoney, type Money } from "../lib/gateway";
-import { C, F } from "../theme/tokens";
+import {
+  formatMoney,
+  MoneyError,
+  parseMoney,
+  type Money,
+} from "../lib/gateway";
+import { C } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * Everything the checkout needs to state what is about to happen, resolved
@@ -66,14 +72,16 @@ function CategoryTile({
       accessibilityLabel={category.label}
       style={{ width: "48%" }}
     >
-      <Card style={{ padding: 14, minHeight: 104, justifyContent: "space-between" }}>
+      <Card className="p-[14px] min-h-[104px] justify-between">
         <View>
-          <Display size={17}>{category.label}</Display>
-          <Body size={11.5} color={C.dim} numberOfLines={2} style={{ marginTop: 5 }}>
+          <Display className="text-[17px] leading-[17.85px]">
+            {category.label}
+          </Display>
+          <Body className="text-[11.5px] text-dim mt-[5px]" numberOfLines={2}>
             {category.blurb}
           </Body>
         </View>
-        <Mono size={10} color={C.dim} style={{ letterSpacing: 1.2, marginTop: 10 }}>
+        <Mono className="text-[10px] text-dim tracking-[1.2px] mt-[10px]">
           {count} {count === 1 ? "BILLER" : "BILLERS"}
         </Mono>
       </Card>
@@ -97,29 +105,21 @@ function ProductRow({
   return (
     <PressableScale onPress={onPress} accessibilityLabel={product.name}>
       <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-          paddingVertical: 13,
-          paddingHorizontal: 14,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: active ? C.brandSoft : C.hairline,
-          backgroundColor: active ? C.brandGlow : C.card,
-        }}
+        className={cn(
+          "flex-row items-center gap-[12px] py-[13px] px-[14px] rounded-[14px] border",
+          active ? "border-brand-soft" : "border-rule",
+          active ? "bg-brand-glow" : "bg-card",
+        )}
       >
-        <View style={{ flex: 1 }}>
-          <Body size={13.5} semibold numberOfLines={1}>
+        <View className="flex-1">
+          <Body className="text-[13.5px] font-body-semibold" numberOfLines={1}>
             {product.name}
           </Body>
           {meta ? (
-            <Body size={11} color={C.dim} style={{ marginTop: 3 }}>
-              {meta}
-            </Body>
+            <Body className="text-[11px] text-dim mt-[3px]">{meta}</Body>
           ) : null}
         </View>
-        <Mono size={13} color={active ? C.brandSoft : C.silver}>
+        <Mono className={active ? "text-brand-soft" : "text-silver"} size={13}>
           {product.amount ? formatMoney(product.amount) : "Any amount"}
         </Mono>
       </View>
@@ -193,9 +193,10 @@ export default function BillsScreen({
     [category, providerId],
   );
   const product = useMemo(
-    () => (productCode && productCode !== CUSTOM
-      ? products.find((p) => p.code === productCode) ?? null
-      : null),
+    () =>
+      productCode && productCode !== CUSTOM
+        ? (products.find((p) => p.code === productCode) ?? null)
+        : null,
     [products, productCode],
   );
 
@@ -252,7 +253,8 @@ export default function BillsScreen({
         amount = BigInt(parsed.amountMinor) > 0n ? parsed : null;
         if (!amount) amountError = "Enter an amount above zero.";
       } catch (e) {
-        amountError = e instanceof MoneyError ? e.message : "That is not an amount.";
+        amountError =
+          e instanceof MoneyError ? e.message : "That is not an amount.";
       }
     }
   } else if (product?.amount) {
@@ -288,8 +290,15 @@ export default function BillsScreen({
       // are the only cases where there is genuinely no product.
       product,
       amount,
-      destinationDisplay: normalizeDestination(category.destination, destination),
-      destinationWire: wireDestination(category.destination, destination, country),
+      destinationDisplay: normalizeDestination(
+        category.destination,
+        destination,
+      ),
+      destinationWire: wireDestination(
+        category.destination,
+        destination,
+        country,
+      ),
     });
   };
 
@@ -298,20 +307,16 @@ export default function BillsScreen({
   if (block === "subscription") {
     return (
       <Screen top={top} center>
-        <Card style={{ width: "100%", padding: 20, alignItems: "center" }}>
+        <Card className="p-[20px] items-center" style={{ width: "100%" }}>
           <Label>KashPlus</Label>
-          <Display size={22} style={{ marginTop: 10, textAlign: "center" }}>
+          <Display className="text-[22px] leading-[23.1px] mt-[10px] text-center">
             Bills need an active plan
           </Display>
-          <Body
-            size={13}
-            color={C.sub}
-            style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}
-          >
+          <Body className="text-[13px] text-sub mt-[10px] text-center leading-[19px]">
             Airtime, data, power and TV run on your KashPlus subscription. Your
             sign-in is fine — only the plan has lapsed.
           </Body>
-          <View style={{ height: 18 }} />
+          <View className="h-[18px]" />
           <MetallicButton
             label="See plans"
             onPress={onNeedsSubscription}
@@ -319,7 +324,7 @@ export default function BillsScreen({
           />
           {onDismissBlock ? (
             <>
-              <View style={{ height: 10 }} />
+              <View className="h-[10px]" />
               <GhostButton
                 label="Back to billers"
                 onPress={onDismissBlock}
@@ -338,9 +343,9 @@ export default function BillsScreen({
   if (!category) {
     return (
       <Screen top={top}>
-        <View style={{ marginTop: 22 }}>
-          <Display size={30}>Bills</Display>
-          <Body size={13} color={C.sub} style={{ marginTop: 7, lineHeight: 19 }}>
+        <View className="mt-[22px]">
+          <Display className="text-[30px] leading-[31.5px]">Bills</Display>
+          <Body className="text-[13px] text-sub mt-[7px] leading-[19px]">
             Airtime, data, power, TV — paid from your naira balance.
           </Body>
         </View>
@@ -348,14 +353,7 @@ export default function BillsScreen({
         <SectionRule space={20} />
 
         {loading && categories.length === 0 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              rowGap: 12,
-            }}
-          >
+          <View className="flex-row flex-wrap justify-between gap-y-[12px]">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <Pulse key={i} width="48%" height={104} radius={20} />
             ))}
@@ -363,49 +361,46 @@ export default function BillsScreen({
         ) : null}
 
         {!loading && error ? (
-          <Card style={{ padding: 18 }}>
-            <Body size={13.5} semibold>
+          <Card className="p-[18px]">
+            <Body className="text-[13.5px]" semibold>
               Could not load the biller list
             </Body>
-            <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+            <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
               {error}
             </Body>
-            <View style={{ height: 14 }} />
+            <View className="h-[14px]" />
             <GhostButton label="Try again" onPress={onRetry} />
           </Card>
         ) : null}
 
         {!loading && !error && categories.length === 0 ? (
-          <Card style={{ padding: 18 }}>
-            <Body size={13.5} semibold>
+          <Card className="p-[18px]">
+            <Body className="text-[13.5px]" semibold>
               Nothing to pay here yet
             </Body>
-            <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+            <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
               This account has no billers enabled. Nothing is broken — there is
               simply no catalogue on it today.
             </Body>
-            <View style={{ height: 14 }} />
+            <View className="h-[14px]" />
             <GhostButton label="Check again" onPress={onRetry} />
           </Card>
         ) : null}
 
         {categories.length > 0 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              rowGap: 12,
-            }}
-          >
+          <View className="flex-row flex-wrap justify-between gap-y-[12px]">
             {categories.map((c) => (
-              <CategoryTile key={c.key} category={c} onPress={() => pickCategory(c)} />
+              <CategoryTile
+                key={c.key}
+                category={c}
+                onPress={() => pickCategory(c)}
+              />
             ))}
           </View>
         ) : null}
 
         {loading && categories.length > 0 ? (
-          <Body size={11.5} color={C.dim} style={{ marginTop: 16 }}>
+          <Body className="text-[11.5px] text-dim mt-[16px]">
             Still checking for more billers…
           </Body>
         ) : null}
@@ -422,10 +417,10 @@ export default function BillsScreen({
     // "handled" the first tap on any of those is eaten dismissing the
     // keyboard, which on a payment form reads as a button that does not work.
     <Screen top={top} bottom={56} keyboardShouldPersistTaps="handled">
-      <View style={{ marginTop: 22, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <View style={{ flex: 1 }}>
+      <View className="mt-[22px] flex-row items-center gap-[12px]">
+        <View className="flex-1">
           <Label>{category.serviceType.toUpperCase()}</Label>
-          <Display size={26} style={{ marginTop: 6 }}>
+          <Display className="text-[26px] leading-[27.3px] mt-[6px]">
             {category.label}
           </Display>
         </View>
@@ -441,7 +436,7 @@ export default function BillsScreen({
       <SectionRule space={18} />
 
       <Label>Biller</Label>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+      <View className="flex-row flex-wrap gap-[8px] mt-[10px]">
         {category.providers.map((p) => (
           <Chip
             key={p.id}
@@ -467,35 +462,29 @@ export default function BillsScreen({
             autoCapitalize="none"
             autoCorrect={false}
             maxLength={spec.maxLength + 4}
-            style={{
-              height: 54,
-              marginTop: 10,
-              borderRadius: 14,
-              backgroundColor: C.card,
-              borderWidth: 1,
-              borderColor: destinationError ? C.down : C.border,
-              paddingHorizontal: 16,
-              color: C.text,
-              fontFamily: F.mono,
-              fontSize: 16,
-              letterSpacing: 1,
-            }}
+            className={cn(
+              "h-[54px] mt-[10px] rounded-[14px] bg-card border px-[16px] text-text font-mono text-[16px] tracking-[1px]",
+              destinationError ? "border-down" : "border-border",
+            )}
           />
           <Body
             size={11.5}
-            color={destinationError ? C.down : C.dim}
-            style={{ marginTop: 8, lineHeight: 17 }}
+
+            className={cn(
+              "mt-[8px] leading-[17px]",
+              destinationError ? "text-down" : "text-dim",
+            )}
           >
             {destinationError ?? spec.help}
           </Body>
           {mismatch ? (
-            <Body size={11.5} color={C.amber} style={{ marginTop: 6, lineHeight: 17 }}>
+            <Body className="text-[11.5px] text-amber mt-[6px] leading-[17px]">
               That number looks like {mismatch}. Ported lines are common, so
               this may still be right — check before you pay.
             </Body>
           ) : null}
           {provider.requiresValidation === false ? (
-            <Body size={11.5} color={C.dim} style={{ marginTop: 6, lineHeight: 17 }}>
+            <Body className="text-[11.5px] text-dim mt-[6px] leading-[17px]">
               {provider.name} cannot confirm this number before payment.
             </Body>
           ) : null}
@@ -505,7 +494,7 @@ export default function BillsScreen({
           <Label>{customAllowed ? "Amount or plan" : "Plan"}</Label>
 
           {productsLoading ? (
-            <View style={{ marginTop: 10, gap: 10 }}>
+            <View className="mt-[10px] gap-[10px]">
               <Pulse height={52} radius={14} />
               <Pulse height={52} radius={14} />
               <Pulse height={52} radius={14} />
@@ -513,16 +502,19 @@ export default function BillsScreen({
           ) : null}
 
           {!productsLoading && productsError ? (
-            <Card style={{ padding: 16, marginTop: 10 }}>
-              <Body size={12.5} color={C.sub} style={{ lineHeight: 18 }}>
+            <Card className="p-[16px] mt-[10px]">
+              <Body className="text-[12.5px] text-sub leading-[18px]">
                 {productsError}
               </Body>
             </Card>
           ) : null}
 
-          {!productsLoading && !productsError && products.length === 0 && !customAllowed ? (
-            <Card style={{ padding: 16, marginTop: 10 }}>
-              <Body size={12.5} color={C.sub} style={{ lineHeight: 18 }}>
+          {!productsLoading &&
+          !productsError &&
+          products.length === 0 &&
+          !customAllowed ? (
+            <Card className="p-[16px] mt-[10px]">
+              <Body className="text-[12.5px] text-sub leading-[18px]">
                 {provider.name} has no plans listed right now. Try another
                 biller, or come back shortly.
               </Body>
@@ -530,7 +522,7 @@ export default function BillsScreen({
           ) : null}
 
           {!productsLoading && products.length > 0 ? (
-            <View style={{ marginTop: 10, gap: 8 }}>
+            <View className="mt-[10px] gap-[8px]">
               {products.map((p) => (
                 <ProductRow
                   key={p.code}
@@ -549,17 +541,27 @@ export default function BillsScreen({
                   accessibilityLabel="Enter my own amount"
                 >
                   <View
+                    className={cn(
+                      "py-[13px] px-[14px] rounded-[14px] border",
+                      productCode === CUSTOM
+                        ? "border-brand-soft"
+                        : "border-border",
+                    )}
                     style={{
-                      paddingVertical: 13,
-                      paddingHorizontal: 14,
-                      borderRadius: 14,
-                      borderWidth: 1,
                       borderStyle: "dashed",
-                      borderColor: productCode === CUSTOM ? C.brandSoft : C.border,
-                      backgroundColor: productCode === CUSTOM ? C.brandGlow : "transparent",
+                      backgroundColor:
+                        productCode === CUSTOM ? C.brandGlow : "transparent",
                     }}
                   >
-                    <Body size={13} semibold color={productCode === CUSTOM ? C.brandSoft : C.silver}>
+                    <Body
+                      className={
+                        productCode === CUSTOM
+                          ? "text-brand-soft"
+                          : "text-silver"
+                      }
+                      size={13}
+                      semibold
+                    >
                       Enter my own amount
                     </Body>
                   </View>
@@ -576,30 +578,25 @@ export default function BillsScreen({
                 placeholder="0.00"
                 placeholderTextColor={C.dim}
                 keyboardType="decimal-pad"
-                style={{
-                  height: 62,
-                  marginTop: 12,
-                  borderRadius: 14,
-                  backgroundColor: C.card,
-                  borderWidth: 1,
-                  borderColor: amountError ? C.down : C.border,
-                  paddingHorizontal: 16,
-                  color: C.text,
-                  fontFamily: F.display,
-                  fontSize: 26,
-                }}
+                className={cn(
+                  "h-[62px] mt-[12px] rounded-[14px] bg-card border px-[16px] text-text font-display text-[26px]",
+                  amountError ? "border-down" : "border-border",
+                )}
               />
               <Body
                 size={11.5}
-                color={amountError ? C.down : C.dim}
-                style={{ marginTop: 8 }}
+
+                className={cn(
+                  "mt-[8px]",
+                  amountError ? "text-down" : "text-dim",
+                )}
               >
                 {amountError ?? `In ${currency}. Whole naira is fine.`}
               </Body>
             </>
           ) : null}
 
-          <View style={{ height: 26 }} />
+          <View className="h-[26px]" />
 
           <MetallicButton
             label={amount ? `Review ${formatMoney(amount)}` : "Review"}
@@ -608,7 +605,7 @@ export default function BillsScreen({
           />
           {/* A disabled CTA that says nothing makes people tap it twice and
               conclude the app is broken. Name the missing piece instead. */}
-          <Body size={11} color={C.dim} style={{ marginTop: 12, textAlign: "center" }}>
+          <Body className="text-[11px] text-dim mt-[12px] text-center">
             {!destinationReady
               ? `Enter the ${spec.label.toLowerCase()} to continue.`
               : !amount
@@ -619,7 +616,7 @@ export default function BillsScreen({
           </Body>
         </>
       ) : (
-        <Body size={12.5} color={C.dim} style={{ marginTop: 18, lineHeight: 18 }}>
+        <Body className="text-[12.5px] text-dim mt-[18px] leading-[18px]">
           Pick a biller to see what it sells.
         </Body>
       )}

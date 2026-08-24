@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Animated, View, type ViewStyle } from "react-native";
 
 import { C, F } from "../../theme/tokens";
 import { Body, Label, Mono, PressableScale, PulseDot } from "../ui";
+import { cn } from "@/lib/cn";
 
 // The crypto space's shared anatomy. Holdings, the withdraw picker and the buy
 // list are the same instrument seen three times, so the row, the state tag and
@@ -25,33 +26,31 @@ export function AssetDisc({
 }) {
   return (
     <View
+      className={cn(
+        "border items-center justify-center overflow-hidden",
+        stable ? "bg-up-tint" : "bg-canvas-inset",
+      )}
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: stable ? C.upBg : C.inset,
-        borderWidth: 1,
         borderColor: stable ? "rgba(124,231,176,0.3)" : C.hairline,
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
       }}
     >
       <View
         pointerEvents="none"
+        className="absolute top-[0px] left-[7px] right-[7px] h-[1px]"
         style={{
-          position: "absolute",
-          top: 0,
-          left: 7,
-          right: 7,
-          height: 1,
           backgroundColor: "rgba(255,255,255,0.18)",
         }}
       />
       <Mono
         size={symbol.length > 3 ? 8.5 : 10}
-        color={stable ? C.up : C.silver}
-        style={{ fontFamily: F.monoSemibold, letterSpacing: 0.2 }}
+
+        className={cn(
+          "font-mono-semibold tracking-[0.2px]",
+          stable ? "text-up" : "text-silver",
+        )}
       >
         {symbol}
       </Mono>
@@ -79,20 +78,14 @@ export function MetaChip({
   const fg = tone === "warn" ? C.amber : tone === "live" ? C.silver : C.dim;
   return (
     <View
+      className="flex-row items-center gap-[5px] px-[8px] py-[4px] rounded-[7px] border"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 7,
         backgroundColor: tone === "warn" ? "rgba(245,184,61,0.1)" : C.inset,
-        borderWidth: 1,
         borderColor: tone === "warn" ? "rgba(245,184,61,0.28)" : C.hairline,
       }}
     >
       {pulse ? <PulseDot color={fg} size={5} /> : null}
-      <Mono size={9} color={fg} style={{ letterSpacing: 1.3 }}>
+      <Mono className="text-[9px] tracking-[1.3px]" color={fg}>
         {label.toUpperCase()}
       </Mono>
     </View>
@@ -111,15 +104,8 @@ export function SectionHead({
 }) {
   return (
     <View
-      style={[
-        {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          minHeight: 18,
-        },
-        style,
-      ]}
+      className="flex-row items-center justify-between min-h-[18px]"
+      style={style}
     >
       <Label>{label}</Label>
       {right}
@@ -162,26 +148,20 @@ export function InstrumentRow({
 }) {
   const body = (
     <View
+      className="flex-row items-center gap-[13px] py-[14px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 13,
-        paddingVertical: 14,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
       <AssetDisc symbol={symbol} stable={stable} />
-      <View style={{ flex: 1 }}>
-        <Body size={13.5} semibold>
+      <View className="flex-1">
+        <Body className="text-[13.5px]" semibold>
           {name}
         </Body>
-        <Mono size={11} color={C.dim} style={{ marginTop: 3 }}>
-          {sub}
-        </Mono>
+        <Mono className="text-[11px] text-dim mt-[3px]">{sub}</Mono>
       </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <Mono size={13.5} color={C.text} style={{ fontFamily: F.monoSemibold }}>
+      <View className="items-end">
+        <Mono className="text-[13.5px] text-text font-mono-semibold">
           {value}
         </Mono>
         {meta ? (
@@ -190,7 +170,7 @@ export function InstrumentRow({
             color={
               metaTone === "up" ? C.up : metaTone === "down" ? C.down : C.dim
             }
-            style={{ marginTop: 3 }}
+            className="mt-[3px]"
           >
             {meta}
           </Mono>
@@ -229,7 +209,7 @@ export function PulseBlock({
   radius?: number;
   style?: ViewStyle;
 }) {
-  const v = useRef(new Animated.Value(0.4)).current;
+  const v = useMemo(() => new Animated.Value(0.4), []);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -252,12 +232,12 @@ export function PulseBlock({
 
   return (
     <Animated.View
+      className="bg-canvas-inset"
       style={[
         {
           width,
           height,
           borderRadius: radius,
-          backgroundColor: C.inset,
           opacity: v,
         },
         style,
@@ -270,21 +250,17 @@ export function PulseBlock({
 export function RowSkeleton({ last = false }: { last?: boolean }) {
   return (
     <View
+      className="flex-row items-center gap-[13px] py-[14px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 13,
-        paddingVertical: 14,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
       <PulseBlock width={40} height={40} radius={20} />
-      <View style={{ flex: 1, gap: 7 }}>
+      <View className="flex-1 gap-[7px]">
         <PulseBlock width={112} height={12} />
         <PulseBlock width={68} height={10} />
       </View>
-      <View style={{ alignItems: "flex-end", gap: 7 }}>
+      <View className="items-end gap-[7px]">
         <PulseBlock width={64} height={12} />
         <PulseBlock width={44} height={10} />
       </View>
@@ -312,26 +288,13 @@ export function QuoteCard({
 }) {
   return (
     <View
-      style={[
-        {
-          backgroundColor: C.raised,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 16,
-          overflow: "hidden",
-        },
-        style,
-      ]}
+      className="bg-canvas-raised rounded-[18px] border border-rule px-[16px] overflow-hidden"
+      style={style}
     >
       <View
         pointerEvents="none"
+        className="absolute top-[0px] left-[14px] right-[14px] h-[1px]"
         style={{
-          position: "absolute",
-          top: 0,
-          left: 14,
-          right: 14,
-          height: 1,
           backgroundColor: "rgba(255,255,255,0.2)",
         }}
       />
@@ -358,31 +321,19 @@ export function QuoteRow({
 }) {
   return (
     <View
+      className="flex-row items-center justify-between gap-[16px] py-[13px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 16,
-        paddingVertical: 13,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
-      <Body size={12.5} color={C.sub}>
-        {label}
-      </Body>
+      <Body className="text-[12.5px] text-sub">{label}</Body>
       <Mono
-        size={12.5}
-        color={C.text}
+        className="text-[12.5px] text-text"
+
         style={strong ? { fontFamily: F.monoSemibold } : undefined}
       >
         {value}
-        {tail ? (
-          <Mono size={12.5} color={C.dim}>
-            {" "}
-            {tail}
-          </Mono>
-        ) : null}
+        {tail ? <Mono className="text-[12.5px] text-dim"> {tail}</Mono> : null}
       </Mono>
     </View>
   );
@@ -405,7 +356,7 @@ export function Settle({
   duration?: number;
   style?: ViewStyle;
 }) {
-  const v = useRef(new Animated.Value(0)).current;
+  const v = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     Animated.timing(v, {

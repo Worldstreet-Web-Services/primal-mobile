@@ -1,9 +1,10 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import { ArrowRight } from "./icons";
 import { PressableScale } from "./ui";
+import { cn } from "@/lib/cn";
 
 export interface Option {
   key: string;
@@ -43,41 +44,31 @@ export function OptionRow({
       }
     >
       <View
+        className={cn(
+          "flex-row items-center gap-[14px] px-[14px] py-[14px] rounded-[20px] border",
+          selected ? "bg-brand" : "bg-canvas-raised",
+          selected ? "border-brand" : "border-rule",
+        )}
         style={{
           minHeight: height,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 14,
-          paddingHorizontal: 14,
-          paddingVertical: 14,
-          borderRadius: 20,
-          backgroundColor: selected ? C.brand : C.raised,
-          borderWidth: 1,
-          borderColor: selected ? C.brand : C.hairline,
         }}
       >
         {option.icon ? (
           <View
-            style={{
-              width: 46,
-              height: 46,
-              borderRadius: 15,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: selected ? C.ink : C.inset,
-            }}
+            className={cn(
+              "w-[46px] h-[46px] rounded-[15px] items-center justify-center",
+              selected ? "bg-ink" : "bg-canvas-inset",
+            )}
           >
             {option.icon}
           </View>
         ) : null}
 
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <Text
             numberOfLines={1}
+            className="font-display-bold text-[16px] tracking-[0.1px]"
             style={{
-              fontFamily: F.displayBold,
-              fontSize: 16,
-              letterSpacing: 0.1,
               color: ink,
             }}
           >
@@ -86,10 +77,8 @@ export function OptionRow({
           {option.sub ? (
             <Text
               numberOfLines={1}
+              className="font-body text-[12px] mt-[4px]"
               style={{
-                fontFamily: F.body,
-                fontSize: 12,
-                marginTop: 4,
                 // Ink at reduced weight rather than a grey, so the sub line
                 // stays legible on the brand fill.
                 color: selected ? "rgba(10,20,5,0.68)" : C.sub,

@@ -1,10 +1,11 @@
 import { type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { ChevronDownIcon } from "../icons";
 import { PILL, PressableScale } from "../ui";
 import { TokenBadge } from "./TokenBadge";
+import { cn } from "@/lib/cn";
 
 /**
  * Badge + label in a pill, for picking an asset or a network. `selected` rings
@@ -39,16 +40,12 @@ export function SelectPill({
       accessibilityLabel={label}
     >
       <View
+        className={cn(
+          "flex-row items-center gap-[10px] h-[52px] px-[12px] bg-canvas-raised border",
+          selected ? "border-brand" : "border-rule",
+        )}
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          height: 52,
-          paddingHorizontal: 12,
           borderRadius: PILL,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: selected ? C.brand : C.hairline,
         }}
       >
         <TokenBadge
@@ -58,12 +55,7 @@ export function SelectPill({
         />
         <Text
           numberOfLines={1}
-          style={{
-            flex: 1,
-            fontFamily: F.bodySemibold,
-            fontSize: 14.5,
-            color: C.text,
-          }}
+          className="flex-1 font-body-semibold text-[14.5px] text-text"
         >
           {label}
         </Text>

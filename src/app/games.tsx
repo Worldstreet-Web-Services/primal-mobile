@@ -4,13 +4,12 @@ import { View } from "react-native";
 
 import { NavHeader } from "@/components/home";
 import GamesSpaceScreen from "@/screens/GamesSpaceScreen";
-import { C } from "@/theme/tokens";
 
 export default function Games() {
   const [headerHeight, setHeaderHeight] = useState(0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <GamesSpaceScreen
         top={headerHeight}
         onOpenGame={(slug) => {

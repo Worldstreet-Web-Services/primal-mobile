@@ -155,7 +155,9 @@ function readSessionResponse(response: SessionResponse): StoredSession {
   const str = (value: unknown): value is string =>
     typeof value === "string" && value !== "";
 
-  const user = (response as { user?: { id?: unknown; walletAddress?: unknown } })?.user;
+  const user = (
+    response as { user?: { id?: unknown; walletAddress?: unknown } }
+  )?.user;
 
   if (
     !str(response?.accessToken) ||

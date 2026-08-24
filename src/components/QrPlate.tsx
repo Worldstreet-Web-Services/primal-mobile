@@ -53,16 +53,10 @@ export function QrPlate({
 
   return (
     <View
+      className="self-center rounded-[26px] bg-canvas-inset border border-border items-center overflow-hidden"
       style={[
         {
-          alignSelf: "center",
           padding: pad,
-          borderRadius: 26,
-          backgroundColor: C.inset,
-          borderWidth: 1,
-          borderColor: C.border,
-          alignItems: "center",
-          overflow: "hidden",
         },
         style,
       ]}
@@ -105,7 +99,11 @@ export function QrPlate({
               padding: 12,
             }}
           >
-            <Mono size={10} color={INK_MUTED} style={{ textAlign: "center" }}>
+            <Mono
+              className="text-[10px]"
+              color={INK_MUTED}
+              style={{ textAlign: "center" }}
+            >
               CODE UNAVAILABLE
             </Mono>
           </View>
@@ -114,8 +112,8 @@ export function QrPlate({
 
       {caption ? (
         <Mono
-          size={9}
-          color={C.dim}
+          className="text-[9px] text-dim"
+
           style={{
             marginTop: 10,
             letterSpacing: 1.4,
@@ -180,18 +178,66 @@ function CornerTicks({ inset }: { inset: number }) {
   const arm = 9;
   const color = C.border;
   const bar = (s: ViewStyle) => (
-    <View pointerEvents="none" style={[{ position: "absolute" }, s]} />
+    <View pointerEvents="none" className="absolute" style={s} />
   );
   return (
     <>
-      {bar({ top: inset, left: inset, width: arm, height: 1, backgroundColor: color })}
-      {bar({ top: inset, left: inset, width: 1, height: arm, backgroundColor: color })}
-      {bar({ top: inset, right: inset, width: arm, height: 1, backgroundColor: color })}
-      {bar({ top: inset, right: inset, width: 1, height: arm, backgroundColor: color })}
-      {bar({ bottom: inset, left: inset, width: arm, height: 1, backgroundColor: color })}
-      {bar({ bottom: inset, left: inset, width: 1, height: arm, backgroundColor: color })}
-      {bar({ bottom: inset, right: inset, width: arm, height: 1, backgroundColor: color })}
-      {bar({ bottom: inset, right: inset, width: 1, height: arm, backgroundColor: color })}
+      {bar({
+        top: inset,
+        left: inset,
+        width: arm,
+        height: 1,
+        backgroundColor: color,
+      })}
+      {bar({
+        top: inset,
+        left: inset,
+        width: 1,
+        height: arm,
+        backgroundColor: color,
+      })}
+      {bar({
+        top: inset,
+        right: inset,
+        width: arm,
+        height: 1,
+        backgroundColor: color,
+      })}
+      {bar({
+        top: inset,
+        right: inset,
+        width: 1,
+        height: arm,
+        backgroundColor: color,
+      })}
+      {bar({
+        bottom: inset,
+        left: inset,
+        width: arm,
+        height: 1,
+        backgroundColor: color,
+      })}
+      {bar({
+        bottom: inset,
+        left: inset,
+        width: 1,
+        height: arm,
+        backgroundColor: color,
+      })}
+      {bar({
+        bottom: inset,
+        right: inset,
+        width: arm,
+        height: 1,
+        backgroundColor: color,
+      })}
+      {bar({
+        bottom: inset,
+        right: inset,
+        width: 1,
+        height: arm,
+        backgroundColor: color,
+      })}
     </>
   );
 }

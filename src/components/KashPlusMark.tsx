@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { Animated, Easing, View, type ViewStyle } from "react-native";
 import Svg, { G, Path } from "react-native-svg";
 
@@ -91,7 +91,8 @@ export function KashPlusLoader({
 }) {
   const size = box(width, height);
   // One driver per bar: they share a timeline but not a phase.
-  const bars = useRef(BARS.map(() => new Animated.Value(0))).current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bars = useMemo(() => BARS.map(() => new Animated.Value(0)), []);
 
   useEffect(() => {
     const cycle = Animated.sequence([

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, View } from "react-native";
 
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import { Logo } from "./Logo";
 
 /** How far each line travels on its way in. */
@@ -36,8 +36,10 @@ export function Splash({
   onDone?: () => void;
 }) {
   // One driver per line so they can be offset; 0 = hidden and low, 1 = landed.
-  const mark = useRef(new Animated.Value(animated ? 0 : 1)).current;
-  const word = useRef(new Animated.Value(animated ? 0 : 1)).current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const mark = useMemo(() => new Animated.Value(animated ? 0 : 1), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const word = useMemo(() => new Animated.Value(animated ? 0 : 1), []);
 
   // `onDone` is read through a ref so a caller passing an inline arrow doesn't
   // restart the animation on every render.
@@ -79,29 +81,19 @@ export function Splash({
   });
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
+    <View className="flex-1 bg-canvas items-center justify-center">
       <Animated.View style={lift(mark)}>
         <Logo height={markSize} accessibilityLabel={wordmark} />
       </Animated.View>
 
       <Animated.Text
+        className="font-display text-[38px] tracking-[-0.5px] mt-[12px]"
         style={[
           {
-            fontFamily: F.display,
-            fontSize: 38,
-            letterSpacing: -0.5,
             // Plain white. The gold lives in the mark directly above it, and a
             // coloured wordmark under a coloured mark makes two accents fight
             // over one lockup.
             color: C.text,
-            marginTop: 12,
           },
           lift(word),
         ]}

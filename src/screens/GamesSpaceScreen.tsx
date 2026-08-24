@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Easing, View, Text } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import {
   Screen,
   PressableScale,
@@ -27,6 +27,7 @@ import {
 import { vaultSigner } from "../lib/vault/signer";
 import { readPendingWithdrawals } from "../lib/vault/wager";
 import { featuredGame, useVaultStore } from "../store/vault";
+import { cn } from "@/lib/cn";
 
 // Design 3c: games space — the flagship card, the claim banner, then the
 // floor's quieter rooms.
@@ -69,19 +70,8 @@ function shortMoney(m: Money): string {
 
 function Seal({ label }: { label: string }) {
   return (
-    <View
-      style={{
-        paddingHorizontal: 9,
-        paddingVertical: 5,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        backgroundColor: C.inset,
-      }}
-    >
-      <Mono size={8.5} color={C.dim} style={{ letterSpacing: 1.6 }}>
-        {label}
-      </Mono>
+    <View className="px-[9px] py-[5px] rounded-[999px] border border-rule bg-canvas-inset">
+      <Mono className="text-[8.5px] text-dim tracking-[1.6px]">{label}</Mono>
     </View>
   );
 }
@@ -90,27 +80,17 @@ function Seal({ label }: { label: string }) {
  *  that is genuinely running — it is a claim, not a decoration. */
 function StatePill({ live, label }: { live: boolean; label: string }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 7,
-        paddingHorizontal: 11,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        backgroundColor: C.inset,
-      }}
-    >
+    <View className="flex-row items-center gap-[7px] px-[11px] py-[6px] rounded-[999px] border border-rule bg-canvas-inset">
       {live ? (
         <PulseDot color={C.live} size={5} />
       ) : (
-        <View
-          style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: C.dim }}
-        />
+        <View className="w-[5px] h-[5px] rounded-[3px] bg-dim" />
       )}
-      <Mono size={9.5} color={live ? C.silver : C.dim} style={{ letterSpacing: 1.6 }}>
+      <Mono
+        size={9.5}
+
+        className={cn("tracking-[1.6px]", live ? "text-silver" : "text-dim")}
+      >
         {label}
       </Mono>
     </View>
@@ -132,16 +112,14 @@ function Stat({
 }) {
   return (
     <View
+      className="flex-1"
       style={{
-        flex: 1,
         paddingLeft: first ? 0 : 14,
         borderLeftWidth: first ? 0 : 1,
         borderLeftColor: C.hairline,
       }}
     >
-      <Mono size={9} color={C.dim} style={{ letterSpacing: 1.6 }}>
-        {k}
-      </Mono>
+      <Mono className="text-[9px] text-dim tracking-[1.6px]">{k}</Mono>
       {v === null ? (
         <Pulse width="70%" height={14} radius={5} style={{ marginTop: 7 }} />
       ) : (
@@ -149,8 +127,11 @@ function Stat({
         // numerals are what stop it shifting width as its digits change.
         <Mono
           size={16}
-          color={amber ? C.amber : C.text}
-          style={{ marginTop: 6, fontFamily: F.monoSemibold }}
+
+          className={cn(
+            "mt-[6px] font-mono-semibold",
+            amber ? "text-amber" : "text-text",
+          )}
         >
           {v}
         </Mono>
@@ -171,29 +152,14 @@ function SoonRoom({
   discs?: boolean;
 }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        borderRadius: 20,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: C.hairline,
-        padding: 16,
-        overflow: "hidden",
-      }}
-    >
+    <View className="flex-1 rounded-[20px] bg-canvas-raised border border-rule p-[16px] overflow-hidden">
       <Shine />
       {/* A ghost of the game's mark, low enough to read as material. */}
       {glyph ? (
         <Text
           pointerEvents="none"
+          className="absolute right-[-14px] bottom-[-30px] text-[104px] leading-[116px] text-silver"
           style={{
-            position: "absolute",
-            right: -14,
-            bottom: -30,
-            fontSize: 104,
-            lineHeight: 116,
-            color: C.silver,
             // 0.05 was mixed against the near-black card, where 5% silver still
             // doubled the local value. On the charcoal card the ground has come
             // most of the way up to meet it, so the same alpha lifts almost
@@ -207,75 +173,34 @@ function SoonRoom({
       {discs ? (
         <View
           pointerEvents="none"
-          style={{
-            position: "absolute",
-            right: -26,
-            bottom: -26,
-            flexDirection: "row",
-            opacity: 0.05,
-          }}
+          className="absolute right-[-26px] bottom-[-26px] flex-row opacity-[0.05]"
         >
+          <View className="w-[84px] h-[84px] rounded-[42px] bg-silver" />
           <View
+            className="w-[84px] h-[84px] rounded-[42px] ml-[-28px] border-silver"
             style={{
-              width: 84,
-              height: 84,
-              borderRadius: 42,
-              backgroundColor: C.silver,
-            }}
-          />
-          <View
-            style={{
-              width: 84,
-              height: 84,
-              borderRadius: 42,
-              marginLeft: -28,
               borderWidth: 6,
-              borderColor: C.silver,
             }}
           />
         </View>
       ) : null}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+      <View className="flex-row items-center justify-between">
         {discs ? (
-          <View style={{ flexDirection: "row" }}>
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: C.silver,
-                opacity: 0.55,
-              }}
-            />
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                marginLeft: -7,
-                backgroundColor: C.inset,
-                borderWidth: 1,
-                borderColor: C.border,
-              }}
-            />
+          <View className="flex-row">
+            <View className="w-[20px] h-[20px] rounded-[10px] bg-silver opacity-[0.55]" />
+            <View className="w-[20px] h-[20px] rounded-[10px] ml-[-7px] bg-canvas-inset border border-border" />
           </View>
         ) : (
-          <Text style={{ fontSize: 20, lineHeight: 24, color: C.silver }}>
+          <Text className="text-[20px] leading-[24px] text-silver">
             {glyph}
           </Text>
         )}
         <Seal label="SOON" />
       </View>
-      <Body size={14} semibold color={C.silver} style={{ marginTop: 24 }}>
+      <Body className="text-[14px] text-silver font-body-semibold mt-[24px]">
         {name}
       </Body>
-      <Body size={10.5} color={C.dim} style={{ marginTop: 4, lineHeight: 15 }}>
+      <Body className="text-[10.5px] text-dim mt-[4px] leading-[15px]">
         {note}
       </Body>
     </View>
@@ -319,7 +244,7 @@ export default function GamesSpaceScreen({
   }, [connected, start]);
 
   // The screen's one motion moment: the flagship settles into place.
-  const enter = useRef(new Animated.Value(0)).current;
+  const enter = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     Animated.timing(enter, {
       toValue: 1,
@@ -347,7 +272,10 @@ export default function GamesSpaceScreen({
   useEffect(() => {
     // The stub signer throws until auth lands — a screen with no wallet simply
     // has no winnings line.
-    vaultSigner.getAddress().then(setMyAddress).catch(() => {});
+    vaultSigner
+      .getAddress()
+      .then(setMyAddress)
+      .catch(() => {});
   }, []);
 
   /** `null` until the contract has answered. Never assumed to be zero. */
@@ -403,7 +331,8 @@ export default function GamesSpaceScreen({
     ? `Enter the round · ${shortMoney(featured.minWager)}`
     : `Open a table · $${PLAY_TARGET_USD}`;
 
-  const pendingMoney = pendingWei === null ? null : moneyFromWei(pendingWei, unit);
+  const pendingMoney =
+    pendingWei === null ? null : moneyFromWei(pendingWei, unit);
   const hasPending = pendingWei !== null && BigInt(pendingWei) > 0n;
 
   return (
@@ -416,35 +345,25 @@ export default function GamesSpaceScreen({
           appears only when the contract says there is some. */}
       {hasPending && pendingMoney ? (
         <View
+          className="mt-[18px] flex-row items-center gap-[14px] rounded-[20px] border bg-up-tint py-[15px] px-[16px]"
           style={{
-            marginTop: 18,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            borderRadius: 20,
-            borderWidth: 1,
             borderColor: "rgba(124,231,176,0.26)",
-            backgroundColor: C.upBg,
-            paddingVertical: 15,
-            paddingHorizontal: 16,
           }}
         >
-          <View style={{ flex: 1 }}>
-            <Mono size={9.5} color={C.up} style={{ letterSpacing: 1.8, opacity: 0.75 }}>
+          <View className="flex-1">
+            <Mono className="text-[9.5px] text-up tracking-[1.8px] opacity-[0.75]">
               YOUR WINNINGS
             </Mono>
-            <Mono
-              size={20}
-              color={C.up}
-              style={{ marginTop: 5, fontFamily: F.monoSemibold }}
-            >
-              {unit > 0 ? pendingMoney.formattedUsd : `${pendingMoney.amount} ETH`}
+            <Mono className="text-[20px] text-up mt-[5px] font-mono-semibold">
+              {unit > 0
+                ? pendingMoney.formattedUsd
+                : `${pendingMoney.amount} ETH`}
             </Mono>
-            <Body size={11} color={C.dim} style={{ marginTop: 4 }}>
+            <Body className="text-[11px] text-dim mt-[4px]">
               A payout that couldn&apos;t reach you. Claim to collect it.
             </Body>
             {claimError ? (
-              <Body size={11} color={C.down} style={{ marginTop: 6, lineHeight: 16 }}>
+              <Body className="text-[11px] text-down mt-[6px] leading-[16px]">
                 {claimError}
               </Body>
             ) : null}
@@ -453,24 +372,14 @@ export default function GamesSpaceScreen({
             <View
               accessibilityRole="button"
               accessibilityLabel="Claim winnings"
+              className="rounded-[999px] border py-[10px] px-[18px]"
               style={{
-                borderRadius: 999,
-                borderWidth: 1,
                 borderColor: "rgba(124,231,176,0.45)",
                 backgroundColor: "rgba(124,231,176,0.12)",
-                paddingVertical: 10,
-                paddingHorizontal: 18,
                 opacity: claiming ? 0.6 : 1,
               }}
             >
-              <Text
-                style={{
-                  fontFamily: F.monoSemibold,
-                  fontSize: 11.5,
-                  letterSpacing: 1.4,
-                  color: C.up,
-                }}
-              >
+              <Text className="font-mono-semibold text-[11.5px] tracking-[1.4px] text-up">
                 {claiming ? "CLAIMING…" : "CLAIM"}
               </Text>
             </View>
@@ -478,17 +387,9 @@ export default function GamesSpaceScreen({
         </View>
       ) : null}
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          marginTop: 26,
-          marginBottom: 12,
-        }}
-      >
-        <Label style={{ letterSpacing: 2.4 }}>THE FLOOR</Label>
-        <View style={{ flex: 1, height: 1, backgroundColor: C.hairline }} />
+      <View className="flex-row items-center gap-[10px] mt-[26px] mb-[12px]">
+        <Label className="tracking-[2.4px]">THE FLOOR</Label>
+        <View className="flex-1 h-[1px] bg-rule" />
       </View>
 
       <Animated.View
@@ -505,44 +406,47 @@ export default function GamesSpaceScreen({
         }}
       >
         <PressableScale onPress={openLastMan} scale={0.985}>
-          <View
-            style={{
-              borderRadius: 26,
-              backgroundColor: C.raised,
-              borderWidth: 1,
-              borderColor: C.border,
-              padding: 20,
-              overflow: "hidden",
-            }}
-          >
+          <View className="rounded-[26px] bg-canvas-raised border border-border p-[20px] overflow-hidden">
             <Shine />
             <Svg
               pointerEvents="none"
               width="100%"
               height="100%"
-              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
             >
               <Defs>
-                <RadialGradient id="floorLight" cx="78%" cy="4%" rx="70%" ry="60%">
+                <RadialGradient
+                  id="floorLight"
+                  cx="78%"
+                  cy="4%"
+                  rx="70%"
+                  ry="60%"
+                >
                   <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.09} />
                   <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
                 </RadialGradient>
               </Defs>
-              <Rect x="0" y="0" width="100%" height="100%" fill="url(#floorLight)" />
+              <Rect
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill="url(#floorLight)"
+              />
             </Svg>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Mono size={9.5} color={C.sub} style={{ letterSpacing: 2 }}>
+            <View className="flex-row justify-between items-center">
+              <Mono className="text-[9.5px] text-sub tracking-[2px]">
                 {kicker}
               </Mono>
               <StatePill live={running} label={pillLabel} />
             </View>
-            <Display size={28} style={{ marginTop: 14, lineHeight: 32 }}>
+            <Display className="text-[28px] leading-[29.4px] mt-[14px] leading-[32px]">
               {"The Last Man\nStanding"}
             </Display>
 
@@ -550,15 +454,7 @@ export default function GamesSpaceScreen({
                 Reading → skeletons. Nothing open, or nothing readable → a
                 sentence, because three dashes read as three figures. */}
             {featured ? (
-              <View
-                style={{
-                  marginTop: 18,
-                  paddingTop: 14,
-                  flexDirection: "row",
-                  borderTopWidth: 1,
-                  borderTopColor: C.hairline,
-                }}
-              >
+              <View className="mt-[18px] pt-[14px] flex-row border-t border-t-rule">
                 <Stat k="POT" v={shortMoney(featured.pot)} first />
                 <Stat
                   k="CLOCK"
@@ -568,29 +464,14 @@ export default function GamesSpaceScreen({
                 <Stat k="STANDING" v={truncateAddress(featured.king)} />
               </View>
             ) : reading ? (
-              <View
-                style={{
-                  marginTop: 18,
-                  paddingTop: 14,
-                  flexDirection: "row",
-                  borderTopWidth: 1,
-                  borderTopColor: C.hairline,
-                }}
-              >
+              <View className="mt-[18px] pt-[14px] flex-row border-t border-t-rule">
                 <Stat k="POT" v={null} first />
                 <Stat k="CLOCK" v={null} />
                 <Stat k="STANDING" v={null} />
               </View>
             ) : (
-              <View
-                style={{
-                  marginTop: 18,
-                  paddingTop: 14,
-                  borderTopWidth: 1,
-                  borderTopColor: C.hairline,
-                }}
-              >
-                <Body size={12} color={C.dim} style={{ lineHeight: 18 }}>
+              <View className="mt-[18px] pt-[14px] border-t border-t-rule">
+                <Body className="text-[12px] text-dim leading-[18px]">
                   {unreadable
                     ? "KashPlus could not reach the vault, so there is no pot or clock to show. Open the room to try again."
                     : "No pot on the table right now. Open one and the clock starts with you."}
@@ -598,7 +479,7 @@ export default function GamesSpaceScreen({
               </View>
             )}
 
-            <View style={{ marginTop: 18 }}>
+            <View className="mt-[18px]">
               <PrimaryButton
                 label={primaryLabel}
                 height={50}
@@ -608,11 +489,7 @@ export default function GamesSpaceScreen({
                 onPress={openLastMan}
               />
             </View>
-            <Body
-              size={11}
-              color={C.dim}
-              style={{ marginTop: 12, lineHeight: 16.5 }}
-            >
+            <Body className="text-[11px] text-dim mt-[12px] leading-[16.5px]">
               Pay in, take the lead, reset the clock. Outlast the table and the
               pot is yours.
             </Body>
@@ -622,27 +499,19 @@ export default function GamesSpaceScreen({
 
       {unreadable ? (
         <PressableScale onPress={() => void refresh()} scale={0.98}>
-          <View style={{ marginTop: 14, alignSelf: "flex-start", paddingVertical: 6 }}>
-            <Mono size={10} color={C.silver} style={{ letterSpacing: 1.4 }}>
+          <View className="mt-[14px] self-start py-[6px]">
+            <Mono className="text-[10px] text-silver tracking-[1.4px]">
               TRY AGAIN
             </Mono>
           </View>
         </PressableScale>
       ) : null}
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          marginTop: 26,
-          marginBottom: 12,
-        }}
-      >
-        <Label style={{ letterSpacing: 2.4 }}>OPENING SOON</Label>
-        <View style={{ flex: 1, height: 1, backgroundColor: C.hairline }} />
+      <View className="flex-row items-center gap-[10px] mt-[26px] mb-[12px]">
+        <Label className="tracking-[2.4px]">OPENING SOON</Label>
+        <View className="flex-1 h-[1px] bg-rule" />
       </View>
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      <View className="flex-row gap-[12px]">
         {soonRooms.map((r) => (
           <SoonRoom
             key={r.name}
@@ -654,13 +523,9 @@ export default function GamesSpaceScreen({
         ))}
       </View>
 
-      <View style={{ marginTop: 26, alignItems: "center", gap: 10 }}>
-        <View style={{ width: 32, height: 1, backgroundColor: C.hairline }} />
-        <Mono
-          size={9.5}
-          color={C.dim}
-          style={{ textAlign: "center", letterSpacing: 1.5, marginBottom: 8 }}
-        >
+      <View className="mt-[26px] items-center gap-[10px]">
+        <View className="w-[32px] h-[1px] bg-rule" />
+        <Mono className="text-[9.5px] text-dim text-center tracking-[1.5px] mb-[8px]">
           SETTLED ON-CHAIN · SIGNED WITH FACE ID
         </Mono>
       </View>

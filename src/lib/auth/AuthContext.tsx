@@ -46,11 +46,7 @@ import {
  * `ready`      — unlocked; the app shell is safe to show.
  */
 export type AuthStatus =
-  | "loading"
-  | "signedOut"
-  | "onboarding"
-  | "locked"
-  | "ready";
+  "loading" | "signedOut" | "onboarding" | "locked" | "ready";
 
 /** Mirrors the backend's `onboardingStep`; `complete` is terminal. */
 export type OnboardingStep = "pin" | "passkey" | "complete";
@@ -402,7 +398,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the honest reading of "signed in, entitlement not decided yet" —
         // rather than leaving a stale claim on screen if the probe below never
         // lands. Any settled state is left alone; the probe will replace it.
-        state: p.state === "anonymous" || p.state === "session_expired" ? "unknown" : p.state,
+        state:
+          p.state === "anonymous" || p.state === "session_expired"
+            ? "unknown"
+            : p.state,
         identity: authenticated,
         error: null,
       }));
@@ -523,7 +522,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (next === null) {
           setPrimal((p) =>
             p.identity
-              ? { state: "session_expired", identity: null, syncing: false, error: null }
+              ? {
+                  state: "session_expired",
+                  identity: null,
+                  syncing: false,
+                  error: null,
+                }
               : p,
           );
         }
@@ -540,14 +544,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPrimal((p) => ({ ...p, syncing: true }));
     try {
       const snapshot = await entitlement.probeEntitlement();
-      setPrimal((p) => ({ ...p, state: snapshot.state, syncing: false, error: null }));
+      setPrimal((p) => ({
+        ...p,
+        state: snapshot.state,
+        syncing: false,
+        error: null,
+      }));
     } catch (error) {
       setPrimal((p) => ({
         ...p,
         state: SessionExpiredError.is(error) ? "session_expired" : p.state,
         identity: SessionExpiredError.is(error) ? null : p.identity,
         syncing: false,
-        error: SessionExpiredError.is(error) ? null : describeGatewayFailure(error),
+        error: SessionExpiredError.is(error)
+          ? null
+          : describeGatewayFailure(error),
       }));
     }
   }, []);
@@ -607,7 +618,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [primal.state, refreshEntitlement]);
 
   const adopt = useCallback(async (session: DecaneSession) => {
-
     if (__DEV__ && !session.accessToken) {
       // Sign-in succeeded but produced no JWT — the backend exchange has
       // nothing to send, and that must not look like a clean success.
@@ -678,68 +688,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * `forget: true` is "switch account" — see the API doc above. Everything
    * except the local app lock is torn down either way.
    */
-  const signOut = useCallback(async ({ forget = false }: { forget?: boolean } = {}) => {
-    // Order matters: revoke the token first so nothing in flight can keep using
-    // it, then end the Decane session, then clear local state. Each step is
-    // independent — a failure in one must not leave the user half signed out,
-    // which is why `decane.signOut` swallows its own errors.
-    // Revoke the Primal refresh session before the wallet goes: once Decane is
-    // disconnected there is no signer left to prove ownership, and a live
-    // refresh token left on the server outlives the sign-out that was meant to
-    // end it. `logout` clears local storage whatever the network does.
-    await gatewayAuth.logout();
-    await entitlement.forgetSubscriptionId();
-    // Both gateway modules namespace their persisted money state per account,
-    // so nothing here deletes any of it. A sign-out is not evidence that a
-    // payout or a purchase can no longer be resumed — and after five wrong PINs
-    // (unlock.tsx) it is not even a deliberate act, so a sweep here would
-    // release live keys on a guess and let the same user pay twice. What is
-    // dropped is the process-wide memory mirror, so a second account signing in
-    // during this launch starts clean. Neither call reads the session, so their
-    // position relative to `gatewayAuth.logout()` above does not matter.
-    clearPayoutState();
-    clearVasState();
-    await decane.signOut({ forget });
+  const signOut = useCallback(
+    async ({ forget = false }: { forget?: boolean } = {}) => {
+      // Order matters: revoke the token first so nothing in flight can keep using
+      // it, then end the Decane session, then clear local state. Each step is
+      // independent — a failure in one must not leave the user half signed out,
+      // which is why `decane.signOut` swallows its own errors.
+      // Revoke the Primal refresh session before the wallet goes: once Decane is
+      // disconnected there is no signer left to prove ownership, and a live
+      // refresh token left on the server outlives the sign-out that was meant to
+      // end it. `logout` clears local storage whatever the network does.
+      await gatewayAuth.logout();
+      await entitlement.forgetSubscriptionId();
+      // Both gateway modules namespace their persisted money state per account,
+      // so nothing here deletes any of it. A sign-out is not evidence that a
+      // payout or a purchase can no longer be resumed — and after five wrong PINs
+      // (unlock.tsx) it is not even a deliberate act, so a sweep here would
+      // release live keys on a guess and let the same user pay twice. What is
+      // dropped is the process-wide memory mirror, so a second account signing in
+      // during this launch starts clean. Neither call reads the session, so their
+      // position relative to `gatewayAuth.logout()` above does not matter.
+      clearPayoutState();
+      clearVasState();
+      await decane.signOut({ forget });
 
-    // The app lock is NOT part of a sign-out. It is a property of this device —
-    // a PIN hashed into the keychain and a yes/no about Face ID — and wiping it
-    // here is what made a returning user re-run PIN creation and the biometric
-    // question every single time, which is onboarding a device that was already
-    // onboarded. It goes only when the credentials have stopped describing
-    // whoever is holding the phone: a deliberate account switch, or a PIN
-    // lockout. A different wallet signing in is caught by `reconcileAppLock`.
-    if (forget) await storage.clearAll();
-    const returning = forget ? false : await storage.hasRememberedAccount();
+      // The app lock is NOT part of a sign-out. It is a property of this device —
+      // a PIN hashed into the keychain and a yes/no about Face ID — and wiping it
+      // here is what made a returning user re-run PIN creation and the biometric
+      // question every single time, which is onboarding a device that was already
+      // onboarded. It goes only when the credentials have stopped describing
+      // whoever is holding the phone: a deliberate account switch, or a PIN
+      // lockout. A different wallet signing in is caught by `reconcileAppLock`.
+      if (forget) await storage.clearAll();
+      const returning = forget ? false : await storage.hasRememberedAccount();
 
-    primalSync.current = null;
-    // Without this, signing straight back in on the SAME wallet would find the
-    // guard still set and never re-run the handshake — the app would sit at
-    // `anonymous` holding no tokens.
-    syncedFor.current = null;
-    setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
-    setState({
-      status: "signedOut",
-      step: "pin",
-      session: null,
-      pending: null,
-      // The stored preference may well have survived (a plain sign-out keeps
-      // it), but there is no session for it to unlock. The next sign-in reads
-      // it back off disk through `reconcileAppLock`.
-      biometricsEnabled: false,
-      creatingWallet: false,
-      returning,
-    });
-  }, []);
+      primalSync.current = null;
+      // Without this, signing straight back in on the SAME wallet would find the
+      // guard still set and never re-run the handshake — the app would sit at
+      // `anonymous` holding no tokens.
+      syncedFor.current = null;
+      setPrimal({ ...IDLE_PRIMAL, state: "anonymous" });
+      setState({
+        status: "signedOut",
+        step: "pin",
+        session: null,
+        pending: null,
+        // The stored preference may well have survived (a plain sign-out keeps
+        // it), but there is no session for it to unlock. The next sign-in reads
+        // it back off disk through `reconcileAppLock`.
+        biometricsEnabled: false,
+        creatingWallet: false,
+        returning,
+      });
+    },
+    [],
+  );
 
-  const createPin = useCallback(async (pin: string) => {
-    await storage.savePin(pin);
-    // Bind it to the wallet that is setting it. Without this the PIN is a
-    // free-floating device secret, and the next account to sign in here would
-    // inherit it — see `reconcileAppLock`, which is the reader of this write.
-    const address = state.session?.addresses.evm;
-    if (address) await storage.rememberAccount(address);
-    setState((s) => ({ ...s, status: "onboarding", step: "passkey", returning: true }));
-  }, [state.session]);
+  const createPin = useCallback(
+    async (pin: string) => {
+      await storage.savePin(pin);
+      // Bind it to the wallet that is setting it. Without this the PIN is a
+      // free-floating device secret, and the next account to sign in here would
+      // inherit it — see `reconcileAppLock`, which is the reader of this write.
+      const address = state.session?.addresses.evm;
+      if (address) await storage.rememberAccount(address);
+      setState((s) => ({
+        ...s,
+        status: "onboarding",
+        step: "passkey",
+        returning: true,
+      }));
+    },
+    [state.session],
+  );
 
   const unlockWithPin = useCallback(async (pin: string) => {
     const ok = await storage.verifyPin(pin);

@@ -25,7 +25,7 @@ import {
   type VasTransaction,
 } from "../lib/gateway/services";
 import type { TransferStatus } from "../lib/gateway/types";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import type { BillDraft } from "./BillsScreen";
 
 /**
@@ -48,12 +48,7 @@ import type { BillDraft } from "./BillsScreen";
  * offered the check they would otherwise be waiting for forever.
  */
 export type CheckoutPhase =
-  | "confirm"
-  | "checking"
-  | "placing"
-  | "watching"
-  | "stalled"
-  | "settled";
+  "confirm" | "checking" | "placing" | "watching" | "stalled" | "settled";
 
 /** Groups of four, for a 20-digit meter token being typed off a screen. */
 function prettyToken(token: string): string {
@@ -66,27 +61,31 @@ function prettyToken(token: string): string {
  * is genuinely following the purchase — a pulse over a watch that has stopped
  * says "we are on it" when nobody is.
  */
-function StatusBadge({ status, live }: { status: TransferStatus; live: boolean }) {
+function StatusBadge({
+  status,
+  live,
+}: {
+  status: TransferStatus;
+  live: boolean;
+}) {
   const delivered = isDelivered(status);
   const failed = isFailure(status);
   const tone = delivered ? C.up : failed ? C.down : C.amber;
   const said = describeStatus(status);
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+    <View className="flex-row items-center gap-[10px]">
       {delivered || failed || !live ? (
         <View
+          className="w-[7px] h-[7px] rounded-[4px]"
           style={{
-            width: 7,
-            height: 7,
-            borderRadius: 4,
             backgroundColor: tone,
           }}
         />
       ) : (
         <PulseDot color={tone} />
       )}
-      <Body size={13} semibold color={tone}>
+      <Body className="text-[13px] font-body-semibold" color={tone}>
         {said.title}
       </Body>
     </View>
@@ -197,14 +196,20 @@ export default function BillCheckoutScreen({
       ? [{ label: "Plan", value: draft.product.name } satisfies KeyValue]
       : []),
     {
-      label: draft.category.destination === "phone" ? "Phone number" : "Pay for",
+      label:
+        draft.category.destination === "phone" ? "Phone number" : "Pay for",
       value: draft.destinationDisplay,
     },
     ...(transaction?.customerName
       ? [{ label: "Name", value: transaction.customerName } satisfies KeyValue]
       : []),
     ...(transaction?.reference
-      ? [{ label: "Reference", value: transaction.reference } satisfies KeyValue]
+      ? [
+          {
+            label: "Reference",
+            value: transaction.reference,
+          } satisfies KeyValue,
+        ]
       : []),
   ];
 
@@ -268,13 +273,13 @@ export default function BillCheckoutScreen({
 
   return (
     <Screen top={top} bottom={56}>
-      <View style={{ marginTop: 22 }}>
+      <View className="mt-[22px]">
         <Label>{draft.category.label}</Label>
-        <Display size={30} style={{ marginTop: 8 }}>
+        <Display className="text-[30px] leading-[31.5px] mt-[8px]">
           {heading}
         </Display>
         {phase === "confirm" ? (
-          <Body size={13} color={C.sub} style={{ marginTop: 7, lineHeight: 19 }}>
+          <Body className="text-[13px] text-sub mt-[7px] leading-[19px]">
             Check the number. Airtime and tokens cannot be recalled once the
             provider accepts them.
           </Body>
@@ -284,10 +289,10 @@ export default function BillCheckoutScreen({
       <SectionRule space={18} />
 
       {status ? (
-        <View style={{ marginBottom: 16 }}>
+        <View className="mb-[16px]">
           <StatusBadge status={status} live={watching} />
           {said ? (
-            <Body size={12.5} color={C.sub} style={{ marginTop: 7, lineHeight: 18 }}>
+            <Body className="text-[12.5px] text-sub mt-[7px] leading-[18px]">
               {said.detail}
             </Body>
           ) : null}
@@ -297,14 +302,14 @@ export default function BillCheckoutScreen({
               A repeat top-up that quietly showed the morning's token as this
               evening's is exactly what the resume path exists to prevent. */}
           {resumedAt !== null ? (
-            <Body size={11.5} color={C.amber} style={{ marginTop: 7, lineHeight: 17 }}>
+            <Body className="text-[11.5px] text-amber mt-[7px] leading-[17px]">
               {placedAt
                 ? `This is the purchase you placed at ${placedAt} — it had not finished, so nothing new was sent.`
                 : "This is a purchase you placed earlier — it had not finished, so nothing new was sent."}
             </Body>
           ) : null}
           {watching && !delivered && !failed ? (
-            <Body size={11.5} color={C.dim} style={{ marginTop: 6, lineHeight: 17 }}>
+            <Body className="text-[11.5px] text-dim mt-[6px] leading-[17px]">
               You can leave this screen — the purchase is already placed and
               carries on without it.
             </Body>
@@ -316,11 +321,13 @@ export default function BillCheckoutScreen({
           the whole point of this phase, so it has to say who is doing what now:
           nobody, until the person asks. */}
       {phase === "stalled" ? (
-        <Card style={{ marginBottom: 16, padding: 16 }}>
-          <Body size={12.5} semibold>
-            {transaction?.id ? "Nothing is watching this now" : "Placed, but not trackable"}
+        <Card className="mb-[16px] p-[16px]">
+          <Body className="text-[12.5px]" semibold>
+            {transaction?.id
+              ? "Nothing is watching this now"
+              : "Placed, but not trackable"}
           </Body>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+          <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
             {transaction?.id
               ? "The purchase is still with the provider — this screen simply stopped following it. Checking asks the gateway where it got to."
               : "The gateway took the purchase but named no transaction to follow, so there is nothing here to track. Sending it again re-sends the same purchase, not a second one."}
@@ -332,16 +339,9 @@ export default function BillCheckoutScreen({
           is over: the first asks what became of the last attempt at this exact
           purchase and sends nothing at all. */}
       {busy && !status ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
+        <View className="flex-row items-center gap-[12px] mb-[16px]">
           <Spinner />
-          <Body size={12.5} color={C.sub}>
+          <Body className="text-[12.5px] text-sub">
             {phase === "checking"
               ? "Checking your last purchase of this — nothing sent yet…"
               : "Placing the purchase…"}
@@ -352,9 +352,9 @@ export default function BillCheckoutScreen({
       {/* The token, when there is one. Above the receipt on purpose: it is the
           thing the person came for, and it must not need a scroll. */}
       {token ? (
-        <View style={{ marginBottom: 18 }}>
+        <View className="mb-[18px]">
           <Label>Token</Label>
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <CopyField
             onPress={() => copy("token", token)}
             copied={copied === "token"}
@@ -363,17 +363,12 @@ export default function BillCheckoutScreen({
           >
             <Text
               selectable
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 19,
-                letterSpacing: 1.5,
-                color: C.text,
-              }}
+              className="font-mono-semibold text-[19px] tracking-[1.5px] text-text"
             >
               {prettyToken(token)}
             </Text>
           </CopyField>
-          <Body size={11.5} color={C.dim} style={{ marginTop: 8, lineHeight: 17 }}>
+          <Body className="text-[11.5px] text-dim mt-[8px] leading-[17px]">
             {tokenUnits
               ? `${tokenUnits}. Type it into the meter exactly, without the spaces.`
               : "Type it into the meter exactly, without the spaces."}
@@ -383,12 +378,12 @@ export default function BillCheckoutScreen({
 
       <KeyValueList rows={rows} />
 
-      <View style={{ height: 12 }} />
+      <View className="h-[12px]" />
 
       <KeyValueList rows={debitRows} />
 
       {!fee ? (
-        <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
+        <Body className="text-[11px] text-dim mt-[10px] leading-[16px]">
           KashPlus adds nothing to this. If the biller charges a fee it appears
           on this receipt the moment the purchase is placed.
         </Body>
@@ -396,16 +391,15 @@ export default function BillCheckoutScreen({
 
       {failed && failureReason ? (
         <Card
+          className="mt-[16px] p-[16px]"
           style={{
-            marginTop: 16,
-            padding: 16,
             borderColor: "rgba(246,165,165,0.35)",
           }}
         >
-          <Body size={12.5} color={C.down} semibold>
+          <Body className="text-[12.5px] text-down" semibold>
             {status === "REVERSED" ? "Reversed" : "The provider declined it"}
           </Body>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+          <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
             {failureReason}
           </Body>
         </Card>
@@ -416,27 +410,27 @@ export default function BillCheckoutScreen({
           generic "could not place it" — and it takes precedence over the error
           card so the two never say the same thing twice. */}
       {blocked ? (
-        <Card style={{ marginTop: 16, padding: 16 }}>
-          <Body size={12.5} semibold>
+        <Card className="mt-[16px] p-[16px]">
+          <Body className="text-[12.5px]" semibold>
             Your plan has lapsed
           </Body>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+          <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
             {error ??
               "Bills need an active KashPlus plan. Your sign-in is fine — only the plan has lapsed."}
           </Body>
-          <Body size={11.5} color={C.dim} style={{ marginTop: 8, lineHeight: 17 }}>
+          <Body className="text-[11.5px] text-dim mt-[8px] leading-[17px]">
             Nothing was taken. Renew, and this same purchase can be sent
             unchanged.
           </Body>
-          <View style={{ height: 14 }} />
+          <View className="h-[14px]" />
           <GhostButton label="See plans" onPress={onNeedsSubscription} />
         </Card>
       ) : error ? (
-        <Card style={{ marginTop: 16, padding: 16 }}>
-          <Body size={12.5} semibold>
+        <Card className="mt-[16px] p-[16px]">
+          <Body className="text-[12.5px]" semibold>
             {transaction ? "Lost track of it" : "Could not place it"}
           </Body>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 6, lineHeight: 18 }}>
+          <Body className="text-[12.5px] text-sub mt-[6px] leading-[18px]">
             {error}
           </Body>
           {/* Three different true sentences, because there are three different
@@ -444,7 +438,7 @@ export default function BillCheckoutScreen({
               clause is the transaction ID rather than the transaction, because
               that is exactly what the retry branches on: without one there is
               nothing to follow and trying again re-sends. */}
-          <Body size={11.5} color={C.dim} style={{ marginTop: 8, lineHeight: 17 }}>
+          <Body className="text-[11.5px] text-dim mt-[8px] leading-[17px]">
             {transaction?.id
               ? "Trying again picks the tracking back up. Nothing is sent a second time."
               : sent
@@ -454,7 +448,7 @@ export default function BillCheckoutScreen({
         </Card>
       ) : null}
 
-      <View style={{ height: 26 }} />
+      <View className="h-[26px]" />
 
       {/* One button, and it is inert for the whole round trip. A second tap
           would be a second purchase in every system that does not have the key
@@ -473,7 +467,7 @@ export default function BillCheckoutScreen({
             loading={busy}
             disabled={busy}
           />
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <GhostButton label="Back" onPress={onBack} disabled={busy} />
         </>
       ) : null}
@@ -481,7 +475,7 @@ export default function BillCheckoutScreen({
       {phase === "watching" && error ? (
         <>
           <MetallicButton label="Try again" onPress={onRetry} />
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <GhostButton label="Close" onPress={onDone} />
         </>
       ) : null}
@@ -498,7 +492,7 @@ export default function BillCheckoutScreen({
             label={transaction?.id ? "Check again" : "Send it again"}
             onPress={onRetry}
           />
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <GhostButton label="Close" onPress={onDone} />
         </>
       ) : null}
@@ -513,9 +507,9 @@ export default function BillCheckoutScreen({
           not a retry of the one above. */}
       {canBuyAnyway ? (
         <>
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <GhostButton label="Buy it again anyway" onPress={onBuyAnyway} />
-          <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
+          <Body className="text-[11px] text-dim mt-[10px] leading-[16px]">
             That one has not finished. Buying again places a second, separate
             purchase — the one above carries on at the provider, and if it lands
             you will have paid for both.
@@ -526,13 +520,13 @@ export default function BillCheckoutScreen({
       {phase === "settled" ? (
         <>
           <MetallicButton label="Done" onPress={onDone} />
-          <View style={{ height: 10 }} />
+          <View className="h-[10px]" />
           <GhostButton label="Pay something else" onPress={onStartOver} />
         </>
       ) : null}
 
       {transaction?.id ? (
-        <Mono size={10} color={C.dim} style={{ marginTop: 18, textAlign: "center" }}>
+        <Mono className="text-[10px] text-dim mt-[18px] text-center">
           {transaction.id}
         </Mono>
       ) : null}

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -19,7 +25,11 @@ import {
   Spinner,
 } from "../components/ui";
 import * as storage from "../lib/auth/storage";
-import { clearPayoutDraft, getPayoutDraft, type PayoutDraft } from "../hooks/useLinkpay";
+import {
+  clearPayoutDraft,
+  getPayoutDraft,
+  type PayoutDraft,
+} from "../hooks/useLinkpay";
 import {
   describeLinkpayFailure,
   findPendingWithdrawal,
@@ -53,6 +63,7 @@ import {
   type WithdrawalQuote,
 } from "../lib/gateway/types";
 import { C, F } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 
 /**
  * Design 4e, rewired: the last look before naira leaves.
@@ -98,7 +109,13 @@ type Stage =
   /** An earlier payout is still open and has to be resolved before this one. */
   | "prior";
 
-function Check({ size = 18, color = C.brandSoft }: { size?: number; color?: string }) {
+function Check({
+  size = 18,
+  color = C.brandSoft,
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -129,30 +146,22 @@ function Row({
 }) {
   return (
     <View
+      className="flex-row items-center justify-between py-[13px] border-b-rule"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: 13,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
       }}
     >
       <View>
-        <Mono size={9} color={C.dim} style={{ letterSpacing: 1.4 }}>
-          {label}
-        </Mono>
+        <Mono className="text-[9px] text-dim tracking-[1.4px]">{label}</Mono>
         {note ? (
-          <Mono size={10} color={C.dim} style={{ marginTop: 4 }}>
-            {note}
-          </Mono>
+          <Mono className="text-[10px] text-dim mt-[4px]">{note}</Mono>
         ) : null}
       </View>
       <Text
+        className={cn(strong ? "text-text" : "text-silver")}
         style={{
           fontFamily: strong ? F.monoSemibold : F.mono,
           fontSize: strong ? 14 : 12.5,
-          color: strong ? C.text : C.silver,
         }}
       >
         {value}
@@ -168,17 +177,17 @@ function Row({
  * screen passes `onBack`, and any that ever stops passing it loses the button
  * rather than keeping a dead one.
  */
-function Head({ title, sub, onBack }: { title: string; sub: string; onBack?: () => void }) {
+function Head({
+  title,
+  sub,
+  onBack,
+}: {
+  title: string;
+  sub: string;
+  onBack?: () => void;
+}) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingTop: 10,
-        paddingHorizontal: 22,
-      }}
-    >
+    <View className="flex-row items-center gap-[12px] pt-[10px] px-[22px]">
       {onBack ? (
         <Pressable
           onPress={onBack}
@@ -189,9 +198,9 @@ function Head({ title, sub, onBack }: { title: string; sub: string; onBack?: () 
           <BackChevron />
         </Pressable>
       ) : null}
-      <View style={{ flex: 1 }}>
-        <Display size={20}>{title}</Display>
-        <Mono size={9.5} color={C.dim} style={{ marginTop: 3, letterSpacing: 1.4 }}>
+      <View className="flex-1">
+        <Display className="text-[20px] leading-[21px]">{title}</Display>
+        <Mono className="text-[9.5px] text-dim mt-[3px] tracking-[1.4px]">
           {sub}
         </Mono>
       </View>
@@ -210,7 +219,10 @@ const clock = (ms: number) =>
  * screen that declines to make the comparison. The gateway refuses an
  * overdrawn payout on its own; this check is a courtesy, not the guard.
  */
-function exceeds(a: Money | null | undefined, b: Money | null | undefined): boolean {
+function exceeds(
+  a: Money | null | undefined,
+  b: Money | null | undefined,
+): boolean {
   if (!a || !b) return false;
   if (a.currency.toUpperCase() !== b.currency.toUpperCase()) return false;
   try {
@@ -256,10 +268,14 @@ function isZeroish(m: Money | null | undefined): boolean {
  * never sent. An older record is an earlier payout, and earlier payouts are
  * resolved on their own panel before this one is priced.
  */
-function describesDraft(record: PendingWithdrawal, draft: PayoutDraft | null): boolean {
+function describesDraft(
+  record: PendingWithdrawal,
+  draft: PayoutDraft | null,
+): boolean {
   if (!draft) return false;
   if (record.startedAt < draft.resolvedAt) return false;
-  if (record.fingerprint) return record.fingerprint === withdrawalFingerprint(draft);
+  if (record.fingerprint)
+    return record.fingerprint === withdrawalFingerprint(draft);
   return (
     record.amountMinor.trim() === draft.amount.amountMinor.trim() &&
     record.currency.toUpperCase() === draft.amount.currency.toUpperCase() &&
@@ -293,8 +309,14 @@ function party(
     return {
       name: wire?.accountName ?? record.accountName,
       bank: wire?.bankName ?? record.bankName,
-      tail: record.destinationLast4 === "" ? "—" : `•••• ${record.destinationLast4}`,
-      amount: wire?.amount ?? { amountMinor: record.amountMinor, currency: record.currency },
+      tail:
+        record.destinationLast4 === ""
+          ? "—"
+          : `•••• ${record.destinationLast4}`,
+      amount: wire?.amount ?? {
+        amountMinor: record.amountMinor,
+        currency: record.currency,
+      },
     };
   }
   return {
@@ -367,12 +389,15 @@ export default function SendConfirmScreen({
    */
   const watchedNow = useRef<PendingWithdrawal | null>(null);
   const priorNow = useRef(false);
-  const narrate = useCallback((record: PendingWithdrawal | null, prior: boolean) => {
-    watchedNow.current = record;
-    priorNow.current = prior;
-    setWatched(record);
-    setPriorPayout(prior);
-  }, []);
+  const narrate = useCallback(
+    (record: PendingWithdrawal | null, prior: boolean) => {
+      watchedNow.current = record;
+      priorNow.current = prior;
+      setWatched(record);
+      setPriorPayout(prior);
+    },
+    [],
+  );
   /**
    * A payout has been POSTed under the reserved key.
    *
@@ -395,7 +420,8 @@ export default function SendConfirmScreen({
    * against a non-zero amount is not a free transfer — it is a price we could
    * not read, and releasing money on it would be releasing money on a guess.
    */
-  const unpriced = quote !== null && isZeroish(quote.totalDebit) && !isZeroish(draft?.amount);
+  const unpriced =
+    quote !== null && isZeroish(quote.totalDebit) && !isZeroish(draft?.amount);
   const blocked = insufficient || unpriced;
   // Read inside `submit`, which is a callback and cannot close over the value.
   const blockedNow = useRef(blocked);
@@ -403,7 +429,7 @@ export default function SendConfirmScreen({
 
   // The one motion moment: the seal arrives a beat after the screen, the way a
   // stamp lands on a document. Everything else here holds still.
-  const seal = useRef(new Animated.Value(0)).current;
+  const seal = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     Animated.spring(seal, {
       toValue: 1,
@@ -424,7 +450,9 @@ export default function SendConfirmScreen({
     setWithdrawal(next);
     setUnwatched(false);
     setStage(
-      next.status === "SETTLED" || next.status === "DELIVERED" ? "settled" : "failed",
+      next.status === "SETTLED" || next.status === "DELIVERED"
+        ? "settled"
+        : "failed",
     );
   }, []);
 
@@ -446,7 +474,9 @@ export default function SendConfirmScreen({
       if (SessionExpiredError.is(err)) {
         // Nothing has been sent yet, so this is safe to say plainly rather
         // than leaving the screen on a spinner that never resolves.
-        setError("Your KashPlus session ended. Sign in again, then try this transfer.");
+        setError(
+          "Your KashPlus session ended. Sign in again, then try this transfer.",
+        );
         setStage("error");
         return;
       }
@@ -585,7 +615,8 @@ export default function SendConfirmScreen({
       setUnwatched(true);
       return;
     }
-    if (record.withdrawalId && record.withdrawalId !== event.withdrawal.id) return;
+    if (record.withdrawalId && record.withdrawalId !== event.withdrawal.id)
+      return;
     setWithdrawal(event.withdrawal);
     setUnwatched(false);
     // A terminal EARLIER payout stays on its own panel: settling it here would
@@ -616,7 +647,10 @@ export default function SendConfirmScreen({
         setResumed(ours);
 
         const tracking = trackedWithdrawal();
-        if (tracking && (!pending.withdrawalId || tracking.id === pending.withdrawalId)) {
+        if (
+          tracking &&
+          (!pending.withdrawalId || tracking.id === pending.withdrawalId)
+        ) {
           // Already being followed from an earlier mount. Adopt that poll
           // rather than starting a second one against the same payout.
           released.current = ours;
@@ -806,7 +840,8 @@ export default function SendConfirmScreen({
       const id =
         next.id ||
         record.withdrawalId ||
-        (await findPendingWithdrawal(record).catch(() => null))?.withdrawal?.id ||
+        (await findPendingWithdrawal(record).catch(() => null))?.withdrawal
+          ?.id ||
         "";
       const sent = id ? { ...record, withdrawalId: id } : record;
       if (id) {
@@ -842,13 +877,17 @@ export default function SendConfirmScreen({
         // this payout. The reserved key and the pending record both stay, and
         // reopening this screen after signing in resumes the same operation.
         setPin("");
-        setError("Your KashPlus session ended before this was sent. Sign in again and reopen it.");
+        setError(
+          "Your KashPlus session ended before this was sent. Sign in again and reopen it.",
+        );
         setStage("error");
         return;
       }
       // A timeout is not a failure. Before showing an error, ask whether the
       // payout exists — the client already replayed this with the same key.
-      const found = (await findPendingWithdrawal(record).catch(() => null))?.withdrawal ?? null;
+      const found =
+        (await findPendingWithdrawal(record).catch(() => null))?.withdrawal ??
+        null;
       if (found && found.id !== "") {
         const foundRecord = { ...record, withdrawalId: found.id };
         await savePendingWithdrawal(foundRecord);
@@ -917,14 +956,14 @@ export default function SendConfirmScreen({
   if (stage === "empty") {
     return (
       <Screen center>
-        <Display size={20} style={{ textAlign: "center" }}>
+        <Display className="text-[20px] leading-[21px] text-center">
           Nothing to confirm
         </Display>
-        <Body size={12.5} color={C.sub} style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}>
-          Pick a bank, an account and an amount first — this screen only ever shows a transfer that
-          has already been set up.
+        <Body className="text-[12.5px] text-sub mt-[10px] text-center leading-[19px]">
+          Pick a bank, an account and an amount first — this screen only ever
+          shows a transfer that has already been set up.
         </Body>
-        <View style={{ marginTop: 28, alignSelf: "stretch" }}>
+        <View className="mt-[28px]" style={{ alignSelf: "stretch" }}>
           <MetallicButton label="Back" onPress={onBack} />
         </View>
       </Screen>
@@ -976,12 +1015,16 @@ export default function SendConfirmScreen({
           ? "This screen has stopped checking on it. The transfer itself carries on."
           : "It has to land before a new transfer is set up, so the two can never be mistaken for each other. Nothing new has been sent.";
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <Head title="One at a time" sub="AN EARLIER TRANSFER IS STILL OPEN" onBack={onBack} />
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 26 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View className="flex-1 bg-canvas">
+        <Head
+          title="One at a time"
+          sub="AN EARLIER TRANSFER IS STILL OPEN"
+          onBack={onBack}
+        />
+        <View className="flex-1 justify-center px-[26px]">
+          <View className="flex-row items-center gap-[10px]">
             {done || unwatched ? null : <PulseDot />}
-            <Display size={19}>
+            <Display className="text-[19px] leading-[19.95px]">
               {done
                 ? withdrawalStatusLabel(withdrawal.status)
                 : confirmed
@@ -989,50 +1032,60 @@ export default function SendConfirmScreen({
                   : "No answer for this one yet"}
             </Display>
           </View>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 14, lineHeight: 19 }}>
-            {formatMoney(them.amount)} to {them.name ?? "an account you sent to"}
+          <Body className="text-[12.5px] text-sub mt-[14px] leading-[19px]">
+            {formatMoney(them.amount)} to{" "}
+            {them.name ?? "an account you sent to"}
             {"\n"}
             {them.bank ?? "Their bank"} · {them.tail}
           </Body>
-          <Body size={11.5} color={C.dim} style={{ marginTop: 16, lineHeight: 17.5 }}>
+          <Body className="text-[11.5px] text-dim mt-[16px] leading-[17.5px]">
             {note}
           </Body>
           {error ? (
-            <Body size={11.5} color={C.down} style={{ marginTop: 14 }}>
-              {error}
-            </Body>
+            <Body className="text-[11.5px] text-down mt-[14px]">{error}</Body>
           ) : null}
           {stuck && !done && !escapable ? (
             // The reference is worth one more ask, and the user is told what
             // that ask can do and what follows if it does nothing — rather than
             // being left tapping a button with no stated end.
-            <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
-              Check again — this one has a reference, and asking KashPlus for it by that reference
-              can still come back with an answer. If it still cannot say, you will be able to set
-              this one aside and carry on without it.
+            <Body className="text-[11.5px] text-dim mt-[14px] leading-[17.5px]">
+              Check again — this one has a reference, and asking KashPlus for it
+              by that reference can still come back with an answer. If it still
+              cannot say, you will be able to set this one aside and carry on
+              without it.
             </Body>
           ) : null}
           {escapable ? (
-            <Body size={11.5} color={C.dim} style={{ marginTop: 14, lineHeight: 17.5 }}>
-              You can set that one aside and carry on. It is not cancelled: if the bank did take it,
-              it still stands, and yours would be a second transfer under a key of its own. Its key
-              stays held either way, so nothing here can ever re-send that one. This screen stops
-              tracking it; the fiat space still shows where it got to.
+            <Body className="text-[11.5px] text-dim mt-[14px] leading-[17.5px]">
+              You can set that one aside and carry on. It is not cancelled: if
+              the bank did take it, it still stands, and yours would be a second
+              transfer under a key of its own. Its key stays held either way, so
+              nothing here can ever re-send that one. This screen stops tracking
+              it; the fiat space still shows where it got to.
             </Body>
           ) : null}
         </View>
-        <View style={{ paddingHorizontal: 22, paddingBottom: 34 }}>
+        <View className="px-[22px] pb-[34px]">
           {done ? (
-            <MetallicButton label="Continue with your transfer" onPress={() => void leavePrior()} />
+            <MetallicButton
+              label="Continue with your transfer"
+              onPress={() => void leavePrior()}
+            />
           ) : (
-            <MetallicButton label="Check again" onPress={() => void recheckPrior()} />
+            <MetallicButton
+              label="Check again"
+              onPress={() => void recheckPrior()}
+            />
           )}
           {escapable ? (
-            <View style={{ marginTop: 12 }}>
-              <GhostButton label="Set it aside and carry on" onPress={() => void setAsidePrior()} />
+            <View className="mt-[12px]">
+              <GhostButton
+                label="Set it aside and carry on"
+                onPress={() => void setAsidePrior()}
+              />
             </View>
           ) : null}
-          <View style={{ marginTop: 12 }}>
+          <View className="mt-[12px]">
             <GhostButton label="Done" onPress={onDone} />
           </View>
         </View>
@@ -1045,44 +1098,30 @@ export default function SendConfirmScreen({
     return (
       <Screen center>
         <View
+          className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: C.upBg,
-            borderWidth: 1,
             borderColor: "rgba(124,231,176,0.35)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <Check size={26} color={C.up} />
         </View>
-        <Display size={23} style={{ marginTop: 20, textAlign: "center" }}>
+        <Display className="text-[23px] leading-[24.15px] mt-[20px] text-center">
           {withdrawalStatusLabel(withdrawal?.status ?? "SETTLED")}
         </Display>
-        <Text
-          style={{
-            fontFamily: F.monoSemibold,
-            fontSize: 30,
-            lineHeight: 38,
-            color: C.up,
-            marginTop: 14,
-          }}
-        >
+        <Text className="font-mono-semibold text-[30px] leading-[38px] text-up mt-[14px]">
           {formatMoney(them.amount)}
         </Text>
-        <Body size={12.5} color={C.sub} style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}>
+        <Body className="text-[12.5px] text-sub mt-[10px] text-center leading-[19px]">
           To {them.name ?? "the account you chose"}
           {"\n"}
           {them.bank ?? "Their bank"} · {them.tail}
         </Body>
         {withdrawal?.reference ? (
-          <Mono size={10} color={C.dim} style={{ marginTop: 14, letterSpacing: 1.2 }}>
+          <Mono className="text-[10px] text-dim mt-[14px] tracking-[1.2px]">
             REF {withdrawal.reference}
           </Mono>
         ) : null}
-        <View style={{ marginTop: 30, alignSelf: "stretch" }}>
+        <View className="mt-[30px]" style={{ alignSelf: "stretch" }}>
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </Screen>
@@ -1094,19 +1133,21 @@ export default function SendConfirmScreen({
     const them = party(withdrawal, watched, draft);
     return (
       <Screen center>
-        <Display size={22} style={{ textAlign: "center" }}>
-          {reversed ? "That transfer was reversed" : "That transfer did not go through"}
+        <Display className="text-[22px] leading-[23.1px] text-center">
+          {reversed
+            ? "That transfer was reversed"
+            : "That transfer did not go through"}
         </Display>
-        <Body size={13} color={C.down} style={{ marginTop: 14, textAlign: "center", lineHeight: 19 }}>
+        <Body className="text-[13px] text-down mt-[14px] text-center leading-[19px]">
           {withdrawal?.failureReason ??
             (reversed
               ? "The bank sent it back. The money is in your KashPlus balance."
               : "The bank turned it down. Nothing has left your balance.")}
         </Body>
-        <Body size={12} color={C.dim} style={{ marginTop: 16, textAlign: "center", lineHeight: 18 }}>
+        <Body className="text-[12px] text-dim mt-[16px] text-center leading-[18px]">
           {formatMoney(them.amount)} to {them.name ?? "the account you chose"}
         </Body>
-        <View style={{ marginTop: 30, alignSelf: "stretch" }}>
+        <View className="mt-[30px]" style={{ alignSelf: "stretch" }}>
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </Screen>
@@ -1122,7 +1163,7 @@ export default function SendConfirmScreen({
     // Only a payout with a reference can be looked up again.
     const resumeId = watched?.withdrawalId;
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <View className="flex-1 bg-canvas">
         <Head
           title={stage === "submitting" ? "Releasing" : "On its way"}
           // "THE BANK HAS IT" is a claim about a request that has been ACCEPTED.
@@ -1143,32 +1184,28 @@ export default function SendConfirmScreen({
           // announced as a way out and is not one.
           onBack={onBack}
         />
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            {stage === "submitting" ? <Spinner /> : stalled ? null : <PulseDot />}
-            <Display size={19}>
+        <View className="flex-1 items-center justify-center px-[26px]">
+          <View className="flex-row items-center gap-[10px]">
+            {stage === "submitting" ? (
+              <Spinner />
+            ) : stalled ? null : (
+              <PulseDot />
+            )}
+            <Display className="text-[19px] leading-[19.95px]">
               {stage === "submitting"
                 ? "Sending it now"
                 : withdrawalStatusLabel(status ?? "SUBMITTED")}
             </Display>
           </View>
-          <Text
-            style={{
-              fontFamily: F.monoSemibold,
-              fontSize: 34,
-              lineHeight: 42,
-              color: C.text,
-              marginTop: 22,
-            }}
-          >
+          <Text className="font-mono-semibold text-[34px] leading-[42px] text-text mt-[22px]">
             {formatMoney(them.amount)}
           </Text>
-          <Body size={12.5} color={C.sub} style={{ marginTop: 10, textAlign: "center", lineHeight: 19 }}>
+          <Body className="text-[12.5px] text-sub mt-[10px] text-center leading-[19px]">
             To {them.name ?? "the account you chose"}
             {"\n"}
             {them.bank ?? "Their bank"} · {them.tail}
           </Body>
-          <Body size={11.5} color={C.dim} style={{ marginTop: 22, textAlign: "center", lineHeight: 17.5 }}>
+          <Body className="text-[11.5px] text-dim mt-[22px] text-center leading-[17.5px]">
             {stalled
               ? "This screen has stopped checking on it. The transfer itself carries on, and the fiat space shows where it got to."
               : stage === "submitting"
@@ -1179,14 +1216,14 @@ export default function SendConfirmScreen({
                 : "You can leave this screen. The transfer keeps going, and the fiat space shows where it got to."}
           </Body>
           {error ? (
-            <Body size={11.5} color={C.down} style={{ marginTop: 14, textAlign: "center" }}>
+            <Body className="text-[11.5px] text-down mt-[14px] text-center">
               {error}
             </Body>
           ) : null}
         </View>
-        <View style={{ paddingHorizontal: 22, paddingBottom: 34 }}>
+        <View className="px-[22px] pb-[34px]">
           {stalled && watched && resumeId ? (
-            <View style={{ marginBottom: 12 }}>
+            <View className="mb-[12px]">
               <MetallicButton
                 label="Check again"
                 onPress={() => {
@@ -1206,11 +1243,11 @@ export default function SendConfirmScreen({
   // and pricing this one — the pricing panel, not a half-built confirm screen.
   if (stage === "loading" || stage === "prior") {
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <View className="flex-1 bg-canvas">
         <Head title="Confirm" sub="PRICING THIS TRANSFER" onBack={onBack} />
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View className="flex-1 items-center justify-center">
           <Spinner />
-          <Body size={12.5} color={C.dim} style={{ marginTop: 14 }}>
+          <Body className="text-[12.5px] text-dim mt-[14px]">
             Asking the provider what this costs
           </Body>
         </View>
@@ -1223,25 +1260,27 @@ export default function SendConfirmScreen({
     // never on whether a stale quote object happens to be sitting in state.
     const replaying = released.current;
     return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <View className="flex-1 bg-canvas">
         <Head title="Confirm" sub="THAT DID NOT GO THROUGH" onBack={onBack} />
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 26 }}>
-          <Display size={19}>Could not complete that</Display>
-          <Body size={13} color={C.down} style={{ marginTop: 12, lineHeight: 19 }}>
+        <View className="flex-1 justify-center px-[26px]">
+          <Display className="text-[19px] leading-[19.95px]">
+            Could not complete that
+          </Display>
+          <Body className="text-[13px] text-down mt-[12px] leading-[19px]">
             {error ?? "Something went wrong reaching KashPlus."}
           </Body>
-          <Body size={11.5} color={C.dim} style={{ marginTop: 16, lineHeight: 17.5 }}>
+          <Body className="text-[11.5px] text-dim mt-[16px] leading-[17.5px]">
             {replaying
               ? "Trying again repeats the SAME request rather than starting a second one, so this cannot send the money twice."
               : "Nothing has been sent. This only asks KashPlus to price the transfer again, and your PIN still releases it."}
           </Body>
-          <View style={{ marginTop: 26 }}>
+          <View className="mt-[26px]">
             <MetallicButton
               label={replaying ? "Try again" : "Price it again"}
               onPress={() => void (replaying ? submit() : price())}
             />
           </View>
-          <View style={{ marginTop: 12 }}>
+          <View className="mt-[12px]">
             <GhostButton label="Back" onPress={onBack} />
           </View>
         </View>
@@ -1252,7 +1291,7 @@ export default function SendConfirmScreen({
   /* --------------------------------------------------------------- ready */
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <Head title="Confirm" sub="LAST LOOK BEFORE IT LEAVES" onBack={onBack} />
 
       {/* The stack below is ~830pt tall and only a Pro Max has room for it.
@@ -1261,27 +1300,23 @@ export default function SendConfirmScreen({
           an SE the "0" and delete keys scroll into reach instead of hanging off
           the bottom edge with no way to reach them. */}
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* The seal: the name the bank gave back, staged as the proof it is. */}
         <Animated.View
+          className="mt-[18px] mx-[20px]"
           style={{
-            marginTop: 18,
-            marginHorizontal: 20,
             opacity: seal,
             transform: [{ translateY: lift }],
           }}
         >
           <View
+            className="bg-canvas-raised border rounded-[20px] overflow-hidden"
             style={{
-              backgroundColor: C.raised,
-              borderWidth: 1,
               borderColor: "rgba(131,190,96,0.34)",
-              borderRadius: 20,
-              overflow: "hidden",
               shadowColor: C.brand,
               shadowOpacity: 0.1,
               shadowRadius: 14,
@@ -1289,78 +1324,51 @@ export default function SendConfirmScreen({
             }}
           >
             <Shine />
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
-                paddingHorizontal: 16,
-                paddingTop: 16,
-              }}
-            >
+            <View className="flex-row items-center gap-[14px] px-[16px] pt-[16px]">
               <View
+                className="w-[44px] h-[44px] rounded-[22px] bg-brand-glow border items-center justify-center"
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: C.brandGlow,
-                  borderWidth: 1,
                   borderColor: "rgba(131,190,96,0.34)",
-                  alignItems: "center",
-                  justifyContent: "center",
                 }}
               >
                 <Check size={20} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Mono size={8.5} color={C.brandSoft} style={{ letterSpacing: 1.6 }}>
+              <View className="flex-1">
+                <Mono className="text-[8.5px] text-brand-soft tracking-[1.6px]">
                   NAME ENQUIRY
                 </Mono>
-                <Body size={15} semibold style={{ letterSpacing: 0.4, marginTop: 4 }}>
+                <Body className="text-[15px] font-body-semibold tracking-[0.4px] mt-[4px]">
                   {draft?.accountName}
                 </Body>
-                <Mono size={11} color={C.sub} style={{ marginTop: 3 }}>
+                <Mono className="text-[11px] text-sub mt-[3px]">
                   {draft?.bankName} · {maskAccount(draft?.accountNumber)}
                 </Mono>
               </View>
             </View>
-            <View style={{ paddingHorizontal: 16 }}>
+            <View className="px-[16px]">
               <SectionRule space={14} />
             </View>
-            <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>
-              <Body size={11.5} color={C.dim} style={{ lineHeight: 17 }}>
-                Returned by {draft?.bankName} at {clock(draft?.resolvedAt ?? Date.now())}. A bank
-                transfer cannot be recalled once it is sent.
+            <View className="px-[16px] pb-[14px]">
+              <Body className="text-[11.5px] text-dim leading-[17px]">
+                Returned by {draft?.bankName} at{" "}
+                {clock(draft?.resolvedAt ?? Date.now())}. A bank transfer cannot
+                be recalled once it is sent.
               </Body>
             </View>
           </View>
         </Animated.View>
 
-        <View style={{ marginTop: 22, alignItems: "center" }}>
-          <Label style={{ letterSpacing: 2 }}>You're sending</Label>
-          <Text
-            style={{
-              fontFamily: F.monoSemibold,
-              fontSize: 40,
-              letterSpacing: -0.5,
-              color: C.text,
-              marginTop: 12,
-            }}
-          >
+        <View className="mt-[22px] items-center">
+          <Label className="tracking-[2px]">You're sending</Label>
+          <Text className="font-mono-semibold text-[40px] tracking-[-0.5px] text-text mt-[12px]">
             {formatMoney(draft?.amount)}
           </Text>
         </View>
 
         <View
+          className="mt-[22px] mx-[20px] bg-canvas-raised border rounded-[18px] px-[16px] overflow-hidden"
           style={{
-            marginTop: 22,
-            marginHorizontal: 20,
-            backgroundColor: C.raised,
-            borderWidth: 1,
             borderColor: blocked ? "rgba(246,165,165,0.4)" : C.hairline,
-            borderRadius: 18,
-            paddingHorizontal: 16,
-            overflow: "hidden",
           }}
         >
           <Shine />
@@ -1380,15 +1388,20 @@ export default function SendConfirmScreen({
           ) : null}
         </View>
 
-        <View style={{ marginTop: "auto", paddingTop: 26, paddingHorizontal: 22, paddingBottom: 28 }}>
+        <View
+          className="pt-[26px] px-[22px] pb-[28px]"
+          style={{
+            marginTop: "auto",
+          }}
+        >
           {blocked ? (
             <>
-              <Body size={12.5} color={C.down} style={{ textAlign: "center", lineHeight: 18 }}>
+              <Body className="text-[12.5px] text-down text-center leading-[18px]">
                 {insufficient
                   ? "The fee takes this past your balance. Go back and send a smaller amount."
                   : "KashPlus could not read a price for this transfer, so it will not release it. Try again in a moment."}
               </Body>
-              <View style={{ marginTop: 16 }}>
+              <View className="mt-[16px]">
                 <GhostButton
                   label={insufficient ? "Change the amount" : "Price it again"}
                   onPress={insufficient ? onBack : () => void price()}
@@ -1397,10 +1410,17 @@ export default function SendConfirmScreen({
             </>
           ) : (
             <>
-              <Body size={12.5} color={pinError ? C.down : C.sub} style={{ textAlign: "center" }}>
+              <Body
+                size={12.5}
+
+                className={cn(
+                  "text-center",
+                  pinError ? "text-down" : "text-sub",
+                )}
+              >
                 {pinError ?? "Your PIN releases the transfer."}
               </Body>
-              <View style={{ marginTop: 16, marginBottom: 18 }}>
+              <View className="mt-[16px] mb-[18px]">
                 <PinDots filled={pin.length} shake={pinShake} />
               </View>
               <Keypad onKey={handleKey} />

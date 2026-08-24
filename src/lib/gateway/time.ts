@@ -31,11 +31,15 @@ function isProtoTimestamp(value: unknown): value is ProtoTimestamp {
  * precision to lose. Nanos are floored to whole milliseconds — `Date` has no
  * finer resolution and rounding up could push an expiry into the future.
  */
-export function protoTimestampToDate(ts: ProtoTimestamp | null | undefined): Date | null {
+export function protoTimestampToDate(
+  ts: ProtoTimestamp | null | undefined,
+): Date | null {
   if (!ts) return null;
-  const seconds = typeof ts.seconds === "string" ? Number(ts.seconds) : ts.seconds;
+  const seconds =
+    typeof ts.seconds === "string" ? Number(ts.seconds) : ts.seconds;
   if (!Number.isFinite(seconds)) return null;
-  const nanos = typeof ts.nanos === "number" && Number.isFinite(ts.nanos) ? ts.nanos : 0;
+  const nanos =
+    typeof ts.nanos === "number" && Number.isFinite(ts.nanos) ? ts.nanos : 0;
   const ms = seconds * 1000 + Math.floor(nanos / 1_000_000);
   const date = new Date(ms);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -54,7 +58,8 @@ export function toDate(value: WireTimestamp): Date | null {
 
   // Already converted once. Returning null here instead would make
   // `isExpired(someDate)` answer "expired" for a perfectly live timestamp.
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? null : value;
 
   if (isProtoTimestamp(value)) return protoTimestampToDate(value);
 
@@ -93,7 +98,10 @@ export function toProtoTimestamp(date: Date): ProtoTimestamp {
  * thing that asks — an access token with no known expiry is one we cannot
  * vouch for, and treating it as live means firing a request we know may 401.
  */
-export function isExpired(value: WireTimestamp, skewMs: number = CLOCK_SKEW_MS): boolean {
+export function isExpired(
+  value: WireTimestamp,
+  skewMs: number = CLOCK_SKEW_MS,
+): boolean {
   const ms = toMillis(value);
   if (ms === null) return true;
   return ms - skewMs <= Date.now();

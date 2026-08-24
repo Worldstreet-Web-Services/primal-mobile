@@ -99,10 +99,8 @@ export default function CryptoSpaceScreen({
   return (
     <Screen top={top}>
       <Settle>
-        <View style={{ marginTop: 26 }}>
-          <View
-            style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-          >
+        <View className="mt-[26px]">
+          <View className="flex-row items-center gap-[10px]">
             <Label>Wallet value</Label>
             {pending ? (
               <MetaChip label="Reading chains" tone="live" pulse />
@@ -111,7 +109,7 @@ export default function CryptoSpaceScreen({
             )}
           </View>
           {pending ? (
-            <View style={{ marginTop: 12, gap: 13 }}>
+            <View className="mt-[12px] gap-[13px]">
               <PulseBlock width={214} height={40} radius={10} />
               <PulseBlock width={128} height={12} />
             </View>
@@ -135,9 +133,9 @@ export default function CryptoSpaceScreen({
                   with a number nobody stands behind. If a naira equivalent is
                   wanted here, it needs a quoted, dated rate from the gateway
                   first. */}
-              <Display size={46} style={{ marginTop: 8 }}>
+              <Display className="text-[46px] leading-[48.3px] mt-[8px]">
                 ${Number(whole).toLocaleString("en-US")}
-                <Display size={26} color={C.figureTail}>
+                <Display className="text-[26px] leading-[27.3px] text-figure-tail">
                   .{cents}
                 </Display>
               </Display>
@@ -146,8 +144,8 @@ export default function CryptoSpaceScreen({
         </View>
       </Settle>
 
-      <View style={{ marginTop: 22, flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
+      <View className="mt-[22px] flex-row gap-[10px]">
+        <View className="flex-1">
           <MetallicButton
             label="Buy"
             height={48}
@@ -156,7 +154,7 @@ export default function CryptoSpaceScreen({
             onPress={onBuy}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <GhostButton
             label="Deposit"
             height={48}
@@ -164,7 +162,7 @@ export default function CryptoSpaceScreen({
             onPress={onDeposit}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <GhostButton
             label="Withdraw"
             height={48}
@@ -174,31 +172,25 @@ export default function CryptoSpaceScreen({
         </View>
       </View>
 
-      <View style={{ marginTop: 26 }}>
+      <View className="mt-[26px]">
         <SectionHead
           label="Holdings"
           right={
             pending ? null : (
-              <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+              <Mono className="text-[9.5px] text-dim tracking-[1.3px]">
                 {rows.length} {rows.length === 1 ? "ASSET" : "ASSETS"}
               </Mono>
             )
           }
         />
-        <View style={{ marginTop: 2 }}>
+        <View className="mt-[2px]">
           {pending ? (
             <RowSkeletonList rows={3} />
           ) : rows.length === 0 ? (
             // A real, empty wallet — say so rather than leaving a void.
-            <View style={{ paddingVertical: 26, alignItems: "center" }}>
-              <Body size={13} color={C.sub}>
-                No assets yet
-              </Body>
-              <Body
-                size={11.5}
-                color={C.dim}
-                style={{ marginTop: 5, textAlign: "center" }}
-              >
+            <View className="py-[26px] items-center">
+              <Body className="text-[13px] text-sub">No assets yet</Body>
+              <Body className="text-[11.5px] text-dim mt-[5px] text-center">
                 Deposit or buy, and it lands here.
               </Body>
             </View>
@@ -219,21 +211,12 @@ export default function CryptoSpaceScreen({
         </View>
       </View>
 
-      <Card
-        style={{
-          marginTop: 18,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 14,
-          padding: 15,
-          borderRadius: 18,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Body size={12.5} semibold>
+      <Card className="mt-[18px] flex-row items-center gap-[14px] p-[15px] rounded-[18px]">
+        <View className="flex-1">
+          <Body className="text-[12.5px]" semibold>
             Auto-convert deposits to ₦
           </Body>
-          <Body size={10.5} color={C.dim} style={{ marginTop: 3 }}>
+          <Body className="text-[10.5px] text-dim mt-[3px]">
             Incoming crypto settles into your fiat balance.
           </Body>
         </View>
@@ -253,59 +236,22 @@ export default function CryptoSpaceScreen({
                 alignItems: "flex-end",
               }}
             >
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: C.ink,
-                }}
-              />
+              <View className="w-[22px] h-[22px] rounded-[11px] bg-ink" />
             </LinearGradient>
           ) : (
-            <View
-              style={{
-                width: 46,
-                height: 28,
-                borderRadius: 14,
-                padding: 3,
-                backgroundColor: C.inset,
-                borderWidth: 1,
-                borderColor: C.hairline,
-              }}
-            >
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  backgroundColor: C.sub,
-                }}
-              />
+            <View className="w-[46px] h-[28px] rounded-[14px] p-[3px] bg-canvas-inset border border-rule">
+              <View className="w-[20px] h-[20px] rounded-[10px] bg-sub" />
             </View>
           )}
         </PressableScale>
       </Card>
 
-      <View
-        style={{
-          marginTop: 26,
-          paddingTop: 20,
-          borderTopWidth: 1,
-          borderTopColor: C.hairline,
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <Body
-          size={11.5}
-          color={C.dim}
-          style={{ textAlign: "center", lineHeight: 18 }}
-        >
+      <View className="mt-[26px] pt-[20px] border-t border-t-rule items-center gap-[12px]">
+        <Body className="text-[11.5px] text-dim text-center leading-[18px]">
           Keys split three ways — device · Decane · recovery.{"\n"}High-value
           sends re-confirm with Face ID, per signature.
         </Body>
-        <Label style={{ letterSpacing: 1.6 }}>
+        <Label className="tracking-[1.6px]">
           Every chain, one address · LinkPay
         </Label>
       </View>

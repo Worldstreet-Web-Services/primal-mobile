@@ -8,10 +8,11 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { PlayIcon } from "../icons";
 import { PILL, PressableScale } from "../ui";
 import { ArtSlot } from "./ArtSlot";
+import { cn } from "@/lib/cn";
 
 /** Which shelf an item belongs to — the two the rail can switch between. */
 export type MediaKind = "podcast" | "news";
@@ -33,7 +34,6 @@ export interface MediaItem {
 }
 
 /** Text sitting on the brand panel — ink, never white. */
-const INK = C.brandInk;
 const INK_SOFT = "rgba(10,20,5,0.62)";
 
 /** Card proportions from the design: a wide, shallow letterbox. */
@@ -66,32 +66,24 @@ export function MediaCard({
       <View
         accessibilityRole="button"
         accessibilityLabel={item.title}
+        className="rounded-[20px] overflow-hidden flex-row bg-brand"
         style={{
           width,
           height,
-          borderRadius: 20,
-          overflow: "hidden",
-          flexDirection: "row",
-          backgroundColor: C.brand,
         }}
       >
         <View
+          className="px-[14px] py-[13px] justify-between"
           style={{
             flex: COPY_SHARE,
-            paddingHorizontal: 14,
-            paddingVertical: 13,
-            justifyContent: "space-between",
           }}
         >
           <View>
             {item.kicker ? (
               <Text
+                className="font-mono text-[7px] tracking-[1.6px] mb-[8px]"
                 style={{
-                  fontFamily: F.mono,
-                  fontSize: 7,
-                  letterSpacing: 1.6,
                   color: INK_SOFT,
-                  marginBottom: 8,
                 }}
               >
                 {item.kicker.toUpperCase()}
@@ -100,13 +92,7 @@ export function MediaCard({
 
             <Text
               numberOfLines={3}
-              style={{
-                fontFamily: F.displayBold,
-                fontSize: 16,
-                lineHeight: 19,
-                letterSpacing: 0.2,
-                color: INK,
-              }}
+              className="font-display-bold text-[16px] leading-[19px] tracking-[0.2px] text-brand-ink"
             >
               {item.title.toUpperCase()}
             </Text>
@@ -114,12 +100,9 @@ export function MediaCard({
             {item.byline || item.duration ? (
               <Text
                 numberOfLines={1}
+                className="font-mono text-[6.5px] tracking-[1.1px] mt-[7px]"
                 style={{
-                  fontFamily: F.mono,
-                  fontSize: 6.5,
-                  letterSpacing: 1.1,
                   color: INK_SOFT,
-                  marginTop: 7,
                 }}
               >
                 {[item.byline, item.duration]
@@ -133,25 +116,12 @@ export function MediaCard({
           {/* Reads as the card's own control, so it takes the canvas fill —
               the one dark shape on the panel is where the tap goes. */}
           <View
+            className="self-start flex-row items-center gap-[7px] h-[24px] px-[11px] bg-canvas"
             style={{
-              alignSelf: "flex-start",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 7,
-              height: 24,
-              paddingHorizontal: 11,
               borderRadius: PILL,
-              backgroundColor: C.canvas,
             }}
           >
-            <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 7.5,
-                letterSpacing: 1.3,
-                color: C.text,
-              }}
-            >
+            <Text className="font-mono-semibold text-[7.5px] tracking-[1.3px] text-text">
               {action.toUpperCase()}
             </Text>
             <PlayIcon size={8} color={C.text} />
@@ -189,14 +159,7 @@ function MediaTabs({
   onChange: (kind: MediaKind) => void;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 12,
-        marginBottom: 18,
-      }}
-    >
+    <View className="flex-row justify-center gap-[12px] mb-[18px]">
       {TABS.map(({ kind, label }) => {
         const on = kind === active;
         return (
@@ -205,24 +168,18 @@ function MediaTabs({
             onPress={() => onChange(kind)}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
+            className="h-[42px] px-[26px] items-center justify-center border"
             style={{
-              height: 42,
-              paddingHorizontal: 26,
               borderRadius: PILL,
-              alignItems: "center",
-              justifyContent: "center",
               backgroundColor: on ? C.raised : "transparent",
-              borderWidth: 1,
               borderColor: on ? "transparent" : C.brand,
             }}
           >
             <Text
-              style={{
-                fontFamily: F.monoSemibold,
-                fontSize: 11,
-                letterSpacing: 3,
-                color: on ? C.brand : C.text,
-              }}
+              className={cn(
+                "font-mono-semibold text-[11px] tracking-[3px]",
+                on ? "text-brand" : "text-text",
+              )}
             >
               {label.toUpperCase()}
             </Text>

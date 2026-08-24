@@ -101,8 +101,12 @@ export function toBigInt(amountMinor: string): bigint {
   return BigInt(raw);
 }
 
-export const money = (amountMinor: string | bigint, currency: string): Money => ({
-  amountMinor: typeof amountMinor === "bigint" ? amountMinor.toString() : amountMinor,
+export const money = (
+  amountMinor: string | bigint,
+  currency: string,
+): Money => ({
+  amountMinor:
+    typeof amountMinor === "bigint" ? amountMinor.toString() : amountMinor,
   currency: normalizeCurrency(currency),
 });
 
@@ -131,8 +135,10 @@ export function compareMoney(a: Money, b: Money): -1 | 0 | 1 {
   return x < y ? -1 : x > y ? 1 : 0;
 }
 
-export const isZeroMoney = (m: Money): boolean => toBigInt(m.amountMinor) === 0n;
-export const isNegativeMoney = (m: Money): boolean => toBigInt(m.amountMinor) < 0n;
+export const isZeroMoney = (m: Money): boolean =>
+  toBigInt(m.amountMinor) === 0n;
+export const isNegativeMoney = (m: Money): boolean =>
+  toBigInt(m.amountMinor) < 0n;
 export const negateMoney = (m: Money): Money =>
   money(-toBigInt(m.amountMinor), m.currency);
 
@@ -167,7 +173,8 @@ export function parseMinor(
   }
 
   const match = /^(-?)(\d*)(?:\.(\d*))?$/.exec(cleaned);
-  if (!match) throw new MoneyError(`"${input}" is not a valid ${currency} amount.`);
+  if (!match)
+    throw new MoneyError(`"${input}" is not a valid ${currency} amount.`);
 
   const [, sign, whole = "", fraction = ""] = match;
   if (whole === "" && fraction === "") {
@@ -236,7 +243,10 @@ export function formatMinor(
 
   const scale = 10n ** BigInt(decimals);
   const whole = (magnitude / scale).toString();
-  const fraction = decimals === 0 ? "" : (magnitude % scale).toString().padStart(decimals, "0");
+  const fraction =
+    decimals === 0
+      ? ""
+      : (magnitude % scale).toString().padStart(decimals, "0");
 
   let shown = options.fractionDigits ?? decimals;
   if (options.fractionDigits === undefined && decimals > 2) {
@@ -249,7 +259,8 @@ export function formatMinor(
   }
 
   const head = options.grouping === false ? whole : group(whole);
-  const tail = shown > 0 ? `.${fraction.slice(0, shown).padEnd(shown, "0")}` : "";
+  const tail =
+    shown > 0 ? `.${fraction.slice(0, shown).padEnd(shown, "0")}` : "";
   const body = `${head}${tail}`;
   const prefix = options.symbol ? symbolFor(currency) : "";
   return `${negative ? "-" : ""}${prefix}${body}`;
@@ -267,7 +278,10 @@ export const symbolFor = (currency: string): string =>
  * a reviewer seeing `12345 (XAF minor units)` files a bug, where `123.45`
  * would have looked fine and been wrong.
  */
-export function formatMoney(m: Money | null | undefined, options?: FormatOptions): string {
+export function formatMoney(
+  m: Money | null | undefined,
+  options?: FormatOptions,
+): string {
   if (!m) return "—";
   try {
     return formatMinor(m.amountMinor, m.currency, { symbol: true, ...options });

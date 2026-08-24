@@ -319,7 +319,10 @@ export function useLinkpayAccount(): LinkpayAccountState {
   useEffect(() => {
     setHandshakeStalled(false);
     if (!idleHandshake) return;
-    const timer = setTimeout(() => setHandshakeStalled(true), HANDSHAKE_GRACE_MS);
+    const timer = setTimeout(
+      () => setHandshakeStalled(true),
+      HANDSHAKE_GRACE_MS,
+    );
     return () => clearTimeout(timer);
     // `status` is a dependency even where it does not change `idleHandshake`:
     // each transition is a new gate and deserves a whole window, so a launch
@@ -611,7 +614,8 @@ export function useLinkpayAccount(): LinkpayAccountState {
     refreshing,
     version: nonce,
     watching:
-      (phase === "provisioning" && !pollSpent) || (activating && !activationSpent),
+      (phase === "provisioning" && !pollSpent) ||
+      (activating && !activationSpent),
     reload,
   };
 }
@@ -676,7 +680,8 @@ export function useFiatBalance(): FiatBalanceState {
         setBalanceError(next.available ? null : UNREADABLE_BALANCE);
       })
       .catch((err) => {
-        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err)) return;
+        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err))
+          return;
         setBalanceError(describeLinkpayFailure(err));
       });
 
@@ -725,7 +730,8 @@ export function useFiatOverview(): FiatOverview {
         setActivityError(null);
       })
       .catch((err) => {
-        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err)) return;
+        if (cancelled || AbortedError.is(err) || SessionExpiredError.is(err))
+          return;
         setActivityError(describeLinkpayFailure(err));
       })
       .finally(() => {

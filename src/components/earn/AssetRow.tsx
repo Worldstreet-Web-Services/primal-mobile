@@ -3,6 +3,7 @@ import { View } from "react-native";
 
 import { C } from "../../theme/tokens";
 import { Body, Mono, PressableScale } from "../ui";
+import { cn } from "@/lib/cn";
 
 export interface Asset {
   key: string;
@@ -33,38 +34,26 @@ export function AssetRow({
   return (
     <PressableScale onPress={() => onPress?.(asset.key)} scale={0.99}>
       <View
+        className="flex-row items-center py-[15px] border-b-rule"
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingVertical: 15,
           borderBottomWidth: last ? 0 : 1,
-          borderBottomColor: C.hairline,
         }}
       >
-        <View style={{ flex: 1 }}>
-          <Body size={14} semibold>
+        <View className="flex-1">
+          <Body className="text-[14px]" semibold>
             {asset.name}
           </Body>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-              marginTop: 4,
-            }}
-          >
+          <View className="flex-row items-center gap-[5px] mt-[4px]">
             {subIcon}
-            <Body size={11.5} color={C.dim}>
-              {asset.sub}
-            </Body>
+            <Body className="text-[11.5px] text-dim">{asset.sub}</Body>
           </View>
         </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Mono size={13.5}>{asset.value}</Mono>
+        <View className="items-end">
+          <Mono className="text-[13.5px]">{asset.value}</Mono>
           <Mono
             size={11.5}
-            color={asset.down ? C.down : C.up}
-            style={{ marginTop: 4 }}
+
+            className={cn("mt-[4px]", asset.down ? "text-down" : "text-up")}
           >
             {asset.delta}
           </Mono>

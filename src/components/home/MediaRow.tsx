@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { ArrowRight } from "../icons";
 import { PressableScale, Shine } from "../ui";
 import { ArtSlot } from "./ArtSlot";
@@ -24,15 +24,9 @@ export function MediaRow({
       <View
         accessibilityRole="button"
         accessibilityLabel={item.title}
+        className="rounded-[18px] bg-canvas-raised border border-rule overflow-hidden justify-end p-[14px]"
         style={{
           height,
-          borderRadius: 18,
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          overflow: "hidden",
-          justifyContent: "flex-end",
-          padding: 14,
         }}
       >
         <Shine />
@@ -44,29 +38,16 @@ export function MediaRow({
           />
         ) : null}
 
-        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-          <View style={{ flex: 1 }}>
+        <View className="flex-row items-end">
+          <View className="flex-1">
             {item.kicker ? (
-              <Text
-                style={{
-                  fontFamily: F.mono,
-                  fontSize: 8.5,
-                  letterSpacing: 1.4,
-                  color: C.dim,
-                  marginBottom: 6,
-                }}
-              >
+              <Text className="font-mono text-[8.5px] tracking-[1.4px] text-dim mb-[6px]">
                 {item.kicker.toUpperCase()}
               </Text>
             ) : null}
             <Text
               numberOfLines={1}
-              style={{
-                fontFamily: F.display,
-                fontSize: 38,
-                letterSpacing: 0.3,
-                color: C.text,
-              }}
+              className="font-display text-[38px] tracking-[0.3px] text-text"
             >
               {item.title.toUpperCase()}
             </Text>

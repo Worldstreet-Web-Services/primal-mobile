@@ -38,12 +38,10 @@ export function PageHeader({
 
   return (
     <View
+      className="px-[14px] pb-[20px] justify-center"
       style={[
         {
           paddingTop: insets.top + 6,
-          paddingHorizontal: 14,
-          paddingBottom: 20,
-          justifyContent: "center",
         },
         style,
       ]}

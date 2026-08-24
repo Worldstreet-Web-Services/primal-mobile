@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
+import { cn } from "@/lib/cn";
 import {
   Screen,
   Label,
@@ -20,11 +21,36 @@ const total = {
   gain: "+$212.40 all-time",
 };
 
+// Getters: read at render, not at import — see the note on `BEVEL.outline`.
 const allocation = [
-  { key: "Fiat", pct: 45, color: C.silver },
-  { key: "Crypto", pct: 30, color: C.up },
-  { key: "Trading", pct: 15, color: C.accent },
-  { key: "Kash", pct: 10, color: C.amber },
+  {
+    key: "Fiat",
+    pct: 45,
+    get color() {
+      return C.silver;
+    },
+  },
+  {
+    key: "Crypto",
+    pct: 30,
+    get color() {
+      return C.up;
+    },
+  },
+  {
+    key: "Trading",
+    pct: 15,
+    get color() {
+      return C.accent;
+    },
+  },
+  {
+    key: "Kash",
+    pct: 10,
+    get color() {
+      return C.amber;
+    },
+  },
 ];
 
 type Holding = {
@@ -62,33 +88,21 @@ export default function PortfolioScreen({
   return (
     <Screen bottom={bottom}>
       {/* Tab root, so a plain title — no back chevron. */}
-      <Display size={20} style={{ paddingTop: 10 }}>
+      <Display className="text-[20px] leading-[21px] pt-[10px]">
         Portfolio
       </Display>
 
-      <View style={{ marginTop: 26 }}>
-        <Body size={11.5} color={C.dim}>
-          Total value
-        </Body>
-        <AmountText value={total.usd} size={40} style={{ marginTop: 6 }} />
-        <Mono size={12} color={C.sub} style={{ marginTop: 8 }}>
+      <View className="mt-[26px]">
+        <Body className="text-[11.5px] text-dim">Total value</Body>
+        <AmountText value={total.usd} size={40} className="mt-[6px]" />
+        <Mono className="text-[12px] text-sub mt-[8px]">
           {total.naira} ·{" "}
-          <Mono size={12} color={C.up}>
-            {total.gain}
-          </Mono>
+          <Mono className="text-[12px] text-up">{total.gain}</Mono>
         </Mono>
       </View>
 
-      <View style={{ marginTop: 20 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            height: 8,
-            borderRadius: 4,
-            overflow: "hidden",
-            gap: 2,
-          }}
-        >
+      <View className="mt-[20px]">
+        <View className="flex-row h-[8px] rounded-[4px] overflow-hidden gap-[2px]">
           {allocation.map((a) => (
             <View
               key={a.key}
@@ -96,28 +110,16 @@ export default function PortfolioScreen({
             />
           ))}
         </View>
-        <View
-          style={{
-            marginTop: 10,
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 14,
-          }}
-        >
+        <View className="mt-[10px] flex-row flex-wrap gap-[14px]">
           {allocation.map((a) => (
-            <View
-              key={a.key}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
+            <View key={a.key} className="flex-row items-center gap-[6px]">
               <View
+                className="w-[6px] h-[6px] rounded-[3px]"
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
                   backgroundColor: a.color,
                 }}
               />
-              <Mono size={10.5} color={C.sub}>
+              <Mono className="text-[10.5px] text-sub">
                 {a.key} {a.pct}%
               </Mono>
             </View>
@@ -125,50 +127,39 @@ export default function PortfolioScreen({
         </View>
       </View>
 
-      <Label style={{ marginTop: 24 }}>Holdings</Label>
+      <Label className="mt-[24px]">Holdings</Label>
       {holdings.map((h, i) => (
         <View
           key={h.name}
+          className="flex-row items-center gap-[12px] py-[12px] border-b-rule"
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            paddingVertical: 12,
             borderBottomWidth: i === holdings.length - 1 ? 0 : 1,
-            borderBottomColor: C.hairline,
           }}
         >
           <View
+            className="w-[38px] h-[38px] rounded-[12px] items-center justify-center"
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
               backgroundColor: "rgba(255,255,255,0.08)",
-              alignItems: "center",
-              justifyContent: "center",
             }}
           >
-            <Text style={{ fontFamily: F.mono, fontSize: 14, color: C.silver }}>
-              {h.sym}
-            </Text>
+            <Text className="font-mono text-[14px] text-silver">{h.sym}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Body size={13.5} semibold>
+          <View className="flex-1">
+            <Body className="text-[13.5px]" semibold>
               {h.name}
             </Body>
-            <Body size={11.5} color={C.dim} style={{ marginTop: 2 }}>
-              {h.qty}
-            </Body>
+            <Body className="text-[11.5px] text-dim mt-[2px]">{h.qty}</Body>
           </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Mono size={13} color={C.text}>
-              {h.usd}
-            </Mono>
+          <View className="items-end">
+            <Mono className="text-[13px] text-text">{h.usd}</Mono>
             {h.delta ? (
               <Mono
                 size={11}
-                color={h.delta.startsWith("-") ? C.down : C.up}
-                style={{ marginTop: 2 }}
+
+                className={cn(
+                  "mt-[2px]",
+                  h.delta.startsWith("-") ? "text-down" : "text-up",
+                )}
               >
                 {h.delta}
               </Mono>
@@ -177,8 +168,8 @@ export default function PortfolioScreen({
         </View>
       ))}
 
-      <View style={{ marginTop: 22, flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
+      <View className="mt-[22px] flex-row gap-[10px]">
+        <View className="flex-1">
           <MetallicButton
             label="Buy more"
             height={50}
@@ -187,7 +178,7 @@ export default function PortfolioScreen({
             onPress={onBuy}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <GhostButton label="Withdraw" height={50} onPress={onWithdraw} />
         </View>
       </View>

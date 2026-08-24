@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Pressable } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import {
   BackHeader,
   MetallicButton,
@@ -252,24 +252,14 @@ export default function WithdrawScreen({
 
   if (step === "sent") {
     return (
-      <View
-        style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22 }}
-      >
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
+      <View className="flex-1 bg-canvas px-[22px]">
+        <View className="flex-1 items-center justify-center">
           <Settle distance={14}>
-            <View style={{ alignItems: "center" }}>
+            <View className="items-center">
               <View
+                className="w-[74px] h-[74px] rounded-[37px] bg-brand-glow border items-center justify-center"
                 style={{
-                  width: 74,
-                  height: 74,
-                  borderRadius: 37,
-                  backgroundColor: C.brandGlow,
-                  borderWidth: 1,
                   borderColor: "rgba(131,190,96,0.35)",
-                  alignItems: "center",
-                  justifyContent: "center",
                 }}
               >
                 <Svg width={32} height={32} viewBox="0 0 24 24">
@@ -283,27 +273,27 @@ export default function WithdrawScreen({
                   />
                 </Svg>
               </View>
-              <Display size={30} style={{ marginTop: 22 }}>
+              <Display className="text-[30px] leading-[31.5px] mt-[22px]">
                 Sent
               </Display>
-              <Mono size={13.5} color={C.text} style={{ marginTop: 14 }}>
+              <Mono className="text-[13.5px] text-text mt-[14px]">
                 {amount} {asset.sym} → {destination}
               </Mono>
               {/* The chain's own reference, or nothing. The "0x3f9a…c21b" that
                   stood in here was a hash of no transaction — something a user
                   would paste into an explorer and be told does not exist. */}
               {txRef ? (
-                <Mono size={12} color={C.dim} style={{ marginTop: 8 }}>
+                <Mono className="text-[12px] text-dim mt-[8px]">
                   {shorten(txRef)}
                 </Mono>
               ) : null}
-              <View style={{ marginTop: 18 }}>
+              <View className="mt-[18px]">
                 <MetaChip label={`Signed in the enclave · ${asset.network}`} />
               </View>
             </View>
           </Settle>
         </View>
-        <View style={{ paddingBottom: 36 }}>
+        <View className="pb-[36px]">
           <MetallicButton label="Done" onPress={onDone} />
         </View>
       </View>
@@ -311,18 +301,18 @@ export default function WithdrawScreen({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <View style={{ paddingHorizontal: 22 }}>
+    <View className="flex-1 bg-canvas">
+      <View className="px-[22px]">
         <BackHeader title="Withdraw" onBack={handleBack} />
       </View>
 
       {step === "asset" ? (
-        <View style={{ flex: 1, paddingHorizontal: 22, marginTop: 24 }}>
+        <View className="flex-1 px-[22px] mt-[24px]">
           <SectionHead
             label="Choose asset"
             right={
               pending ? null : live ? (
-                <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
+                <Mono className="text-[9.5px] text-dim tracking-[1.3px]">
                   {assets.length} {assets.length === 1 ? "ASSET" : "ASSETS"}
                 </Mono>
               ) : (
@@ -330,7 +320,7 @@ export default function WithdrawScreen({
               )
             }
           />
-          <View style={{ marginTop: 2 }}>
+          <View className="mt-[2px]">
             {pending ? (
               <RowSkeletonList rows={3} />
             ) : (
@@ -354,16 +344,12 @@ export default function WithdrawScreen({
               ))
             )}
           </View>
-          <View style={{ flex: 1 }} />
-          <View style={{ alignItems: "center", gap: 11, paddingBottom: 34 }}>
-            <Body
-              size={11.5}
-              color={C.dim}
-              style={{ textAlign: "center", lineHeight: 18 }}
-            >
+          <View className="flex-1" />
+          <View className="items-center gap-[11px] pb-[34px]">
+            <Body className="text-[11.5px] text-dim text-center leading-[18px]">
               Sends leave your self-custody wallet directly.
             </Body>
-            <Label style={{ letterSpacing: 1.6 }}>
+            <Label className="tracking-[1.6px]">
               Signed on device · enclave-backed
             </Label>
           </View>
@@ -372,45 +358,32 @@ export default function WithdrawScreen({
 
       {step === "dest" ? (
         <>
-          <View style={{ paddingHorizontal: 22, marginTop: 20 }}>
+          <View className="px-[22px] mt-[20px]">
             <SectionHead
               label="Destination"
               right={<MetaChip label={asset.network} />}
             />
-            <View
-              style={{
-                marginTop: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                height: 56,
-                paddingLeft: 16,
-                paddingRight: 10,
-                borderRadius: 14,
-                backgroundColor: C.raised,
-                borderWidth: 1,
-                borderColor: C.hairline,
-              }}
-            >
-              <Mono size={13.5} color={C.text} style={{ flex: 1 }}>
+            <View className="mt-[10px] flex-row items-center gap-[12px] h-[56px] pl-[16px] pr-[10px] rounded-[14px] bg-canvas-raised border border-rule">
+              <Mono className="text-[13.5px] text-text flex-1">
                 {destination}
               </Mono>
-              <View style={{ width: 76 }}>
+              <View className="w-[76px]">
                 <GhostButton label="Paste" height={36} radius={10} />
               </View>
             </View>
-            <Body size={11} color={C.dim} style={{ marginTop: 9 }}>
+            <Body className="text-[11px] text-dim mt-[9px]">
               Double-check the chain — sends can't be recalled.
             </Body>
           </View>
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
-            <Display size={40} color={noAmount ? C.placeholder : C.text}>
+          <View className="flex-1 items-center justify-center">
+            <Display
+              className={noAmount ? "text-placeholder" : "text-text"}
+              size={40}
+            >
               {amount}{" "}
               <Display
+                className={noAmount ? "text-placeholder" : "text-figure-tail"}
                 size={22}
-                color={noAmount ? C.placeholder : C.figureTail}
               >
                 {asset.sym}
               </Display>
@@ -419,54 +392,36 @@ export default function WithdrawScreen({
               // The sentence carries the meaning, so the ghost digits above are
               // allowed to be decoration. Without it the placeholder would be
               // text nobody could read.
-              <Body size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+              <Body className="text-[12.5px] text-sub mt-[10px]">
                 Enter an amount to withdraw
               </Body>
             ) : (
-              <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
+              <Mono className="text-[12.5px] text-sub mt-[10px]">
                 ≈ ${usd} USD
               </Mono>
             )}
-            <View style={{ marginTop: 14 }}>
+            <View className="mt-[14px]">
               <MetaChip label={FEE_NOTE} />
             </View>
           </View>
-          <View style={{ paddingHorizontal: 22, paddingBottom: 36 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 14,
-              }}
-            >
-              <Mono size={11.5} color={C.dim}>
+          <View className="px-[22px] pb-[36px]">
+            <View className="flex-row items-center justify-between mb-[14px]">
+              <Mono className="text-[11.5px] text-dim">
                 Available · {asset.avail}
               </Mono>
               <Pressable
                 onPress={() => setRaw(asset.maxRaw)}
                 accessibilityRole="button"
                 accessibilityLabel="Withdraw maximum"
-                style={{
-                  paddingHorizontal: 13,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  backgroundColor: C.inset,
-                }}
+                className="px-[13px] py-[6px] rounded-[8px] border border-border bg-canvas-inset"
               >
-                <Mono
-                  size={10.5}
-                  color={C.silver}
-                  style={{ fontFamily: F.monoSemibold, letterSpacing: 1.2 }}
-                >
+                <Mono className="text-[10.5px] text-silver font-mono-semibold tracking-[1.2px]">
                   MAX
                 </Mono>
               </Pressable>
             </View>
             <Keypad onKey={handleKey} />
-            <View style={{ marginTop: 16 }}>
+            <View className="mt-[16px]">
               {/* A live-looking metal button that silently no-ops on an empty
                   field is the same lie the placeholder colour was telling.
                   Mirrors BuyScreen: the control states what is missing. */}
@@ -486,29 +441,20 @@ export default function WithdrawScreen({
       {step === "confirm" ? (
         <>
           <Settle>
-            <View
-              style={{
-                paddingHorizontal: 22,
-                marginTop: 28,
-                alignItems: "center",
-              }}
-            >
+            <View className="px-[22px] mt-[28px] items-center">
               <Label>Withdrawing</Label>
-              <Display size={44} style={{ marginTop: 10 }}>
+              <Display className="text-[44px] leading-[46.2px] mt-[10px]">
                 {amount}{" "}
-                <Display size={24} color={C.figureTail}>
+                <Display className="text-[24px] leading-[25.2px] text-figure-tail">
                   {asset.sym}
                 </Display>
               </Display>
-              <Mono size={12.5} color={C.sub} style={{ marginTop: 8 }}>
+              <Mono className="text-[12.5px] text-sub mt-[8px]">
                 ≈ ${usd} USD
               </Mono>
             </View>
             <QuoteCard style={{ marginTop: 26, marginHorizontal: 22 }}>
-              <QuoteRow
-                label="Asset"
-                value={`${asset.name} · ${asset.sym}`}
-              />
+              <QuoteRow label="Asset" value={`${asset.name} · ${asset.sym}`} />
               <QuoteRow label="Network" value={asset.network} />
               <QuoteRow label="Destination" value={destination} />
               <QuoteRow
@@ -524,58 +470,34 @@ export default function WithdrawScreen({
               />
             </QuoteCard>
           </Settle>
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              paddingHorizontal: 40,
-            }}
-          >
-            <Body
-              size={11.5}
-              color={C.dim}
-              style={{ textAlign: "center", lineHeight: 18 }}
-            >
+          <View className="flex-1 items-center justify-center px-[40px]">
+            <Body className="text-[11.5px] text-dim text-center leading-[18px]">
               Signed on device, in your secure enclave.{"\n"}Face ID confirms
               every signature.
             </Body>
           </View>
-          <View
-            style={{
-              paddingHorizontal: 22,
-              paddingBottom: 36,
-            }}
-          >
+          <View className="px-[22px] pb-[36px]">
             <NoticeBanner message="On-chain transfers can't be reversed. Check the address and the chain." />
             {sendError ? (
               <View
+                className="mt-[12px] p-[14px] rounded-[14px] bg-canvas-inset border"
                 style={{
-                  marginTop: 12,
-                  padding: 14,
-                  borderRadius: 14,
-                  backgroundColor: C.inset,
-                  borderWidth: 1,
                   borderColor: "rgba(246,165,165,0.3)",
                 }}
               >
-                <Label style={{ color: C.down }}>Not signed</Label>
-                <Body
-                  size={12}
-                  color={C.silver}
-                  style={{ marginTop: 6, lineHeight: 17 }}
-                >
+                <Label className="text-down">Not signed</Label>
+                <Body className="text-[12px] text-silver mt-[6px] leading-[17px]">
                   {sendError}
                 </Body>
               </View>
             ) : null}
-            <View style={{ marginTop: 16 }}>
+            <View className="mt-[16px]">
               <MetallicButton
                 label={sending ? "Signing…" : "Sign & send"}
                 onPress={signAndSend}
               />
             </View>
-            <View style={{ marginTop: 10 }}>
+            <View className="mt-[10px]">
               <GhostButton
                 label="Back to amount"
                 onPress={() => {

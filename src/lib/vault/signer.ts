@@ -29,7 +29,8 @@ export interface VaultSigner {
   getAccessToken(): Promise<string | null>;
 }
 
-const NOT_WIRED = "Sign-in isn't wired yet — plays need an authenticated wallet.";
+const NOT_WIRED =
+  "Sign-in isn't wired yet — plays need an authenticated wallet.";
 
 /** Default seat-holder: every capability refuses, loudly and identically,
  * so a tap on Play/Claim surfaces one honest sentence instead of crashing. */

@@ -1,9 +1,16 @@
 import * as Clipboard from "expo-clipboard";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, Pressable, View, ViewStyle } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import { Mono } from "./ui";
+import { cn } from "@/lib/cn";
 
 const HOLD_MS = 1600;
 
@@ -85,8 +92,15 @@ function CheckGlyph({ color }: { color: string }) {
  * changes under your own thumb says "the machine did the thing", and it never
  * covers the number you are mid-way through reading off the screen.
  */
-export function CopyMark({ copied, label }: { copied: boolean; label?: string }) {
-  const v = useRef(new Animated.Value(copied ? 1 : 0)).current;
+export function CopyMark({
+  copied,
+  label,
+}: {
+  copied: boolean;
+  label?: string;
+}) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const v = useMemo(() => new Animated.Value(copied ? 1 : 0), []);
 
   useEffect(() => {
     Animated.spring(v, {
@@ -98,25 +112,41 @@ export function CopyMark({ copied, label }: { copied: boolean; label?: string })
   }, [copied, v]);
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-      <View style={{ width: 13, height: 13 }}>
+    <View className="flex-row items-center gap-[7px]">
+      <View className="w-[13px] h-[13px]">
         <Animated.View
+          className="absolute"
           style={{
-            position: "absolute",
-            opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }),
+            opacity: v.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, 0, 1],
+            }),
             transform: [
-              { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) },
+              {
+                scale: v.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.5, 1],
+                }),
+              },
             ],
           }}
         >
           <CheckGlyph color={C.up} />
         </Animated.View>
         <Animated.View
+          className="absolute"
           style={{
-            position: "absolute",
-            opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0, 0] }),
+            opacity: v.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [1, 0, 0],
+            }),
             transform: [
-              { scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5] }) },
+              {
+                scale: v.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0.5],
+                }),
+              },
             ],
           }}
         >
@@ -126,8 +156,11 @@ export function CopyMark({ copied, label }: { copied: boolean; label?: string })
       {label ? (
         <Mono
           size={9.5}
-          color={copied ? C.up : C.dim}
-          style={{ letterSpacing: 1.4, fontFamily: F.mono }}
+
+          className={cn(
+            "tracking-[1.4px] font-mono",
+            copied ? "text-up" : "text-dim",
+          )}
         >
           {copied ? "COPIED" : label}
         </Mono>
@@ -157,7 +190,7 @@ export function CopyField({
   accessibilityLabel: string;
   style?: ViewStyle;
 }) {
-  const v = useRef(new Animated.Value(1)).current;
+  const v = useMemo(() => new Animated.Value(1), []);
   const to = (value: number) =>
     Animated.spring(v, {
       toValue: value,
@@ -175,23 +208,16 @@ export function CopyField({
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View
+        className="flex-row items-center gap-[12px] bg-card border rounded-[16px] py-[14px] px-[16px]"
         style={[
           {
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            backgroundColor: C.card,
-            borderWidth: 1,
             borderColor: copied ? "rgba(124,231,176,0.4)" : C.border,
-            borderRadius: 16,
-            paddingVertical: 14,
-            paddingHorizontal: 16,
             transform: [{ scale: v }],
           },
           style,
         ]}
       >
-        <View style={{ flex: 1 }}>{children}</View>
+        <View className="flex-1">{children}</View>
         <CopyMark copied={copied} label={label} />
       </Animated.View>
     </Pressable>

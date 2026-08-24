@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { RingDecor } from "../icons";
 import { AmountText, Display, PressableScale, Shine } from "../ui";
 
@@ -91,10 +91,7 @@ export function GreetingHero({
           }}
         >
           <Shine />
-          <View
-            pointerEvents="none"
-            style={{ position: "absolute", left: 0, top: 40 }}
-          >
+          <View pointerEvents="none" className="absolute left-[0px] top-[40px]">
             <RingDecor size={290} color={C.brandSoft} opacity={0.2} />
           </View>
 
@@ -105,35 +102,24 @@ export function GreetingHero({
           <View style={{ maxWidth: "64%" }}>
             <Text
               numberOfLines={1}
-              style={{
-                fontFamily: F.mono,
-                fontSize: 11,
-                letterSpacing: 1.8,
-                color: C.sub,
-              }}
+              className="font-mono text-[11px] tracking-[1.8px] text-sub"
             >
               {`${greeting},`.toUpperCase()}
             </Text>
-            <Display size={27} style={{ marginTop: 6 }}>
+            <Display className="text-[27px] leading-[28.35px] mt-[6px]">
               {name}
             </Display>
 
             {balance ? (
-              <View style={{ marginTop: 18 }}>
+              <View className="mt-[18px]">
                 {hidden ? (
-                  <Display size={38}>{MASK}</Display>
+                  <Display className="text-[38px] leading-[39.9px]">
+                    {MASK}
+                  </Display>
                 ) : (
                   <AmountText value={balance} size={38} />
                 )}
-                <Text
-                  style={{
-                    fontFamily: F.mono,
-                    fontSize: 11,
-                    letterSpacing: 1.8,
-                    color: C.dim,
-                    marginTop: 5,
-                  }}
-                >
+                <Text className="font-mono text-[11px] tracking-[1.8px] text-dim mt-[5px]">
                   {balanceLabel.toUpperCase()}
                 </Text>
               </View>

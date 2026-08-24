@@ -1,11 +1,11 @@
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
-import { C, F } from "../theme/tokens";
+import { C } from "../theme/tokens";
 import { KashPlusLoader } from "./KashPlusMark";
 
 const CROWN = require("@/assets/images/crown.png");
@@ -124,7 +124,7 @@ export function BrandLoading({
 
   // Always starts hidden, even when `visible` is true on the first render — the
   // cover is supposed to arrive, not blink into existence.
-  const fade = useRef(new Animated.Value(0)).current;
+  const fade = useMemo(() => new Animated.Value(0), []);
   // Kept mounted across the exit so the fade-out has something to fade.
   const [present, setPresent] = useState(visible);
 
@@ -199,13 +199,12 @@ export function BrandLoading({
       />
 
       {/* Nothing in here is a target — the root already owns the responder. */}
-      <View pointerEvents="none" style={{ alignItems: "center" }}>
+      <View pointerEvents="none" className="items-center">
         <View
+          className="items-center justify-center"
           style={{
             width: size,
             height: crownH,
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <Glow
@@ -234,18 +233,7 @@ export function BrandLoading({
         </View>
 
         {label ? (
-          <Text
-            style={{
-              fontFamily: F.mono,
-              fontSize: 13,
-              lineHeight: 18,
-              letterSpacing: 0.3,
-              color: C.sub,
-              textAlign: "center",
-              marginTop: 22,
-              maxWidth: 260,
-            }}
-          >
+          <Text className="font-mono text-[13px] leading-[18px] tracking-[0.3px] text-sub text-center mt-[22px] max-w-[260px]">
             {label}
           </Text>
         ) : null}

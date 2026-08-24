@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth/AuthContext";
 import ProfileScreen from "@/screens/ProfileScreen";
-import { C } from "@/theme/tokens";
 
 // Pushed route now that the tab bar is gone, so the screen keeps its own plain
 // title and the default tail space — nothing floats over the content.
@@ -38,7 +37,7 @@ export default function Profile() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       <ProfileScreen
         top={insets.top + 8}
         onBack={() => router.back()}

@@ -22,7 +22,7 @@ export default function AutoEarn() {
   const ctaBottom = Math.max(insets.bottom, 16);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+    <View className="flex-1 bg-canvas">
       {/* In flow, not floating — the scroll starts beneath it, so the screen
           needs no head space of its own. */}
       <PageHeader title="Yield" onBack={() => router.back()} />
@@ -34,12 +34,9 @@ export default function AutoEarn() {
           rows either side of it stay readable through the glass. */}
       <View
         pointerEvents="box-none"
+        className="absolute left-[16px] right-[16px] items-center"
         style={{
-          position: "absolute",
-          left: 16,
-          right: 16,
           bottom: ctaBottom,
-          alignItems: "center",
         }}
       >
         <GlassButton

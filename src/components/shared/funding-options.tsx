@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, Text, View } from "react-native";
 
 import { Option, OptionRow } from "@/components/OptionRow";
-import { C, F } from "@/theme/tokens";
+import { C } from "@/theme/tokens";
 import { BankIcon, WalletIcon } from "../icons";
 // `CryptoCheckout` / `LocalBankCheckout` are deliberately NOT imported here.
 // Both used to be mounted unquoted, which is exactly what made them fabricate a
@@ -11,7 +11,10 @@ import { Sheet } from "../Sheet";
 
 export type FundingKey = "decentralized" | "local";
 
-const FUNDING_OPTIONS: Option[] = [
+// A function, not a constant: these carry JSX whose icon colours would
+// otherwise be built once at import, freezing the palette. See
+// `BEVEL.outline` in ui.tsx.
+const fundingOptions = (): Option[] => [
   {
     key: "decentralized",
     title: "Decentralized Wallet",
@@ -27,7 +30,7 @@ const FUNDING_OPTIONS: Option[] = [
 ];
 
 const FundingOptions = ({
-  options = FUNDING_OPTIONS,
+  options,
   selectedKey = "decentralized",
   delay = 0,
   sheet = true,
@@ -46,7 +49,7 @@ const FundingOptions = ({
   onClose?: () => void;
 }) => {
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const copy = useRef(new Animated.Value(0)).current;
+  const copy = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     const run = Animated.timing(copy, {
@@ -58,6 +61,8 @@ const FundingOptions = ({
     run.start();
     return () => run.stop();
   }, [copy, delay]);
+
+  const rows = options ?? fundingOptions();
 
   const step = (i: number) => {
     const start = i * 0.11;
@@ -105,27 +110,11 @@ const FundingOptions = ({
     // this says so, instead of miming a payment that cannot happen.
     void confirm;
     return (
-      <View style={{ paddingVertical: 8 }}>
-        <Text
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 17,
-            color: C.text,
-            textAlign: "center",
-          }}
-        >
+      <View className="py-[8px]">
+        <Text className="font-display-bold text-[17px] text-text text-center">
           Funding isn't open yet
         </Text>
-        <Text
-          style={{
-            fontFamily: F.body,
-            fontSize: 13,
-            lineHeight: 20,
-            color: C.sub,
-            textAlign: "center",
-            marginTop: 10,
-          }}
-        >
+        <Text className="font-body text-[13px] leading-[20px] text-sub text-center mt-[10px]">
           {key === "local"
             ? "Bank funding for this space is still being connected."
             : "Wallet funding for this space is still being connected."}{" "}
@@ -151,20 +140,13 @@ const FundingOptions = ({
   return (
     <View>
       <Animated.View style={step(0)}>
-        <Text
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 17,
-            color: C.text,
-            marginBottom: 14,
-          }}
-        >
+        <Text className="font-display-bold text-[17px] text-text mb-[14px]">
           Funding Options
         </Text>
       </Animated.View>
 
-      <View style={{ gap: 12 }}>
-        {options.map((option, i) => (
+      <View className="gap-[12px]">
+        {rows.map((option, i) => (
           <Animated.View key={option.key} style={step(1 + i)}>
             <OptionRow
               option={option}

@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
-import { C } from "../theme/tokens";
+
 import {
   Screen,
   Card,
@@ -42,160 +42,106 @@ const bounties = [
 export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
   return (
     <Screen>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          paddingTop: 10,
-        }}
-      >
+      <View className="flex-row items-center gap-[10px] pt-[10px]">
         <Pressable onPress={onBack} hitSlop={10}>
           <BackChevron />
         </Pressable>
         <View
+          className="w-[30px] h-[30px] rounded-[16px] items-center justify-center"
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 16,
             backgroundColor: "rgba(255,255,255,0.08)",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 13, color: C.accent }}>◆</Text>
+          <Text className="text-[13px] text-accent">◆</Text>
         </View>
-        <Display size={20}>Earn · Kash</Display>
+        <Display className="text-[20px] leading-[21px]">Earn · Kash</Display>
       </View>
       <Card
+        className="mt-[18px] rounded-[22px] p-[18px]"
         style={{
-          marginTop: 18,
-          borderRadius: 22,
-          padding: 18,
           borderColor: "rgba(255,255,255,0.14)",
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Mono size={10} color={C.accent} style={{ letterSpacing: 2 }}>
-            ◆ KASH
-          </Mono>
-          <Mono size={9.5} color={C.dim}>
-            KSH · ON-CHAIN
-          </Mono>
+        <View className="flex-row justify-between items-center">
+          <Mono className="text-[10px] text-accent tracking-[2px]">◆ KASH</Mono>
+          <Mono className="text-[9.5px] text-dim">KSH · ON-CHAIN</Mono>
         </View>
-        <Body size={11} color={C.dim} style={{ marginTop: 14 }}>
-          KSH balance
-        </Body>
-        <Display size={34} style={{ marginTop: 4 }}>
+        <Body className="text-[11px] text-dim mt-[14px]">KSH balance</Body>
+        <Display className="text-[34px] leading-[35.7px] mt-[4px]">
           {kash.balance}{" "}
-          <Display size={18} color={C.sub}>
+          <Display className="text-[18px] leading-[18.9px] text-sub">
             KSH
           </Display>
         </Display>
-        <Mono size={12} color={C.sub} style={{ marginTop: 5 }}>
-          {kash.fiat}
-        </Mono>
+        <Mono className="text-[12px] text-sub mt-[5px]">{kash.fiat}</Mono>
         <View
+          className="h-[1px] my-[14px]"
           style={{
-            height: 1,
             backgroundColor: "rgba(255,255,255,0.1)",
-            marginVertical: 14,
           }}
         />
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <View className="flex-row items-center justify-between">
           <View>
-            <Body size={11} color={C.dim}>
-              Claimable points
-            </Body>
-            <Body size={14.5} semibold style={{ marginTop: 3 }}>
+            <Body className="text-[11px] text-dim">Claimable points</Body>
+            <Body className="text-[14.5px] font-body-semibold mt-[3px]">
               {kash.points}{" "}
-              <Mono size={11.5} color={C.sub}>
-                {kash.pointsUsd}
-              </Mono>
+              <Mono className="text-[11.5px] text-sub">{kash.pointsUsd}</Mono>
             </Body>
           </View>
-          <View style={{ width: 86 }}>
+          <View className="w-[86px]">
             <MetallicButton label="Claim" height={36} radius={11} size={12.5} />
           </View>
         </View>
         <View
+          className="mt-[16px] flex-row justify-between"
           style={{
-            marginTop: 16,
-            flexDirection: "row",
-            justifyContent: "space-between",
             alignItems: "baseline",
           }}
         >
-          <Label style={{ fontSize: 9.5 }}>Holding gate</Label>
-          <Mono size={11}>{kash.gatePct}%</Mono>
+          <Label className="text-[9.5px]">Holding gate</Label>
+          <Mono className="text-[11px]">{kash.gatePct}%</Mono>
         </View>
-        <View style={{ marginTop: 7 }}>
+        <View className="mt-[7px]">
           <ProgressBar pct={kash.gatePct} />
         </View>
-        <Body size={10.5} color={C.dim} style={{ marginTop: 7 }}>
+        <Body className="text-[10.5px] text-dim mt-[7px]">
           Gate is USD-denominated · redemptions capped at 25%/day
         </Body>
       </Card>
-      <Body size={11.5} color={C.dim} style={{ marginTop: 12, lineHeight: 19 }}>
+      <Body className="text-[11.5px] text-dim mt-[12px] leading-[19px]">
         Points earn live as you trade, play, and remit across KashPlus. Every
         Saturday 00:00 UTC they mint to KSH at the settlement price — points and
         KSH never mix.
       </Body>
-      <View style={{ marginTop: 18 }}>
+      <View className="mt-[18px]">
         <Label>Ways to earn</Label>
         {bounties.map((b, i) => (
           <View
             key={b.title}
+            className="flex-row items-center gap-[12px] py-[13px] border-b-rule"
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 13,
               borderBottomWidth: i === bounties.length - 1 ? 0 : 1,
-              borderBottomColor: C.hairline,
             }}
           >
             <View
+              className="w-[36px] h-[36px] rounded-[12px] items-center justify-center"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
                 backgroundColor: "rgba(255,255,255,0.06)",
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 13, color: C.accent }}>◈</Text>
+              <Text className="text-[13px] text-accent">◈</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Body size={13.5} semibold>
+            <View className="flex-1">
+              <Body className="text-[13.5px]" semibold>
                 {b.title}
               </Body>
-              <Body size={11} color={C.dim} style={{ marginTop: 2 }}>
-                {b.sub}
-              </Body>
+              <Body className="text-[11px] text-dim mt-[2px]">{b.sub}</Body>
             </View>
             <Mono
-              size={11.5}
-              color={C.accent}
+              className="text-[11.5px] text-accent rounded-[8px] py-[5px] px-[10px] overflow-hidden"
+
               style={{
                 backgroundColor: "rgba(255,255,255,0.06)",
-                borderRadius: 8,
-                paddingVertical: 5,
-                paddingHorizontal: 10,
-                overflow: "hidden",
               }}
             >
               {b.pts}
@@ -203,11 +149,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
           </View>
         ))}
       </View>
-      <Body
-        size={11}
-        color={C.dim}
-        style={{ textAlign: "center", marginTop: 24, marginBottom: 8 }}
-      >
+      <Body className="text-[11px] text-dim text-center mt-[24px] mb-[8px]">
         Points settle weekly — powered by Kash
       </Body>
     </Screen>

@@ -1,7 +1,7 @@
 import { type ImageSource } from "expo-image";
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C } from "../../theme/tokens";
 import { ArtSlot } from "../home/ArtSlot";
 import { TrendUpIcon } from "../icons";
 import { AmountText, Body, Mono, PulseDot } from "../ui";
@@ -44,24 +44,12 @@ export function BalanceSummary({
   const amountFirst = layout === "amount-first";
 
   const gainRow = (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: 99,
-          backgroundColor: C.upBg,
-        }}
-      >
+    <View className="flex-row items-center gap-[10px]">
+      <View className="flex-row items-center gap-[6px] px-[10px] py-[6px] rounded-[99px] bg-up-tint">
         <TrendUpIcon size={13} color={C.up} />
-        <Mono size={12.5} color={C.up}>
-          {stats.gain}
-        </Mono>
+        <Mono className="text-[12.5px] text-up">{stats.gain}</Mono>
       </View>
-      <Body size={11.5} color={C.sub}>
+      <Body className="text-[11.5px] text-sub">
         {`${stats.gainPct} ${stats.period}`}
       </Body>
     </View>
@@ -70,42 +58,24 @@ export function BalanceSummary({
   const statusRow =
     stats.live || stats.status ? (
       <View
+        className="flex-row items-center gap-[7px]"
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 7,
           marginBottom: amountFirst ? 0 : 12,
         }}
       >
         {stats.live ? <PulseDot color={C.live} size={8} /> : null}
         {stats.status ? (
-          <Body size={11.5} color={C.silver}>
-            {stats.status}
-          </Body>
+          <Body className="text-[11.5px] text-silver">{stats.status}</Body>
         ) : null}
       </View>
     ) : null;
 
   const labelRow = (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <Text
-        style={{
-          fontFamily: F.mono,
-          fontSize: 11,
-          letterSpacing: 1.8,
-          color: C.dim,
-        }}
-      >
+    <View className="flex-row items-center gap-[6px]">
+      <Text className="font-mono text-[11px] tracking-[1.8px] text-dim">
         {label.toUpperCase()}
       </Text>
-      <Text
-        style={{
-          fontFamily: F.monoSemibold,
-          fontSize: 11,
-          letterSpacing: 1.8,
-          color: C.brandSoft,
-        }}
-      >
+      <Text className="font-mono-semibold text-[11px] tracking-[1.8px] text-brand-soft">
         {`IN ${stats.currency}`.toUpperCase()}
       </Text>
     </View>
@@ -125,7 +95,7 @@ export function BalanceSummary({
         <>
           {labelRow}
           <Amount total={stats.total} emphasizeCents={emphasizeCents} />
-          <View style={{ marginTop: 12, gap: 10 }}>
+          <View className="mt-[12px] gap-[10px]">
             {statusRow}
             {gainRow}
           </View>
@@ -134,7 +104,7 @@ export function BalanceSummary({
         <>
           {statusRow}
           {gainRow}
-          <View style={{ marginTop: 14 }}>{labelRow}</View>
+          <View className="mt-[14px]">{labelRow}</View>
           <Amount total={stats.total} emphasizeCents={emphasizeCents} />
         </>
       )}
@@ -154,7 +124,7 @@ function Amount({
       value={total}
       size={40}
       emphasizeCents={emphasizeCents}
-      style={{ marginTop: 8 }}
+      className="mt-[8px]"
     />
   );
 }

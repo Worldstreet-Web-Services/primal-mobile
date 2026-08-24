@@ -55,7 +55,10 @@ import {
  * hardcoded "$1,000". When a live subscription carries its own `price`, that one
  * wins: it is what this account is actually billed.
  */
-export const MEMBERSHIP_PRICE: Money = { amountMinor: "100000", currency: "USD" };
+export const MEMBERSHIP_PRICE: Money = {
+  amountMinor: "100000",
+  currency: "USD",
+};
 
 /** What must land on the settlement chain: 1,000 USDC at 6dp. */
 export const MEMBERSHIP_SETTLEMENT: Money = {
@@ -156,7 +159,9 @@ export const ORIGIN_NETWORKS: readonly OriginNetwork[] = [
 /** Base: the chain the wallet already signs on, so it is the default origin. */
 export const DEFAULT_ORIGIN_CHAIN_ID = 8453;
 
-export function networkFor(chainId: number | null | undefined): OriginNetwork | null {
+export function networkFor(
+  chainId: number | null | undefined,
+): OriginNetwork | null {
   if (typeof chainId !== "number") return null;
   return ORIGIN_NETWORKS.find((n) => n.chainId === chainId) ?? null;
 }
@@ -236,26 +241,37 @@ function formatAsset(
   }
 }
 
-export function readOriginQuote(payment: CryptoPayment | null | undefined): OriginQuote {
-  const chainId = typeof payment?.originChainId === "number" ? payment.originChainId : null;
+export function readOriginQuote(
+  payment: CryptoPayment | null | undefined,
+): OriginQuote {
+  const chainId =
+    typeof payment?.originChainId === "number" ? payment.originChainId : null;
   const network = networkFor(chainId);
   const asset = assetFor(chainId, payment?.originAsset);
-  const amountText = asset ? formatAsset(payment?.originAmount, asset, true) : null;
+  const amountText = asset
+    ? formatAsset(payment?.originAmount, asset, true)
+    : null;
 
   return {
     chainId,
     network,
-    networkName: network?.name ?? (chainId === null ? "Unknown network" : `Chain ${chainId}`),
+    networkName:
+      network?.name ??
+      (chainId === null ? "Unknown network" : `Chain ${chainId}`),
     asset,
     assetAddress: payment?.originAsset ?? null,
     amountText,
-    amountPlain: asset ? formatAsset(payment?.originAmount, asset, false) : null,
+    amountPlain: asset
+      ? formatAsset(payment?.originAmount, asset, false)
+      : null,
     safe: Boolean(network && asset && amountText && payment?.depositAddress),
   };
 }
 
 /** The settlement leg, for the receipt line. Always USDC at 6dp per contract. */
-export function readSettlementText(payment: CryptoPayment | null | undefined): string | null {
+export function readSettlementText(
+  payment: CryptoPayment | null | undefined,
+): string | null {
   if (typeof payment?.requiredSettlementAmount !== "string") return null;
   try {
     return `${formatMinor(payment.requiredSettlementAmount, "USDC")} USDC`;
@@ -294,9 +310,12 @@ export function addressGroups(address: string, size = 4): string[] {
   const prefix = /^0x/i.test(trimmed) ? trimmed.slice(0, 2) : "";
   const body = prefix ? trimmed.slice(2) : trimmed;
   const groups: string[] = [];
-  for (let i = 0; i < body.length; i += size) groups.push(body.slice(i, i + size));
+  for (let i = 0; i < body.length; i += size)
+    groups.push(body.slice(i, i + size));
   if (!prefix) return groups;
-  return groups.length > 0 ? [prefix + groups[0], ...groups.slice(1)] : [prefix];
+  return groups.length > 0
+    ? [prefix + groups[0], ...groups.slice(1)]
+    : [prefix];
 }
 
 /**
@@ -352,7 +371,10 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-function readMoney(node: Record<string, unknown>, key: string): Money | undefined {
+function readMoney(
+  node: Record<string, unknown>,
+  key: string,
+): Money | undefined {
   const raw = node[key] as Record<string, unknown> | undefined;
   if (raw && typeof raw === "object") {
     const amountMinor = str(raw.amountMinor);
@@ -376,7 +398,10 @@ function readMoney(node: Record<string, unknown>, key: string): Money | undefine
 export function readSubscription(raw: unknown): Subscription | null {
   const o = raw as Record<string, unknown> | null;
   if (!o || typeof o !== "object") return null;
-  const node = ((o.subscription as Record<string, unknown>) ?? o) as Record<string, unknown>;
+  const node = ((o.subscription as Record<string, unknown>) ?? o) as Record<
+    string,
+    unknown
+  >;
   const id = str(node.id);
   if (!id) return null;
 
@@ -384,10 +409,13 @@ export function readSubscription(raw: unknown): Subscription | null {
     id,
     status: asSubscriptionStatus(node.status),
     price: readMoney(node, "price"),
-    currentPeriodStart: node.currentPeriodStart as Subscription["currentPeriodStart"],
+    currentPeriodStart:
+      node.currentPeriodStart as Subscription["currentPeriodStart"],
     currentPeriodEnd: node.currentPeriodEnd as Subscription["currentPeriodEnd"],
     cancelAtPeriodEnd:
-      typeof node.cancelAtPeriodEnd === "boolean" ? node.cancelAtPeriodEnd : undefined,
+      typeof node.cancelAtPeriodEnd === "boolean"
+        ? node.cancelAtPeriodEnd
+        : undefined,
     createdAt: node.createdAt as Subscription["createdAt"],
     updatedAt: node.updatedAt as Subscription["updatedAt"],
   };
@@ -402,7 +430,10 @@ export function readSubscription(raw: unknown): Subscription | null {
 export function readPayment(raw: unknown): CryptoPayment | null {
   const o = raw as Record<string, unknown> | null;
   if (!o || typeof o !== "object") return null;
-  const node = ((o.payment as Record<string, unknown>) ?? o) as Record<string, unknown>;
+  const node = ((o.payment as Record<string, unknown>) ?? o) as Record<
+    string,
+    unknown
+  >;
   const depositAddress = str(node.depositAddress);
   if (!depositAddress) return null;
 
@@ -588,10 +619,13 @@ export function getPayment(
   options?: { signal?: AbortSignal; correlationId?: string },
 ): Promise<CryptoPayment | null> {
   return client
-    .get<unknown>(`/v1/subscriptions/${encodeURIComponent(subscriptionId)}/payment`, {
-      signal: options?.signal,
-      correlationId: options?.correlationId,
-    })
+    .get<unknown>(
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}/payment`,
+      {
+        signal: options?.signal,
+        correlationId: options?.correlationId,
+      },
+    )
     .then(readPayment);
 }
 
@@ -677,7 +711,11 @@ export async function startCheckout(
     if (current) {
       const status = current.payment?.status ?? "UNKNOWN";
       // Live, or already paid: hand it back rather than start anything.
-      if (!current.payment || !isTerminalPayment(status) || status === "SETTLED") {
+      if (
+        !current.payment ||
+        !isTerminalPayment(status) ||
+        status === "SETTLED"
+      ) {
         return current;
       }
     }
@@ -799,7 +837,8 @@ export function nextPollDelayMs(input: {
   }
   if (!input.visible) return POLL_BACKGROUND_MS;
   return Math.round(
-    POLL_VISIBLE_MIN_MS + Math.random() * (POLL_VISIBLE_MAX_MS - POLL_VISIBLE_MIN_MS),
+    POLL_VISIBLE_MIN_MS +
+      Math.random() * (POLL_VISIBLE_MAX_MS - POLL_VISIBLE_MIN_MS),
   );
 }
 
@@ -870,7 +909,8 @@ export function describeFailure(error: unknown): FailureNotice {
     if (error.statusCode === 429) {
       return {
         title: "Too many requests",
-        detail: "Primal is rate limiting this device. Wait a moment, then try again.",
+        detail:
+          "Primal is rate limiting this device. Wait a moment, then try again.",
         correlationId: error.correlationId,
         kind: "rate_limit",
         retryable: true,
@@ -879,7 +919,8 @@ export function describeFailure(error: unknown): FailureNotice {
     if (error.statusCode >= 500) {
       return {
         title: "Primal is unavailable",
-        detail: "Something on Primal's side is down. Your checkout is safe — try again shortly.",
+        detail:
+          "Something on Primal's side is down. Your checkout is safe — try again shortly.",
         correlationId: error.correlationId,
         kind: "gateway",
         retryable: true,
@@ -931,6 +972,8 @@ export const syncDelayMs = (attempt: number): number =>
 export async function checkEntitled(options?: {
   signal?: AbortSignal;
 }): Promise<boolean> {
-  const snapshot = await entitlement.probeEntitlement({ signal: options?.signal });
+  const snapshot = await entitlement.probeEntitlement({
+    signal: options?.signal,
+  });
   return snapshot.entitled;
 }

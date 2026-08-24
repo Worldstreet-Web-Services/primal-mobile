@@ -1,7 +1,6 @@
 import { type ImageSource } from "expo-image";
 import { ScrollView } from "react-native";
 
-import { C } from "../../theme/tokens";
 import { Avatar } from "../home";
 import { PressableScale } from "../ui";
 
@@ -10,7 +9,8 @@ export interface Author {
   name: string;
   artwork?: ImageSource | number;
   /** Ring color — lights one host up as the featured voice. */
-  accent?: string;
+  /** Ring colour, as a border class — data cannot hold a themed value. */
+  accentClassName?: string;
 }
 
 /**
@@ -49,7 +49,7 @@ export function AuthorRail({
             source={author.artwork}
             initial={author.name}
             size={size}
-            ring={author.accent ?? C.hairline}
+            ringClassName={author.accentClassName ?? "border-rule"}
           />
         </PressableScale>
       ))}

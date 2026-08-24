@@ -1,7 +1,5 @@
 import { Text, View } from "react-native";
 
-import { C, F } from "../../theme/tokens";
-
 /**
  * What is being paid for, and what it costs. The fiat figure leads and the
  * token amount sits under it — the charge is denominated in one and settled in
@@ -20,61 +18,25 @@ export function PlanCard({
   amountSub?: string;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        padding: 18,
-        borderRadius: 18,
-        backgroundColor: C.raised,
-        borderWidth: 1,
-        borderColor: C.hairline,
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            fontFamily: F.mono,
-            fontSize: 10.5,
-            letterSpacing: 1.5,
-            color: C.silver,
-          }}
-        >
+    <View className="flex-row items-center gap-[12px] p-[18px] rounded-[18px] bg-canvas-raised border border-rule">
+      <View className="flex-1">
+        <Text className="font-mono text-[10.5px] tracking-[1.5px] text-silver">
           {plan.toUpperCase()}
         </Text>
         <Text
           numberOfLines={1}
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 19,
-            color: C.text,
-            marginTop: 7,
-          }}
+          className="font-display-bold text-[19px] text-text mt-[7px]"
         >
           {name}
         </Text>
       </View>
 
-      <View style={{ alignItems: "flex-end" }}>
-        <Text
-          style={{
-            fontFamily: F.displayBold,
-            fontSize: 24,
-            color: C.brand,
-          }}
-        >
+      <View className="items-end">
+        <Text className="font-display-bold text-[24px] text-brand">
           {amount}
         </Text>
         {amountSub ? (
-          <Text
-            style={{
-              fontFamily: F.mono,
-              fontSize: 11.5,
-              color: C.sub,
-              marginTop: 5,
-            }}
-          >
+          <Text className="font-mono text-[11.5px] text-sub mt-[5px]">
             {amountSub}
           </Text>
         ) : null}

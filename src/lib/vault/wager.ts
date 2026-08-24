@@ -37,9 +37,12 @@ import { VAULT_CONTRACT_ADDRESS } from "./api";
 // where it is currently configured. `sponsorEndpoints` only lists this proxy
 // when the URL is non-empty, so dropping it promotes the Alchemy sponsor to
 // first choice instead of making every play wait out a dead host first.
-export const BUNDLER_URL = liveBaseUrl(process.env.EXPO_PUBLIC_BASE_BUNDLER_URL);
+export const BUNDLER_URL = liveBaseUrl(
+  process.env.EXPO_PUBLIC_BASE_BUNDLER_URL,
+);
 const ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? "";
-const ALCHEMY_GAS_POLICY_ID = process.env.EXPO_PUBLIC_ALCHEMY_GAS_POLICY_ID ?? "";
+const ALCHEMY_GAS_POLICY_ID =
+  process.env.EXPO_PUBLIC_ALCHEMY_GAS_POLICY_ID ?? "";
 
 export interface SponsorEndpoint {
   /** For logging/errors only. */
@@ -256,7 +259,13 @@ export const VAULT_ABI = [
     inputs: [{ name: "gameId", type: "uint256" }],
     outputs: [],
   },
-  { type: "function", name: "claim", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  {
+    type: "function",
+    name: "claim",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
   {
     type: "function",
     name: "nextGameId",
@@ -405,7 +414,10 @@ export type SignAuthorization = (input: {
 const delegated = new Set<string>();
 
 /** Built once per wallet; see the note at its use site. */
-const accountCache = new Map<string, Awaited<ReturnType<typeof to7702SimpleSmartAccount>>>();
+const accountCache = new Map<
+  string,
+  Awaited<ReturnType<typeof to7702SimpleSmartAccount>>
+>();
 
 export function forgetDelegation(address: `0x${string}`) {
   delegated.delete(address.toLowerCase());
@@ -447,7 +459,10 @@ export function isBundlerUnavailable(error: unknown): boolean {
   ) {
     return false;
   }
-  const message = error instanceof Error ? `${error.message}\n${String(error.cause ?? "")}` : String(error);
+  const message =
+    error instanceof Error
+      ? `${error.message}\n${String(error.cause ?? "")}`
+      : String(error);
   return /404|405|502|503|Not Found|Failed to fetch|fetch failed|HTTP request failed|request has been canceled|Network request failed|timed? ?out|Unexpected (token|character)|HTML/i.test(
     message,
   );
@@ -579,13 +594,20 @@ export async function sendSponsoredVaultCall({
   // is the same object every time for a given wallet. Building it per send was
   // repeating that work on the critical path.
   const cachedAccount = accountCache.get(address.toLowerCase());
-  const account = cachedAccount ?? (await to7702SimpleSmartAccount({
-    client: basePublicClient(),
-    owner: provider,
-  }));
+  const account =
+    cachedAccount ??
+    (await to7702SimpleSmartAccount({
+      client: basePublicClient(),
+      owner: provider,
+    }));
   if (!cachedAccount) accountCache.set(address.toLowerCase(), account);
   t = tlog("smart account ready", t);
-  const bundlerClient = createBundlerClient({ account, client, chain: base, transport });
+  const bundlerClient = createBundlerClient({
+    account,
+    client,
+    chain: base,
+    transport,
+  });
   // Same endpoint, patient settings — see RECEIPT_TIMEOUT_MS.
   const receiptTransport = http(endpoint.url, {
     fetchOptions: { headers: endpoint.headers },
@@ -765,7 +787,8 @@ async function preconfReceiptStatus(
           params: [hash],
         }),
       });
-      const receipt = ((await res.json()) as { result?: { status?: string } }).result;
+      const receipt = ((await res.json()) as { result?: { status?: string } })
+        .result;
       if (receipt) return receipt.status === "0x0" ? "reverted" : "success";
     } catch {
       // Preconf endpoint hiccup — the standard client is still racing.
@@ -784,7 +807,11 @@ export async function awaitWagerReceipt(hash: `0x${string}`): Promise<void> {
   try {
     status = await Promise.race([
       basePublicClient()
-        .waitForTransactionReceipt({ hash, timeout: 120_000, pollingInterval: 2_000 })
+        .waitForTransactionReceipt({
+          hash,
+          timeout: 120_000,
+          pollingInterval: 2_000,
+        })
         .then((r) => r.status),
       preconfReceiptStatus(hash, 120_000),
     ]);

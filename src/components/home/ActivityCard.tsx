@@ -1,7 +1,7 @@
 import { View, type ViewStyle } from "react-native";
 
-import { C, F } from "../../theme/tokens";
 import { Body, PressableScale } from "../ui";
+import { cn } from "@/lib/cn";
 
 /**
  * One thing that happened, as this screen is allowed to describe it.
@@ -32,34 +32,32 @@ export interface ActivityItem {
 function Row({ item, last }: { item: ActivityItem; last: boolean }) {
   const body = (
     <View
+      className="py-[14px] border-b-rule gap-[5px]"
       style={{
-        paddingVertical: 14,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: C.hairline,
-        gap: 5,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View className="flex-row items-center gap-[12px]">
         <Body
           semibold
           size={14.5}
           numberOfLines={1}
-          color={item.fresh ? C.green : C.text}
-          style={{ flex: 1, letterSpacing: 0.1 }}
+
+          className={cn(
+            "flex-1 tracking-[0.1px]",
+            item.fresh ? "text-green" : "text-text",
+          )}
         >
           {item.title}
         </Body>
         {/* Tabular figures would be wrong here: "10m ago" is prose, not a
             column, and the times never have to line up with each other. */}
-        <Body size={12.5} color={C.dim}>
-          {item.when}
-        </Body>
+        <Body className="text-[12.5px] text-dim">{item.when}</Body>
       </View>
       <Body
-        size={13}
-        color={C.dim}
+        className="text-[13px] text-dim leading-[18px]"
+
         numberOfLines={2}
-        style={{ lineHeight: 18 }}
       >
         {item.note}
       </Body>
@@ -100,25 +98,11 @@ export function ActivityCard({
 }) {
   return (
     <View
-      style={[
-        {
-          backgroundColor: C.raised,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: C.hairline,
-          paddingHorizontal: 16,
-          paddingVertical: 2,
-          overflow: "hidden",
-        },
-        style,
-      ]}
+      className="bg-canvas-raised rounded-[18px] border border-rule px-[16px] py-[2px] overflow-hidden"
+      style={style}
     >
       {items.length === 0 ? (
-        <Body
-          size={13}
-          color={C.dim}
-          style={{ lineHeight: 19, paddingVertical: 18 }}
-        >
+        <Body className="text-[13px] text-dim leading-[19px] py-[18px]">
           {empty}
         </Body>
       ) : (
@@ -140,9 +124,7 @@ export function SectionTitle({
 }) {
   return (
     <View style={style}>
-      <Body size={17} color={C.sub} style={{ fontFamily: F.bodyMedium }}>
-        {children}
-      </Body>
+      <Body className="text-[17px] text-sub font-body-medium">{children}</Body>
     </View>
   );
 }

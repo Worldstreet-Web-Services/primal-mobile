@@ -59,7 +59,10 @@ export interface PlaceholderRequest {
 /* ------------------------------------------------------------------ timing */
 
 /** How long the stand-in takes to "notice" a transfer, and then to settle it. */
-const SETTLE_MS = readMillis(process.env.EXPO_PUBLIC_DEV_PLACEHOLDER_SETTLE_MS, 12_000);
+const SETTLE_MS = readMillis(
+  process.env.EXPO_PUBLIC_DEV_PLACEHOLDER_SETTLE_MS,
+  12_000,
+);
 const PROCESSING_MS = Math.round(SETTLE_MS / 2);
 
 /** One membership period. Long enough that no dev run watches it lapse. */
@@ -218,15 +221,25 @@ function reply(status: number, body: unknown, correlationId: string): Response {
 }
 
 /** The gateway's own error envelope, as observed live on 400/401/403/404/503. */
-function fail(status: number, message: string, correlationId: string): Response {
-  return reply(status, { statusCode: status, message, correlationId }, correlationId);
+function fail(
+  status: number,
+  message: string,
+  correlationId: string,
+): Response {
+  return reply(
+    status,
+    { statusCode: status, message, correlationId },
+    correlationId,
+  );
 }
 
 function parse(bodyText: string | null): Record<string, unknown> {
   if (!bodyText) return {};
   try {
     const value: unknown = JSON.parse(bodyText);
-    return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    return value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }
@@ -317,7 +330,10 @@ function paymentBody(s: State): Record<string, unknown> | null {
 
 /* ------------------------------------------------------------------ routes */
 
-async function auth(req: PlaceholderRequest, s: State): Promise<Response | null> {
+async function auth(
+  req: PlaceholderRequest,
+  s: State,
+): Promise<Response | null> {
   const cid = req.correlationId;
   const body = parse(req.bodyText);
 
@@ -422,7 +438,11 @@ async function auth(req: PlaceholderRequest, s: State): Promise<Response | null>
     }
     return reply(
       200,
-      { userId: s.userId, walletAddress: s.walletAddress, sessionId: s.sessionId },
+      {
+        userId: s.userId,
+        walletAddress: s.walletAddress,
+        sessionId: s.sessionId,
+      },
       cid,
     );
   }
@@ -437,7 +457,10 @@ async function auth(req: PlaceholderRequest, s: State): Promise<Response | null>
   return null;
 }
 
-async function membership(req: PlaceholderRequest, s: State): Promise<Response | null> {
+async function membership(
+  req: PlaceholderRequest,
+  s: State,
+): Promise<Response | null> {
   const cid = req.correlationId;
   const body = parse(req.bodyText);
 
@@ -449,7 +472,11 @@ async function membership(req: PlaceholderRequest, s: State): Promise<Response |
     if (!entitled(s)) {
       return fail(403, "Active subscription required.", cid);
     }
-    return fail(404, "No LinkPay account has been provisioned for this user.", cid);
+    return fail(
+      404,
+      "No LinkPay account has been provisioned for this user.",
+      cid,
+    );
   }
 
   if (req.method === "POST" && req.path === "/v1/subscriptions") {
@@ -499,7 +526,9 @@ async function membership(req: PlaceholderRequest, s: State): Promise<Response |
     );
   }
 
-  const match = /^\/v1\/subscriptions\/([^/]+)(\/payment|\/cancel)?$/.exec(req.path);
+  const match = /^\/v1\/subscriptions\/([^/]+)(\/payment|\/cancel)?$/.exec(
+    req.path,
+  );
   if (match) {
     const wanted = decodeURIComponent(match[1]);
     const leaf = match[2];
@@ -568,5 +597,9 @@ export async function respond(req: PlaceholderRequest): Promise<Response> {
         "answering 501. Sign-in, entitlement and the membership checkout are.",
     );
   }
-  return fail(501, "This route is not implemented by the placeholder gateway.", req.correlationId);
+  return fail(
+    501,
+    "This route is not implemented by the placeholder gateway.",
+    req.correlationId,
+  );
 }

@@ -33,38 +33,17 @@ export default function PasskeyScreen({
   placeholder?: boolean;
 }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        paddingHorizontal: 22,
-        paddingBottom: 30,
-      }}
-    >
+    <View className="flex-1 bg-canvas px-[22px] pb-[30px]">
       {/* Numbered to match the PIN step before it, so the sequence reads as a
           sequence: sign in, PIN, this. */}
-      <View style={{ paddingTop: 10, paddingHorizontal: 2 }}>
+      <View className="pt-[10px] px-[2px]">
         <Label>Step 3 of 3</Label>
       </View>
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 20,
-          paddingHorizontal: 12,
-        }}
-      >
+      <View className="flex-1 items-center justify-center gap-[20px] px-[12px]">
         <View
+          className="w-[92px] h-[92px] rounded-[28px] border border-border-strong items-center justify-center"
           style={{
-            width: 92,
-            height: 92,
-            borderRadius: 28,
             backgroundColor: "rgba(255,255,255,0.06)",
-            borderWidth: 1,
-            borderColor: C.borderStrong,
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
           <Svg width={46} height={46} viewBox="0 0 24 24">
@@ -79,28 +58,22 @@ export default function PasskeyScreen({
             <Circle cx={15} cy={10} r={0.9} fill={C.accent} />
           </Svg>
         </View>
-        <Display size={26}>Unlock with {label}</Display>
-        <Body
-          size={13.5}
-          color={C.sub}
-          style={{ textAlign: "center", lineHeight: 22 }}
-        >
+        <Display className="text-[26px] leading-[27.3px]">
+          Unlock with {label}
+        </Display>
+        <Body className="text-[13.5px] text-sub text-center leading-[22px]">
           Open KashPlus with {label} instead of typing your PIN every time. Your
           PIN still stands behind it, and it is still what authorises money
           leaving.
         </Body>
         {placeholder ? (
-          <Body
-            size={11.5}
-            color={C.dim}
-            style={{ textAlign: "center", lineHeight: 18 }}
-          >
+          <Body className="text-[11.5px] text-dim text-center leading-[18px]">
             This device has no {label} available, so the prompt is simulated and
             always succeeds. Development builds only.
           </Body>
         ) : null}
       </View>
-      <View style={{ gap: 10 }}>
+      <View className="gap-[10px]">
         <MetallicButton
           label={`Enable ${label}`}
           onPress={onEnable}
@@ -108,18 +81,14 @@ export default function PasskeyScreen({
         />
         <Pressable
           onPress={enabling ? undefined : onSkip}
+          className="h-[48px] items-center justify-center"
           style={{
-            height: 48,
-            alignItems: "center",
-            justifyContent: "center",
             opacity: enabling ? 0.45 : 1,
           }}
         >
-          <Body size={14} color={C.sub}>
-            Maybe later
-          </Body>
+          <Body className="text-[14px] text-sub">Maybe later</Body>
         </Pressable>
-        <Body size={11} color={C.dim} style={{ textAlign: "center" }}>
+        <Body className="text-[11px] text-dim text-center">
           Your PIN always works, whether or not you turn this on.
         </Body>
       </View>

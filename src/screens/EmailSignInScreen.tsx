@@ -47,29 +47,20 @@ export default function EmailSignInScreen({
   } as const;
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.canvas,
-        paddingHorizontal: 22,
-        paddingBottom: 30,
-      }}
-    >
+    <View className="flex-1 bg-canvas px-[22px] pb-[30px]">
       <BackHeader title="" onBack={onBack} />
 
       {stage === "email" ? (
         <>
-          <View style={{ marginTop: 24 }}>
-            <Display size={26}>What&apos;s your email?</Display>
-            <Body
-              size={13.5}
-              color={C.sub}
-              style={{ marginTop: 10, lineHeight: 21 }}
-            >
+          <View className="mt-[24px]">
+            <Display className="text-[26px] leading-[27.3px]">
+              What&apos;s your email?
+            </Display>
+            <Body className="text-[13.5px] text-sub mt-[10px] leading-[21px]">
               We&apos;ll send you a 6-digit code. No password to remember.
             </Body>
           </View>
-          <View style={{ marginTop: 28, gap: 12 }}>
+          <View className="mt-[28px] gap-[12px]">
             <TextInput
               value={value}
               onChangeText={setValue}
@@ -97,17 +88,15 @@ export default function EmailSignInScreen({
         </>
       ) : (
         <>
-          <View style={{ marginTop: 24 }}>
-            <Display size={26}>Enter your code</Display>
-            <Body
-              size={13.5}
-              color={C.sub}
-              style={{ marginTop: 10, lineHeight: 21 }}
-            >
+          <View className="mt-[24px]">
+            <Display className="text-[26px] leading-[27.3px]">
+              Enter your code
+            </Display>
+            <Body className="text-[13.5px] text-sub mt-[10px] leading-[21px]">
               Sent to {email ?? "your email"}. It expires in a few minutes.
             </Body>
           </View>
-          <View style={{ marginTop: 28, gap: 12 }}>
+          <View className="mt-[28px] gap-[12px]">
             <TextInput
               value={code}
               onChangeText={(t) => {
@@ -132,11 +121,9 @@ export default function EmailSignInScreen({
             />
             <Pressable
               onPress={busy ? undefined : onResend}
-              style={{ height: 44, alignItems: "center", justifyContent: "center" }}
+              className="h-[44px] items-center justify-center"
             >
-              <Body size={13} color={C.sub}>
-                Resend code
-              </Body>
+              <Body className="text-[13px] text-sub">Resend code</Body>
             </Pressable>
           </View>
         </>

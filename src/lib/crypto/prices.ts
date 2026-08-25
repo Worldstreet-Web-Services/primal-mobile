@@ -39,19 +39,29 @@ export const STATIC_PRICES_USD: Record<string, number> = {
  */
 
 /**
- * Price the given symbols in USD. Starts from the static map and overlays
- * whatever the live API returns, so a partial or failed fetch degrades to
- * stale-but-plausible values instead of $0 rows.
+ * What a pricing pass produced, and how much of it the market actually said.
+ *
+ * `live` names the symbols the API answered for THIS call. Everything else in
+ * `prices` is the hand-refreshed static snapshot — present so a failed fetch
+ * degrades to stale-but-plausible values instead of $0 rows, but "stale but
+ * plausible" is precisely what a screen must not present as a quote. Callers
+ * that stamp a time or imply freshness must check `live` first; BuyScreen's
+ * "AS OF <time>" over snapshot values was the bug that forced this shape.
  */
-export async function fetchPricesUsd(
-  symbols: string[],
-): Promise<Record<string, number>> {
+export interface PriceRead {
+  prices: Record<string, number>;
+  /** Symbols whose price came from the live API on this call. */
+  live: Set<string>;
+}
+
+export async function fetchPricesUsd(symbols: string[]): Promise<PriceRead> {
   const uniq = [...new Set(symbols)];
   const out: Record<string, number> = {};
+  const live = new Set<string>();
   for (const s of uniq) {
     if (STATIC_PRICES_USD[s] != null) out[s] = STATIC_PRICES_USD[s];
   }
-  if (!KEY || uniq.length === 0) return out;
+  if (!KEY || uniq.length === 0) return { prices: out, live };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -67,12 +77,15 @@ export async function fetchPricesUsd(
     };
     for (const d of body.data ?? []) {
       const v = Number(d.prices?.[0]?.value);
-      if (Number.isFinite(v)) out[d.symbol] = v;
+      if (Number.isFinite(v)) {
+        out[d.symbol] = v;
+        live.add(d.symbol);
+      }
     }
   } catch {
-    // The static map stands.
+    // The static map stands — and `live` stays empty, which is the signal.
   } finally {
     clearTimeout(timer);
   }
-  return out;
+  return { prices: out, live };
 }

@@ -10,11 +10,11 @@ import {
   type PortfolioView,
 } from "@/components/home";
 import { features as catalogue } from "@/data/home";
-import { user } from "@/data/mock";
 import { useCryptoPortfolio } from "@/hooks/useCryptoPortfolio";
 import { useFiatBalance, type FiatBalanceState } from "@/hooks/useLinkpay";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { formatMoney, isZeroMoney } from "@/lib/gateway/money";
-import { firstNameOf, greetingFor } from "@/lib/greeting";
+import { greetingFor, greetingNameFor } from "@/lib/greeting";
 import { SUBSCRIPTION_ROUTE } from "@/lib/routes";
 import HomeScreen from "@/screens/HomeScreen";
 
@@ -287,12 +287,19 @@ export default function Home() {
   const fiat = useFiatBalance();
   const crypto = useCryptoPortfolio();
   const [masked, toggleMasked] = useBalanceMasked();
+  // What the sign-in flow actually recorded about the person — name, handle
+  // or email, or nothing. This used to be `firstNameOf(user.name)` from
+  // src/data/mock, which greeted every member on earth as "Dave".
+  const { identity } = useAuth();
 
   return (
     <HomeScreen
       top={insets.top + 10}
       greeting={greetingFor()}
-      name={firstNameOf(user.name)}
+      // Empty string is the wire form of "no source said a name" — the screen
+      // prop is a plain string, and GreetingBlock renders the salutation
+      // alone for it. Never a placeholder, never "there".
+      name={greetingNameFor(identity) ?? ""}
       // No `unread`. The reference draws a dot on the bell, and a dot is a
       // claim — "something is waiting for you" — with nothing behind it: there
       // is no notifications store, no unread count and no endpoint for one, and

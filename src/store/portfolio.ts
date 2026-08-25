@@ -14,6 +14,8 @@ const STALE_MS = 60_000;
 
 interface PortfolioState {
   holdings: Holding[];
+  /** Positive native balances by network, retained below the visual dust floor. */
+  gasNetworks: Holding["network"][];
   totalUsd: number;
   /** True until the first response (or terminal failure) for this address set. */
   loading: boolean;
@@ -27,6 +29,8 @@ interface PortfolioState {
    * total, or read zero as "nothing held", has to consult this first.
    */
   complete: boolean;
+  /** False when any shown dollar value came off the static snapshot. */
+  pricesLive: boolean;
 
   /** Load if stale — screens call this on mount. Safe to call repeatedly. */
   ensure: () => void;
@@ -47,7 +51,20 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     const evm = addrs?.evm ?? null;
     const solana = addrs?.solana ?? null;
     if (!evm && !solana) {
-      set({ loading: false, refreshing: false, error: true, complete: false });
+      // Sign-out is not a failed refresh of the same wallet. Retire every value
+      // scoped to that person, including the below-dust gas capability list.
+      addrKey = "";
+      lastFetchedAt = 0;
+      set({
+        holdings: [],
+        gasNetworks: [],
+        totalUsd: 0,
+        loading: false,
+        refreshing: false,
+        error: true,
+        complete: false,
+        pricesLive: false,
+      });
       return;
     }
 
@@ -57,26 +74,32 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     if (key !== addrKey) {
       addrKey = key;
       lastFetchedAt = 0;
-      if (get().holdings.length > 0) {
-        set({ holdings: [], totalUsd: 0, loading: true, error: false });
-      }
+      set({
+        holdings: [],
+        gasNetworks: [],
+        totalUsd: 0,
+        loading: true,
+        error: false,
+      });
     }
 
     if (isRefresh) set({ refreshing: true });
     try {
-      const { holdings, complete } = await fetchHoldings(evm, solana);
+      const { holdings, gasNetworks, complete, pricesLive } = await fetchHoldings(evm, solana);
       lastFetchedAt = Date.now();
       set({
         holdings,
+        gasNetworks,
         totalUsd: holdings.reduce((sum, h) => sum + h.valueUsd, 0),
         loading: false,
         refreshing: false,
         error: false,
         complete,
+        pricesLive,
       });
     } catch {
       // Keep any previously shown data; only flag error.
-      set({ loading: false, refreshing: false, error: true, complete: false });
+      set({ loading: false, refreshing: false, error: true, complete: false, pricesLive: false });
     }
   };
 
@@ -96,7 +119,9 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
   return {
     holdings: [],
+    gasNetworks: [],
     complete: false,
+    pricesLive: false,
     totalUsd: 0,
     loading: true,
     refreshing: false,

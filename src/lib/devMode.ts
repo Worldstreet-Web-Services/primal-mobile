@@ -28,15 +28,45 @@ const on = (value: string | undefined): boolean =>
  */
 export const skipPaywall = on(process.env.EXPO_PUBLIC_DEV_SKIP_PAYWALL);
 
+/**
+ * Answer every `/v1/linkpay/*` request locally with labeled fixture data.
+ *
+ * WHY IT EXISTS: the backend's Subscription service is down, nobody can buy
+ * the entitlement, and every LinkPay route answers 403 — so the REAL naira
+ * code (fiat, KYC, fund, send, bills) cannot be exercised at all. This flag
+ * routes those requests into `src/lib/gateway/devLinkpayFixtures.ts`, which
+ * answers with contract-shaped, self-labeling data ("FIXTURE — NOT A REAL
+ * ACCOUNT", account number 0000000000) and enough in-memory state to complete
+ * the flows: provisioning resolves, withdrawals settle, purchases deliver,
+ * and the balance reconciles against every debit.
+ *
+ * WHAT STAYS REAL: `/v1/auth/*` and `/v1/subscriptions/*` are never
+ * intercepted — sign-in and checkout remain provable end to end the moment
+ * the backend is fixed. Side effect to expect: the entitlement probe hits
+ * `/v1/linkpay/account`, gets a fixture answer, and the app reads as entitled
+ * — so this flag opens the paid surface without EXPO_PUBLIC_DEV_SKIP_PAYWALL.
+ */
+export const linkpayFixtures = on(process.env.EXPO_PUBLIC_DEV_LINKPAY_FIXTURES);
+
 let announced = false;
 
-/** Log the bypass once per launch, so a dev session cannot be mistaken for a real one. */
+/** Log each bypass once per launch, so a dev session cannot be mistaken for a real one. */
 export function announceDevMode(): void {
-  if (!skipPaywall || announced) return;
+  if (announced || (!skipPaywall && !linkpayFixtures)) return;
   announced = true;
-  console.warn(
-    "[dev] EXPO_PUBLIC_DEV_SKIP_PAYWALL is on — the membership gate is bypassed. " +
-      "LinkPay routes (fiat, kyc, fund, send, bills) will still return 403 from " +
-      "the gateway; only wallet-side surfaces are usable. Never ship this.",
-  );
+  if (skipPaywall) {
+    console.warn(
+      "[dev] EXPO_PUBLIC_DEV_SKIP_PAYWALL is on — the membership gate is bypassed. " +
+        "LinkPay routes (fiat, kyc, fund, send, bills) will still return 403 from " +
+        "the gateway; only wallet-side surfaces are usable. Never ship this.",
+    );
+  }
+  if (linkpayFixtures) {
+    console.warn(
+      "[dev] EXPO_PUBLIC_DEV_LINKPAY_FIXTURES is on — every /v1/linkpay/* request " +
+        "is answered locally with labeled fixture data (see " +
+        "src/lib/gateway/devLinkpayFixtures.ts). No naira figure on screen is " +
+        "real. Auth and subscriptions stay live. Never ship this.",
+    );
+  }
 }

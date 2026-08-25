@@ -187,8 +187,18 @@ async function solanaRows(owner: string): Promise<RawRow[]> {
  */
 export interface HoldingsRead {
   holdings: Holding[];
+  /** Networks with a positive native balance, including sub-display dust.
+   * Token withdrawal eligibility needs this even when the native row is too
+   * small to survive the portfolio's visual dust filter. */
+  gasNetworks: NetworkId[];
   /** False when any chain job failed — the list is a floor, not a total. */
   complete: boolean;
+  /**
+   * False when any priced row was valued off the static snapshot rather than
+   * the live API — the quantities are real either way, but the dollar figures
+   * are then an estimate and screens must say so instead of stamping a time.
+   */
+  pricesLive: boolean;
 }
 
 export async function fetchHoldings(
@@ -218,7 +228,14 @@ export async function fetchHoldings(
   const complete = results.every((r) => r !== null);
 
   const rows = results.filter((r): r is RawRow[] => r !== null).flat();
-  const prices = await fetchPricesUsd(rows.map((r) => r.token.symbol));
+  const gasNetworks = [
+    ...new Set(
+      rows
+        .filter((row) => row.token.address === null && row.rawBalance > 0n)
+        .map((row) => row.token.network),
+    ),
+  ];
+  const { prices, live: livePrices } = await fetchPricesUsd(rows.map((r) => r.token.symbol));
 
   const holdings: Holding[] = rows
     .map((r) => {
@@ -239,7 +256,10 @@ export async function fetchHoldings(
     })
     .filter((h) => h.valueUsd >= DUST_FLOOR_USD)
     .sort((a, b) => b.valueUsd - a.valueUsd);
-  return { holdings, complete };
+  // Priced-by-snapshot is judged over the rows that SURVIVED the dust floor —
+  // a stale price on dust nobody sees must not flag the whole read.
+  const pricesLive = holdings.every((h) => livePrices.has(h.symbol));
+  return { holdings, gasNetworks, complete, pricesLive };
 }
 
 /** Whether a row needs its network spelled out ("· Base"): every token row,

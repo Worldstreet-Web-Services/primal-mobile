@@ -1,52 +1,25 @@
-import React, { useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { C, F } from "../theme/tokens";
-import {
-  Display,
-  Body,
-  Mono,
-  Label,
-  GhostButton,
-  Pulse,
-  SegTabs,
-  Chip,
-  PressableScale,
-} from "../components/ui";
+
 import { CopyMark, useCopy } from "../components/CopyAction";
 import { QrPlate } from "../components/QrPlate";
+import {
+  Body,
+  Display,
+  GhostButton,
+  Label,
+  Mono,
+  PressableScale,
+  Pulse,
+} from "../components/ui";
 import { useLinkpayAccount, type AccountPhase } from "../hooks/useLinkpay";
-import { usingMockAuth } from "../lib/auth/decane";
 import {
   accountStatusLabel,
   type LinkpayAccount,
 } from "../lib/gateway/linkpay";
-import { depositAddresses } from "../lib/crypto/addresses";
+import { C, F } from "../theme/tokens";
 
-// Static per-network-type deposit addresses (PRD §F4) — the auto-convert
-// on-ramp, not the embedded wallets. Mock-backed until the gateway serves them.
-const NETWORKS = depositAddresses();
-
-/**
- * Why this sheet no longer prints a NUBAN of its own.
- *
- * The bank tab used to read `user` from `src/data/mock` and hand out
- * `9012 883 774 · Rubies MFB · Dave Kadiri` as the member's OWN naira account —
- * on a plate, inside a scannable QR, under the caption "Anyone can transfer to
- * this number", with TAP TO COPY under it. Every one of those affordances is
- * built to be given to a third party, so the fabrication did not stay on the
- * member's screen: it wired a stranger's real money to whoever holds that
- * number. It is the same defect the crypto half of this sheet already refuses
- * to ship, and it gets the same answer — the real account or nothing at all.
- */
-
-/**
- * The one thing this sheet is allowed to hand over on the bank tab.
- *
- * Built only from what the gateway returned. `null` when there is no number,
- * which is what suppresses the QR and the copy affordances below — there is no
- * partial version of this block worth sharing.
- */
+/** Only gateway-returned account data may become copyable or scannable. */
 function bankBlockFor(account: LinkpayAccount | null): string | null {
   const number = account?.accountNumber?.replace(/\s/g, "");
   if (!number) return null;
@@ -55,10 +28,6 @@ function bankBlockFor(account: LinkpayAccount | null): string | null {
     .join("\n");
 }
 
-/**
- * Why the bank tab has no number to show, said in the voice the crypto half
- * already uses. Never a guess, never a placeholder digit.
- */
 function bankNotice(
   phase: AccountPhase,
   account: LinkpayAccount | null,
@@ -68,95 +37,86 @@ function bankNotice(
     case "signed_out":
       return "Sign in to see your naira account number.";
     case "unentitled":
-      return "Your naira account number comes with a Paradigm subscription.";
+      return "A Primal subscription is required before LinkPay can return your account.";
+    case "activating":
+      return "Your payment is being enabled. The account appears after entitlement propagation finishes.";
     case "no_account":
-      return "No naira account yet — open one and the number appears here.";
+      return "Open your LinkPay account and its permanent naira account number will appear here.";
     case "provisioning":
-      return "The bank is still opening your account. The number appears here as soon as there is one.";
+      return "The bank is still opening your account. This page checks again while you wait.";
     case "provision_failed":
       return (
         account?.failureReason ??
-        "That account could not be opened, so there is no number to hand out."
+        "The account could not be opened. Review your details before retrying."
       );
     case "disabled":
-      return "This account is disabled — a transfer into it would be returned, so the number is not shown.";
+      return "This account is disabled, so its number is hidden to prevent a returned transfer.";
     case "unknown_status":
-      return `Account status: ${accountStatusLabel(
-        account?.status ?? "UNKNOWN",
-      )}. Paradigm will not hand out a number it cannot vouch for.`;
+      return `Account status: ${accountStatusLabel(account?.status ?? "UNKNOWN")}. Primal will not expose an account it cannot verify as usable.`;
     case "error":
       return error ?? "Could not load your account details.";
     default:
-      // Includes a `ready` account the gateway sent with no number on it.
-      return "No account number to show yet.";
+      return "No account number is available yet.";
   }
 }
 
-// Designs 4c + 4d: receive sheet — bank VA with copy affordance / crypto network picker.
+function actionForPhase(
+  phase: AccountPhase,
+  actions: {
+    onProvision?: () => void;
+    onNeedsSubscription?: () => void;
+    onNeedsSignIn?: () => void;
+  },
+): { label: string; onPress?: () => void } | null {
+  if (phase === "no_account" || phase === "provision_failed") {
+    return { label: "Open or review account", onPress: actions.onProvision };
+  }
+  if (phase === "unentitled") {
+    return { label: "See membership", onPress: actions.onNeedsSubscription };
+  }
+  if (phase === "signed_out") {
+    return { label: "Sign in", onPress: actions.onNeedsSignIn };
+  }
+  return null;
+}
+
+/**
+ * Gateway-supported receive sheet.
+ *
+ * LinkPay deposits are provider-detected bank transfers. The frontend does not
+ * create a deposit or claim that one landed; it only exposes the active account
+ * returned by `/v1/linkpay/account`. General crypto deposit addresses are not
+ * part of the public Gateway v0.1 contract and deliberately do not appear here.
+ */
 export default function ReceiveSheet({
   onClose,
-  addresses,
+  onProvision,
+  onNeedsSubscription,
+  onNeedsSignIn,
 }: {
   onClose?: () => void;
-  /** Real Decane wallet addresses, keyed to the network tabs below. */
-  addresses?: { evm?: string; solana?: string; tron?: string } | null;
+  onProvision?: () => void;
+  onNeedsSubscription?: () => void;
+  onNeedsSignIn?: () => void;
 }) {
-  const [tab, setTab] = useState(0);
-  const [net, setNet] = useState(0);
   const { copied, copy } = useCopy();
-  // The same hook FiatSpaceScreen and FundBankScreen read. There is exactly one
-  // account number in this app and it comes from here.
-  const {
-    phase: bankPhase,
-    account,
-    error: bankError,
-  } = useLinkpayAccount();
-  // Bottom-anchored, so the sheet owns its own home-indicator clearance —
-  // the route mounts it bare rather than inside a SafeAreaView.
+  const { phase, account, error } = useLinkpayAccount();
   const insets = useSafeAreaInsets();
 
-  // Keyed by the catalog's `kind`; bitcoin has no Decane wallet, so it stays
-  // undefined and falls through to the empty state below.
-  //
-  // Mock-auth sessions carry placeholder addresses (0xMOCK / MOCKsol / TMOCK).
-  // Those are exactly what the rule below forbids — a QR of one is money sent
-  // to an account nobody holds the key to — so an unconfigured build shows the
-  // empty state rather than its own placeholders.
-  const live: Record<string, string | undefined> = usingMockAuth
-    ? {}
-    : {
-        evm: addresses?.evm,
-        solana: addresses?.solana,
-        tron: addresses?.tron,
-      };
-
-  // Show the real address or nothing. A mock deposit address is money sent to
-  // an account nobody holds the key to, so it must never reach this screen —
-  // which is also why the QR below only renders once `addr` exists.
-  const base = NETWORKS[net];
-  const nw = { ...base, addr: live[base.kind] ?? null };
-
-  // Same rule as `nw.addr` one line up: the block exists only when the gateway
-  // gave us a real number, and everything shareable below is gated on it.
-  const bankShare = bankPhase === "ready" ? bankBlockFor(account) : null;
+  const bankShare = phase === "ready" ? bankBlockFor(account) : null;
   const accountNumber = account?.accountNumber ?? "";
-  // Provenance the gateway actually sent. Empty is a real possibility, and an
-  // empty provenance line is why the block button below is conditional: with
-  // nothing but the number in it, "copy name, bank and number" is a promise the
-  // clipboard would not keep.
-  const bankProvenance = [account?.bankName, account?.accountName].filter(
+  const provenance = [account?.bankName, account?.accountName].filter(
     (part): part is string => !!part,
   );
+  const action = actionForPhase(phase, {
+    onProvision,
+    onNeedsSubscription,
+    onNeedsSignIn,
+  });
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}
-    >
-      <Pressable
-        style={{ flex: 1 }}
-        onPress={onClose}
-        accessibilityLabel="Dismiss"
-      />
+    <View style={{ flex: 1, backgroundColor: C.canvas, justifyContent: "flex-end" }}>
+      <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Dismiss" />
       <View
         style={{
           backgroundColor: C.sheet,
@@ -179,19 +139,11 @@ export default function ReceiveSheet({
             marginBottom: 16,
           }}
         />
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
-            <Display size={21}>Receive</Display>
+            <Display size={21}>Receive naira</Display>
             <Body size={11.5} color={C.dim} style={{ marginTop: 3 }}>
-              {tab === 0
-                ? "Hand this to anyone. It lands as naira."
-                : "Your wallet addresses. What lands stays crypto."}
+              Bank transfers credit your LinkPay fiat balance.
             </Body>
           </View>
           <Pressable
@@ -203,9 +155,6 @@ export default function ReceiveSheet({
               width: 30,
               height: 30,
               borderRadius: 16,
-              // Sheets now sit *below* the ground, so this puck's old near-black
-              // fill landed within a point of C.sheet and the ✕ floated on
-              // nothing. Inset lifts it back into a pressable target.
               backgroundColor: C.inset,
               alignItems: "center",
               justifyContent: "center",
@@ -215,239 +164,87 @@ export default function ReceiveSheet({
           </Pressable>
         </View>
 
-        <View style={{ marginTop: 16 }}>
-          <SegTabs
-            tabs={["Bank transfer", "Crypto"]}
-            active={tab}
-            onChange={setTab}
-          />
-        </View>
-
-        {tab === 0 ? (
-          bankShare ? (
-            <View>
-              <View style={{ marginTop: 20 }}>
-                <QrPlate
-                  value={bankShare}
-                  size={132}
-                  caption={account?.bankName ?? "Naira account"}
-                />
-              </View>
-
-              {/* The number is the crown jewel on this sheet too — it gets the
-                  plate, and the bank and holder sit under it as provenance. */}
-              <PressableScale
-                onPress={() =>
-                  void copy("va", accountNumber.replace(/\s/g, ""))
-                }
-                scale={0.985}
-              >
-                <View
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy account number"
-                  style={{
-                    marginTop: 18,
-                    alignItems: "center",
-                    backgroundColor: C.raised,
-                    borderWidth: 1,
-                    borderColor:
-                      copied === "va" ? "rgba(240,199,90,0.4)" : C.border,
-                    borderRadius: 20,
-                    paddingVertical: 16,
-                  }}
-                >
-                  <Label>Account number</Label>
-                  <Mono
-                    size={25}
-                    color={C.text}
-                    style={{
-                      fontFamily: F.monoSemibold,
-                      letterSpacing: 3,
-                      marginTop: 8,
-                    }}
-                  >
-                    {accountNumber}
-                  </Mono>
-                  {/* Provenance, and only what came back. A bank with no name
-                      on it prints no line rather than a stray separator. */}
-                  {bankProvenance.length ? (
-                    <Body size={12} color={C.sub} style={{ marginTop: 8 }}>
-                      {bankProvenance.join(" · ")}
-                    </Body>
-                  ) : null}
-                  <View style={{ marginTop: 12 }}>
-                    <CopyMark copied={copied === "va"} label="TAP TO COPY" />
-                  </View>
-                </View>
-              </PressableScale>
-
-              {/* The plate above already copies the number on tap, so the only
-                  button left is the one it cannot do: hand over the whole block
-                  — name, bank and number — in one paste. */}
-              {bankProvenance.length ? (
-                <View style={{ marginTop: 14 }}>
-                  <GhostButton
-                    label={
-                      copied === "block"
-                        ? "Copied"
-                        : "Copy name, bank and number"
-                    }
-                    height={48}
-                    onPress={() => void copy("block", bankShare)}
-                  />
-                </View>
-              ) : null}
-
-              <Body
-                size={11}
-                color={C.dim}
-                style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
-              >
-                Anyone can transfer to this number.{"\n"}It credits to your
-                Paradigm balance once the provider confirms it.
-              </Body>
-            </View>
-          ) : bankPhase === "loading" ? (
-            // A skeleton, not a placeholder number. Nothing here is copyable
-            // and nothing is encoded into a QR while the answer is still out.
-            <View style={{ marginTop: 20, alignItems: "center", gap: 14 }}>
-              <Pulse width={132} height={132} radius={22} />
-              <Pulse height={78} radius={20} />
-              <Pulse width="60%" height={12} />
-            </View>
-          ) : (
-            <View style={{ marginTop: 24, paddingBottom: 6 }}>
-              <Body
-                size={12.5}
-                color={C.dim}
-                style={{
-                  textAlign: "center",
-                  maxWidth: 300,
-                  alignSelf: "center",
-                  lineHeight: 19,
-                }}
-              >
-                {bankNotice(bankPhase, account, bankError)}
-              </Body>
-            </View>
-          )
-        ) : (
+        {bankShare ? (
           <View>
-            <View
-              style={{
-                marginTop: 16,
-                flexDirection: "row",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              {NETWORKS.map((n, i) => (
-                <Chip
-                  key={n.kind}
-                  label={n.label}
-                  active={i === net}
-                  tone="brand"
-                  onPress={() => setNet(i)}
-                />
-              ))}
+            <View style={{ marginTop: 20 }}>
+              <QrPlate
+                value={bankShare}
+                size={132}
+                caption={account?.bankName ?? "Naira account"}
+              />
             </View>
-            <Body size={11} color={C.dim} style={{ marginTop: 10, lineHeight: 16 }}>
-              {nw.note}
-            </Body>
-
-            {nw.addr ? (
-              <View style={{ marginTop: 16 }}>
-                <QrPlate value={nw.addr} size={126} caption={nw.label} />
-              </View>
-            ) : null}
-            {nw.addr ? (
-              <PressableScale
-                onPress={() => void copy("addr", nw.addr as string)}
-                scale={0.985}
-              >
-                <View
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy deposit address"
-                  style={{
-                    marginTop: 16,
-                    backgroundColor: C.card,
-                    borderWidth: 1,
-                    borderColor:
-                      copied === "addr" ? "rgba(240,199,90,0.4)" : C.border,
-                    borderRadius: 16,
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <Mono
-                    size={12}
-                    color={C.text}
-                    style={{
-                      flex: 1,
-                      lineHeight: 18,
-                      fontFamily: F.monoSemibold,
-                    }}
-                  >
-                    {nw.addr}
-                  </Mono>
-                  <CopyMark copied={copied === "addr"} label="COPY" />
-                </View>
-              </PressableScale>
-            ) : (
-              <Body
-                size={12.5}
-                color={C.dim}
-                style={{
-                  textAlign: "center",
-                  marginTop: 16,
-                  maxWidth: 280,
-                  alignSelf: "center",
-                  lineHeight: 19,
-                }}
-              >
-                No {nw.label} address yet — sign in to create your wallet.
-              </Body>
-            )}
-            <View
-              style={{
-                marginTop: 16,
-                paddingTop: 14,
-                borderTopWidth: 1,
-                borderTopColor: C.hairline,
-              }}
+            <PressableScale
+              onPress={() => void copy("va", accountNumber.replace(/\s/g, ""))}
+              scale={0.985}
             >
               <View
+                accessibilityRole="button"
+                accessibilityLabel="Copy account number"
                 style={{
-                  flexDirection: "row",
+                  marginTop: 18,
                   alignItems: "center",
-                  justifyContent: "center",
-                  gap: 7,
+                  backgroundColor: C.raised,
+                  borderWidth: 1,
+                  borderColor: copied === "va" ? "rgba(240,199,90,0.4)" : C.border,
+                  borderRadius: 20,
+                  paddingVertical: 16,
                 }}
               >
-                <Text style={{ color: C.silver, fontSize: 12 }}>◇</Text>
-                <Body size={11.5} color={C.silver} semibold>
-                  Arrives as crypto, in your custody
-                </Body>
+                <Label>Account number</Label>
+                <Mono
+                  size={25}
+                  color={C.text}
+                  style={{ fontFamily: F.monoSemibold, letterSpacing: 3, marginTop: 8 }}
+                >
+                  {accountNumber}
+                </Mono>
+                {provenance.length ? (
+                  <Body size={12} color={C.sub} style={{ marginTop: 8 }}>
+                    {provenance.join(" · ")}
+                  </Body>
+                ) : null}
+                <View style={{ marginTop: 12 }}>
+                  <CopyMark copied={copied === "va"} label="TAP TO COPY" />
+                </View>
               </View>
-              {/* This is the DECANE WALLET address, not an auto-convert
-                  deposit address. Those are minted per user/chain by the
-                  provider (PRD §F4 — Liquifia static addresses, the same
-                  shape as Ark's ensureStaticAddress) and are what the
-                  optimistic fill credits against. Until the gateway serves
-                  them, promising naira here would be a lie: anything sent
-                  to this address stays crypto. */}
-              <Body
-                size={11}
-                color={C.dim}
-                style={{ textAlign: "center", marginTop: 8, lineHeight: 17 }}
-              >
-                Auto-convert to naira arrives with your deposit address —
-                for now this is your wallet, and what lands stays crypto.
-              </Body>
-            </View>
+            </PressableScale>
+            {provenance.length ? (
+              <View style={{ marginTop: 14 }}>
+                <GhostButton
+                  label={copied === "block" ? "Copied" : "Copy name, bank and number"}
+                  height={48}
+                  onPress={() => void copy("block", bankShare)}
+                />
+              </View>
+            ) : null}
+            <Body
+              size={11}
+              color={C.dim}
+              style={{ textAlign: "center", marginTop: 14, lineHeight: 17.5 }}
+            >
+              Transfers are credited only after LinkPay reports the provider deposit.
+            </Body>
+          </View>
+        ) : phase === "loading" ? (
+          <View style={{ marginTop: 20, alignItems: "center", gap: 14 }}>
+            <Pulse width={132} height={132} radius={22} />
+            <Pulse height={78} radius={20} />
+            <Pulse width="60%" height={12} />
+          </View>
+        ) : (
+          <View style={{ marginTop: 24, paddingBottom: 6 }}>
+            <Body
+              size={12.5}
+              color={C.dim}
+              style={{ textAlign: "center", maxWidth: 310, alignSelf: "center", lineHeight: 19 }}
+            >
+              {bankNotice(phase, account, error)}
+            </Body>
+            {action?.onPress ? (
+              <View style={{ marginTop: 16 }}>
+                <GhostButton label={action.label} height={48} onPress={action.onPress} />
+              </View>
+            ) : null}
           </View>
         )}
       </View>

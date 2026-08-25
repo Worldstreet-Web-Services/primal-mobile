@@ -468,7 +468,7 @@ export default function FiatSpaceScreen({
           <MetallicButton label="Add" height={46} radius={14} size={13} onPress={onAdd} />
         </View>
         <View style={{ flex: 1 }}>
-          <GhostButton label="Send" onPress={onSend} />
+          <GhostButton label="Withdraw" onPress={onSend} />
         </View>
         {onBills ? (
           <View style={{ flex: 1 }}>

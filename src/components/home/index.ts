@@ -13,6 +13,5 @@ export type { MediaItem } from "./MediaCard";
 export { MediaRow, MediaStack } from "./MediaRow";
 export { PortfolioCard } from "./PortfolioCard";
 export type { MissingLeg, MoneyLeg, PortfolioView } from "./PortfolioCard";
-export { Avatar, ProfileHeader } from "./ProfileHeader";
 export { SpaceNav, SpaceTile } from "./SpaceNav";
 export type { Space } from "./SpaceNav";

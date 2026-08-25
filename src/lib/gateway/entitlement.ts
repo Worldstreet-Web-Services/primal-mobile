@@ -19,9 +19,9 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 import * as client from "./client";
+import { readSubscription } from "./subscriptionWire";
 import {
   ApiError,
-  asSubscriptionStatus,
   SessionExpiredError,
   type PrimalAppState,
   type Subscription,
@@ -106,20 +106,6 @@ export interface EntitlementSnapshot {
   /** Present only when a remembered subscription was readable. */
   subscription: Subscription | null;
   checkedAt: number;
-}
-
-function readSubscription(raw: unknown): Subscription | null {
-  const o = raw as Record<string, unknown> | null;
-  if (!o) return null;
-  // The create response nests it; the fetch response may not.
-  const node = (o.subscription ?? o) as Record<string, unknown>;
-  const id = typeof node.id === "string" ? node.id : null;
-  if (!id) return null;
-  return {
-    ...(node as unknown as Subscription),
-    id,
-    status: asSubscriptionStatus(node.status),
-  };
 }
 
 async function fetchRememberedSubscription(

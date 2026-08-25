@@ -7,7 +7,7 @@
       "dependencies": {
         "@expo/ui": "~57.0.11",
         "@gorhom/bottom-sheet": "^5.2.14",
-        "decane-connect-kit-expo": "^0.1.2",
+        "decane-connect-kit-expo": "^0.2.0",
         "expo": "~57.0.13",
         "expo-auth-session": "~57.0.7",
         "expo-blur": "~57.0.2",
@@ -597,7 +597,7 @@
 
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
 
-    "decane-connect-kit-expo": ["decane-connect-kit-expo@0.1.2", "", { "dependencies": { "@noble/ciphers": "^1.0.0", "@noble/curves": "^1.4.0", "@noble/hashes": "^1.4.0", "@scure/base": "^1.1.0", "@solana/web3.js": "^1.91.0", "buffer": "^6.0.3", "ethers": "^6.11.0", "shamir-secret-sharing": "^0.0.4" }, "peerDependencies": { "expo-auth-session": "*", "expo-crypto": "*", "expo-local-authentication": "*", "expo-secure-store": "*", "expo-web-browser": "*", "react-native": "*", "react-native-passkeys": "*" }, "optionalPeers": ["expo-auth-session", "expo-local-authentication", "expo-web-browser", "react-native-passkeys"] }, "sha512-MqHe6BIn/LMp2P+HdiStJz0MzWKM+Xx48LXjUqOInCmd7SNPE6M1A4VpGiXQ/O+isWD0kLxOc7mYcq9vg8zTqQ=="],
+    "decane-connect-kit-expo": ["decane-connect-kit-expo@0.2.0", "", { "dependencies": { "@noble/ciphers": "^1.0.0", "@noble/curves": "^1.4.0", "@noble/hashes": "^1.4.0", "@scure/base": "^1.1.0", "@solana/web3.js": "^1.91.0", "buffer": "^6.0.3", "ethers": "^6.11.0", "shamir-secret-sharing": "^0.0.4" }, "peerDependencies": { "expo-auth-session": "*", "expo-crypto": "*", "expo-local-authentication": "*", "expo-secure-store": "*", "expo-web-browser": "*", "react-native": "*", "react-native-passkeys": "*" }, "optionalPeers": ["expo-auth-session", "expo-local-authentication", "expo-web-browser", "react-native-passkeys"] }, "sha512-VEiTXGXsy/Dp3Lw1zmkft991J3bB1v8778lngj3BH4GHjwd8XlYSKyK4VjQeb9/zk1XRPT0fcVE8/hbMW8Qkpw=="],
 
     "decode-uri-component": ["decode-uri-component@0.2.2", "", {}, "sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ=="],
 

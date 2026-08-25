@@ -323,6 +323,8 @@ export interface MeResponse {
 export interface Subscription {
   id: string;
   status: SubscriptionStatus;
+  userId?: string;
+  planCode?: string;
   price?: Money;
   currentPeriodStart?: WireTimestamp;
   currentPeriodEnd?: WireTimestamp;
@@ -348,16 +350,23 @@ export interface CryptoPayment {
   id: string;
   subscriptionId?: string;
   status: PaymentStatus;
+  provider?: string;
+  providerRequestId?: string;
   depositAddress: string;
   originChainId?: number;
   originAsset?: string;
   originAmount?: string;
+  settlementChainId?: number;
+  settlementAsset?: string;
   requiredSettlementAmount?: string;
+  quotedSettlementAmount?: string;
   amountMinor?: string;
   currency?: string;
   refundTo?: string;
   expiresAt?: WireTimestamp;
+  completedAt?: WireTimestamp;
   createdAt?: WireTimestamp;
+  updatedAt?: WireTimestamp;
 }
 
 export interface CreateSubscriptionResponse {

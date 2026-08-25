@@ -2,7 +2,7 @@
  * Decane sign-in, native.
  *
  * Supersedes the hosted-web-surface workaround: `decane-connect-kit-expo`
- * (0.1.2, 2026-08-15) is a real headless React Native SDK, so the browser
+ * (0.2.0, 2026-08-20 — the release that added ConnectResult.profile) is a real headless React Native SDK, so the browser
  * round-trip, the deep-link callback contract and `docs/auth-surface.md` are
  * all gone. Sign-in, key custody and signing happen in-process.
  *
@@ -19,10 +19,13 @@ import {
   createDecaneConnect,
   DecaneConnectError,
   UserCancelledError,
+  type AuthProfile,
   type Chain,
   type DecaneConnectNative,
 } from "decane-connect-kit-expo";
 import { Platform } from "react-native";
+
+import * as identity from "@/lib/auth/identity";
 
 const APP_ID = process.env.EXPO_PUBLIC_DECANE_APP_ID ?? "";
 
@@ -72,6 +75,14 @@ export interface DecaneSession {
   isNewUser: boolean;
   accessToken: string | null;
   expiresAt: number | null;
+  /**
+   * Who the provider said just signed in — present ONLY on the connect that
+   * just happened. Decane stores an HMAC and a masked identifier, nothing
+   * more, so there is no fetching this later and a restored session never
+   * carries it; identity.ts is where it survives a restart. `undefined`
+   * (never `{}`) for the email flow and for a user who withheld consent.
+   */
+  profile?: AuthProfile;
 }
 
 /**
@@ -154,6 +165,14 @@ async function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
     isNewUser: true,
     accessToken: `mock.decane.${method}.${Date.now()}`,
     expiresAt: Date.now() + 120 * 60_000,
+    // The vendor's table, mirrored: Google and KingsChat release a profile at
+    // the sign-in moment, the email flow never does. Self-labelling like every
+    // other mock on this path — nobody real is named "Mock Member" — so the
+    // web e2e can exercise the whole profile pipeline without ever looking
+    // like a person.
+    ...(method === "email"
+      ? {}
+      : { profile: { name: "Mock Member", email: "mock@paradigm.dev" } }),
   };
 }
 
@@ -165,7 +184,13 @@ async function mockSignIn(method: AuthMethod): Promise<DecaneSession> {
 export async function signIn(
   method: Exclude<AuthMethod, "email">,
 ): Promise<DecaneSession> {
-  if (usingMockAuth) return mockSignIn(method);
+  if (usingMockAuth) {
+    const session = await mockSignIn(method);
+    // The mock walks the same pipeline as a real sign-in, so the web e2e can
+    // watch the profile travel record → greeting → profile screen.
+    await identity.recordDecaneProfile(session.profile, method);
+    return session;
+  }
 
   // Staged so a failure names the step. `createDecaneConnect` and the connect
   // call fail for entirely different reasons (bad key / unlinked native module
@@ -183,7 +208,15 @@ export async function signIn(
       method === "kingschat"
         ? await decane.connectWithKingsChat()
         : await decane.connectWithGoogle();
-    return toSession(decane, result.addresses, result.isNewUser);
+    // The one moment the profile exists: Decane keeps an HMAC and a masked
+    // identifier, so there is no asking again tomorrow — what the greeting
+    // should still know after a reload is persisted now, by us. Recorded
+    // AFTER connect succeeds so a failed sign-in cannot leave an identity
+    // behind for a session that never existed; `undefined` (consent withheld,
+    // provider released nothing) is recorded just as honestly — see
+    // identity.recordDecaneProfile.
+    await identity.recordDecaneProfile(result.profile, method);
+    return toSession(decane, result.addresses, result.isNewUser, result.profile);
   } catch (error) {
     if (!isCancellation(error)) logAuthError(`connectWith:${method}`, error);
     throw error;
@@ -203,10 +236,21 @@ export async function verifyEmailCode(
   email: string,
   code: string,
 ): Promise<DecaneSession> {
-  if (usingMockAuth) return mockSignIn("email");
+  if (usingMockAuth) {
+    const session = await mockSignIn("email");
+    await identity.recordEmailIdentity(email);
+    return session;
+  }
   const decane = await getClient();
   const result = await decane.verifyEmailCode(email, code);
-  return toSession(decane, result.addresses, result.isNewUser);
+  // The typed address is the one identity fact the app holds first-hand —
+  // recorded at verify time, once the code has proved the address is really
+  // theirs. Recorded in the mock branch too: the typing was just as real.
+  // `result.profile` is undefined on this flow per the vendor's table, and
+  // that is correct — the typed address IS the record, so nothing calls
+  // recordDecaneProfile here to blank it.
+  await identity.recordEmailIdentity(email);
+  return toSession(decane, result.addresses, result.isNewUser, result.profile);
 }
 
 /** Returning user whose passkey-wrapped share is still on this device. */
@@ -223,10 +267,19 @@ export async function canSignInWithPasskey(): Promise<boolean> {
 export async function signInWithPasskey(): Promise<DecaneSession> {
   const decane = await getClient();
   const result = await decane.signInWithPasskey();
-  return toSession(decane, result.addresses, result.isNewUser);
+  // No identity write here, on purpose. Passkey sign-in is the returning-user
+  // path and has no provider consent moment, so `result.profile` is absent —
+  // the record persisted at the ORIGINAL sign-in is exactly what should keep
+  // standing, not be blanked by this one.
+  return toSession(decane, result.addresses, result.isNewUser, result.profile);
 }
 
-/** Restores whatever the SDK persisted, or null if sign-in is needed again. */
+/**
+ * Restores whatever the SDK persisted, or null if sign-in is needed again.
+ * Never carries a profile: Decane stores an HMAC and a masked identifier only,
+ * so the profile exists at the sign-in moment and no other — what a restart
+ * should still know lives in identity.ts.
+ */
 export async function restoreSession(): Promise<DecaneSession | null> {
   if (usingMockAuth) return null;
   try {
@@ -307,12 +360,16 @@ function toSession(
   decane: DecaneConnectNative,
   addresses: DecaneSession["addresses"],
   isNewUser: boolean,
+  profile?: AuthProfile,
 ): DecaneSession {
   return {
     addresses,
     isNewUser,
     accessToken: decane.getAccessToken(),
     expiresAt: decane.sessionExpiresAt(),
+    // Spread, not assigned: `profile: undefined` and "no profile" must stay
+    // the same shape, whatever exactOptionalPropertyTypes has to say.
+    ...(profile ? { profile } : {}),
   };
 }
 

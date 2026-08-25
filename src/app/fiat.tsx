@@ -16,7 +16,7 @@ export default function Fiat() {
       <FiatSpaceScreen
         top={headerHeight}
         onAdd={() => router.push("/fund")}
-        onSend={() => router.push("/send")}
+        onSend={() => router.push("/withdraw")}
         onBills={() => router.push("/bills")}
         onProvision={() => router.push("/kyc")}
         onNeedsSubscription={() => router.push(SUBSCRIPTION_ROUTE)}
@@ -28,7 +28,6 @@ export default function Fiat() {
         wordmark="FIAT"
         tagline="POWERED BY LINKPAY"
         direction="column"
-        unread
         onBack={() => router.back()}
         onHeightChange={setHeaderHeight}
       />

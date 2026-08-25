@@ -442,6 +442,23 @@ async function performRefresh(): Promise<string> {
  */
 export async function request<T>(options: RequestOptions): Promise<T> {
   const method = options.method ?? "GET";
+
+  // Dev-only fixture seam (EXPO_PUBLIC_DEV_LINKPAY_FIXTURES): answers
+  // /v1/linkpay/* locally and traces with a FIXTURE marker; null means fall
+  // through to the real network. The require lives inside `if (__DEV__)` on
+  // purpose — Metro constant-folds __DEV__ in release output, so the fixture
+  // module is not merely inert there (the flag is already false), it is not
+  // in the bundle at all.
+  if (__DEV__) {
+    const { maybeAnswerLinkpayFixture } =
+      require("./devLinkpayFixtures") as typeof import("./devLinkpayFixtures");
+    const fixture = maybeAnswerLinkpayFixture<T>(
+      method, options.path, options.query, options.body,
+      options.correlationId ?? correlationId(), trace,
+    );
+    if (fixture) return fixture;
+  }
+
   const isRead = method === "GET";
   const useAuth = options.auth !== false;
   const bodyText = options.body === undefined ? null : JSON.stringify(options.body);

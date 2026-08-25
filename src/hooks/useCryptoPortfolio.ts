@@ -6,11 +6,13 @@ import { usePortfolioStore } from "@/store/portfolio";
  * polling — the store's politeness rules apply) and returns the live state. */
 export function useCryptoPortfolio() {
   const holdings = usePortfolioStore((s) => s.holdings);
+  const gasNetworks = usePortfolioStore((s) => s.gasNetworks);
   const totalUsd = usePortfolioStore((s) => s.totalUsd);
   const loading = usePortfolioStore((s) => s.loading);
   const refreshing = usePortfolioStore((s) => s.refreshing);
   const error = usePortfolioStore((s) => s.error);
   const complete = usePortfolioStore((s) => s.complete);
+  const pricesLive = usePortfolioStore((s) => s.pricesLive);
   const ensure = usePortfolioStore((s) => s.ensure);
   const refresh = usePortfolioStore((s) => s.refresh);
 
@@ -18,5 +20,15 @@ export function useCryptoPortfolio() {
     ensure();
   }, [ensure]);
 
-  return { holdings, totalUsd, loading, refreshing, error, complete, refresh };
+  return {
+    holdings,
+    gasNetworks,
+    totalUsd,
+    loading,
+    refreshing,
+    error,
+    complete,
+    pricesLive,
+    refresh,
+  };
 }

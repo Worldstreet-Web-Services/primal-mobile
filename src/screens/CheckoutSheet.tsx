@@ -30,7 +30,9 @@ import {
   QuietButton,
 } from "@/components/ui";
 import { appIsActive, onForeground } from "@/lib/appActive";
-import { formatMinor, formatMoney, toBigInt } from "@/lib/gateway/money";
+import { isCancellation } from "@/lib/auth/decane";
+import { getCryptoWallet } from "@/lib/crypto/wallet";
+import { formatMoney, toBigInt } from "@/lib/gateway/money";
 import * as subs from "@/lib/gateway/subscription";
 import { formatCountdown, millisUntil, toMillis } from "@/lib/gateway/time";
 import {
@@ -84,26 +86,6 @@ const BRAND_EDGE = "rgba(227,182,47,0.42)";
  *  user has not met yet, not something that has gone wrong. */
 const HOLD_TINT = "rgba(245,184,61,0.10)";
 const HOLD_EDGE = "rgba(245,184,61,0.32)";
-
-/**
- * The published settlement figure, built the way `readSettlementText` builds the
- * live one so the two can never print different shapes.
- *
- * Measured, not assumed: `formatMinor("1000000000", "USDC")` is `1,000.00` (6dp
- * asset, trailing zeros trimmed to the 2dp floor) and both sides append the code
- * once, giving `1,000.00 USDC`. What is NOT safe here is `formatMoney`, whose
- * unknown-currency path returns a self-labelled `1000000000 (USDC minor units)`
- * — appending the code to that is where a doubled `USDC … USDC` would come from,
- * so the fallback below returns it bare instead of decorating it.
- */
-const SETTLEMENT_FALLBACK = (() => {
-  const { amountMinor, currency } = subs.MEMBERSHIP_SETTLEMENT;
-  try {
-    return `${formatMinor(amountMinor, currency)} ${currency}`;
-  } catch {
-    return formatMoney(subs.MEMBERSHIP_SETTLEMENT);
-  }
-})();
 
 /**
  * Is the origin leg provably larger than what has to settle?
@@ -286,6 +268,15 @@ export default function CheckoutSheet({
   const [payment, setPayment] = useState<CryptoPayment | null>(null);
   const [notice, setNotice] = useState<subs.FailureNotice | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
+  /**
+   * Once a wallet send begins it cannot be repeated automatically. A native
+   * bridge timeout can happen after broadcast, so another tap could transfer
+   * the membership amount twice. Only an explicit user cancellation reopens
+   * the action.
+   */
+  const [walletAttempted, setWalletAttempted] = useState(false);
+  const [walletSubmitted, setWalletSubmitted] = useState(false);
 
   /** The route the user has chosen for a checkout that does not exist yet. */
   const [chainId, setChainId] = useState(subs.DEFAULT_ORIGIN_CHAIN_ID);
@@ -355,8 +346,14 @@ export default function CheckoutSheet({
     (async () => {
       try {
         const checkout = subscriptionId
-          ? await subs.loadCheckout(subscriptionId, { signal: controller.signal })
-          : await subs.resumeCheckout({ signal: controller.signal });
+          ? await subs.loadCheckout(subscriptionId, {
+              signal: controller.signal,
+              correlationId: trace,
+            })
+          : await subs.resumeCheckout({
+              signal: controller.signal,
+              correlationId: trace,
+            });
         if (!alive.current) return;
         if (checkout) {
           setSubscription(checkout.subscription);
@@ -374,7 +371,7 @@ export default function CheckoutSheet({
     })();
 
     return () => controller.abort();
-  }, [subscriptionId, handleSessionLoss]);
+  }, [subscriptionId, handleSessionLoss, recheck, trace]);
 
   /* ------------------------------------------------------ terminal effects */
 
@@ -557,7 +554,7 @@ export default function CheckoutSheet({
         originChainId: network.chainId,
         originAsset: asset.address,
         refundTo: walletAddress,
-      });
+      }, { correlationId: trace });
       if (!alive.current) return;
       setSubscription(checkout.subscription);
       setPayment(checkout.payment);
@@ -572,7 +569,66 @@ export default function CheckoutSheet({
     } finally {
       if (alive.current) setBusy(false);
     }
-  }, [busy, walletAddress, network, asset, handleSessionLoss]);
+  }, [busy, walletAddress, network, asset, handleSessionLoss, trace]);
+
+  /**
+   * Submit the quoted USDC transfer from the embedded wallet.
+   *
+   * This is only a convenience for chains Decane was configured to sign on.
+   * A returned hash still does not activate anything; the payment poll and the
+   * entitlement probe remain the two backend-owned decisions after it.
+   */
+  const payFromWallet = useCallback(async () => {
+    if (
+      sending ||
+      walletAttempted ||
+      !payment ||
+      !quote.safe ||
+      !quote.asset ||
+      !payment.originAmount ||
+      quote.chainId === null
+    ) {
+      return;
+    }
+
+    setSending(true);
+    setWalletAttempted(true);
+    setNotice(null);
+    try {
+      await getCryptoWallet().sendEvm({
+        chainId: quote.chainId,
+        to: payment.depositAddress,
+        tokenAddress: quote.asset.address,
+        amountRaw: toBigInt(payment.originAmount),
+      });
+      if (!alive.current) return;
+      setWalletSubmitted(true);
+      setAcknowledged(true);
+    } catch (error) {
+      if (!alive.current) return;
+      if (isCancellation(error)) {
+        setWalletAttempted(false);
+        setNotice({
+          title: "Payment cancelled",
+          detail: "Your wallet did not submit a transaction. No payment was sent.",
+          correlationId: trace,
+          kind: "unknown",
+          retryable: true,
+        });
+      } else {
+        setNotice({
+          title: "Check before trying again",
+          detail:
+            "The wallet did not confirm whether it submitted the transaction. KashPlus will not send it again automatically. Check this payment and your wallet activity first.",
+          correlationId: trace,
+          kind: "unknown",
+          retryable: false,
+        });
+      }
+    } finally {
+      if (alive.current) setSending(false);
+    }
+  }, [sending, walletAttempted, payment, quote, trace]);
 
   /** One manual read, for a window that has stopped polling itself. */
   const checkAgain = useCallback(async () => {
@@ -627,9 +683,11 @@ export default function CheckoutSheet({
     return () => anim.stop();
   }, [rise]);
 
-  const price = formatMoney(subs.priceOf(subscription));
-  /** One shape whichever side it comes from — "1,000.00 USDC". */
-  const settlement = subs.readSettlementText(payment) ?? SETTLEMENT_FALLBACK;
+  const price = subscription?.price
+    ? formatMoney(subscription.price)
+    : formatMoney(subs.MEMBERSHIP_PRICE);
+  /** Never substitute the published price for a missing provider quote. */
+  const settlement = subs.readSettlementText(payment);
   const sheetStyle = {
     maxHeight: height - insets.top - 12,
     backgroundColor: C.sheet,
@@ -688,9 +746,11 @@ export default function CheckoutSheet({
         <Mono size={22} color={C.text} style={{ fontFamily: F.displayBold }}>
           {price}
         </Mono>
-        <Mono size={11.5} color={C.dim} style={{ marginTop: 4 }}>
-          {settlement}
-        </Mono>
+        {settlement ? (
+          <Mono size={11.5} color={C.dim} style={{ marginTop: 4 }}>
+            {settlement}
+          </Mono>
+        ) : null}
       </View>
     </View>
   );
@@ -905,6 +965,7 @@ export default function CheckoutSheet({
     /* ------------------------------------------------------ route + amount */
 
     const locked = payment !== null;
+    const routeSelectable = !locked && subs.ORIGIN_NETWORKS.length > 1;
     const shownNetwork = locked ? quote.networkName : network.name;
     const shownAsset = locked ? (quote.asset?.symbol ?? "—") : asset.symbol;
 
@@ -923,14 +984,14 @@ export default function CheckoutSheet({
             caption="Network"
             value={shownNetwork}
             selected
-            locked={locked}
-            open={locked ? undefined : picking}
-            onPress={() => setPicking((v) => !v)}
+            locked={!routeSelectable}
+            open={routeSelectable ? picking : undefined}
+            onPress={routeSelectable ? () => setPicking((v) => !v) : undefined}
             flex={1.35}
           />
         </View>
 
-        {!locked && picking ? (
+        {routeSelectable && picking ? (
           <View
             style={{
               flexDirection: "row",
@@ -1215,9 +1276,9 @@ export default function CheckoutSheet({
         </Pressable>
         {grossed ? (
           <Body size={11} color={C.dim} style={{ marginTop: 9, lineHeight: 16 }}>
-            More than the {settlement} that has to settle — the difference is the
-            route's fee, already worked in. Send the figure above, not the plan
-            price.
+            More than the {settlement ?? "quoted settlement amount"} that has to
+            settle — the difference is the route's fee, already worked in. Send
+            the figure above, not the plan price.
           </Body>
         ) : null}
       </View>
@@ -1288,6 +1349,7 @@ export default function CheckoutSheet({
 
     /* The watching beat: everything still on screen, weighted differently. */
     if (acknowledged) {
+      const walletPaySupported = quote.chainId === 8453 || quote.chainId === 1;
       return {
         content: (
           <View>
@@ -1296,6 +1358,26 @@ export default function CheckoutSheet({
             {amountBlock}
             {addressBlock}
             {notice ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+            {walletSubmitted ? (
+              <View
+                style={{
+                  marginTop: 16,
+                  backgroundColor: C.brandGlow,
+                  borderWidth: 1,
+                  borderColor: BRAND_EDGE,
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <Body size={12.5} semibold color={C.brand}>
+                  Transaction submitted
+                </Body>
+                <Body size={12} color={C.silver} style={{ marginTop: 4, lineHeight: 18 }}>
+                  Primal is confirming the transfer. Submission alone does not
+                  activate the membership.
+                </Body>
+              </View>
+            ) : null}
             {/* Stays in the scroll: it is the tail of the status narrative, and
                 the Close it mentions is pinned directly below it. */}
             <Body
@@ -1308,7 +1390,19 @@ export default function CheckoutSheet({
             </Body>
           </View>
         ),
-        footer: <QuietButton label="Close" onPress={close} />,
+        footer: (
+          <View style={{ gap: 10 }}>
+            {walletPaySupported && !walletSubmitted ? (
+              <MetalButton
+                label={walletAttempted ? "Check payment status" : "Pay from this wallet"}
+                loading={sending}
+                disabled={walletAttempted}
+                onPress={() => void payFromWallet()}
+              />
+            ) : null}
+            <QuietButton label="Close" onPress={close} />
+          </View>
+        ),
       };
     }
 
@@ -1331,7 +1425,8 @@ export default function CheckoutSheet({
             color={C.dim}
             style={{ marginTop: 12, textAlign: "center", lineHeight: 17 }}
           >
-            Your subscription unlocks instantly upon transaction confirmation.
+            Primal activates your subscription only after it confirms the
+            transfer and enables your account.
           </Body>
         </View>
       ),

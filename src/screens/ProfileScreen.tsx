@@ -4,6 +4,8 @@ import { Pressable, Text, View } from "react-native";
 
 import { CopyMark, useCopy } from "../components/CopyAction";
 import { useLinkpayAccount, type AccountPhase } from "../hooks/useLinkpay";
+import { useAuth } from "../lib/auth/AuthContext";
+import type { AuthMethod } from "../lib/auth/decane";
 import { accountStatusLabel } from "../lib/gateway/linkpay";
 import type { AccountStatus } from "../lib/gateway/types";
 import { C, F } from "../theme/tokens";
@@ -19,7 +21,19 @@ import {
   Screen,
   SectionRule,
 } from "../components/ui";
-import { user } from "../data/mock";
+
+/**
+ * The sign-in method, said as itself. This line was hardcoded "VIA KINGSCHAT"
+ * for everyone — a Google user's profile asserted a sign-in that never
+ * happened. It reads the recorded method now, and when there is no record
+ * (a session from before identity existed) the line does not render at all:
+ * no claim beats a false one.
+ */
+const METHOD_LABEL: Record<AuthMethod, string> = {
+  google: "VIA GOOGLE",
+  email: "VIA EMAIL",
+  kingschat: "VIA KINGSCHAT",
+};
 
 /**
  * Truncate for display only — never for anything a user might copy and send to.
@@ -70,6 +84,82 @@ function accountRowEmpty(
     default:
       return "Not available";
   }
+}
+
+/**
+ * The member's likeness, only ever from a source that produced one.
+ *
+ * This slot used to render a bundled stock photograph
+ * (assets/images/avatar.png) as if it were the member — the same fabrication
+ * as "Dave Kadiri", in picture form. Now it is the profile picture the
+ * provider released at sign-in when there is one, and an initial cut from
+ * whichever identity fact is on file when there is not. The initial layer is
+ * always drawn with the photo painted over it, so a slow remote load shows
+ * the initial rather than a hole, and a failed load falls back to it without
+ * the block ever changing shape.
+ */
+function ProfileAvatar({
+  picture,
+  initial,
+}: {
+  /** https URL recorded at the sign-in moment, or null. */
+  picture: string | null;
+  /** Best identity fact on file; only its first letter is drawn. */
+  initial: string | null;
+}) {
+  const [failed, setFailed] = useState(false);
+  const uri = failed ? null : picture;
+
+  return (
+    <View
+      style={{
+        width: 84,
+        height: 84,
+        borderRadius: 44,
+        borderWidth: 1.5,
+        borderColor: C.brandSoft,
+        padding: 3,
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          borderRadius: 40,
+          overflow: "hidden",
+          backgroundColor: C.inset,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: F.displayBold,
+            fontSize: 30,
+            color: C.silver,
+          }}
+        >
+          {/* "?" is the honest empty state — the home header's Avatar says the
+              same thing — and "No name on file" sits right under it. */}
+          {(initial ?? "?").slice(0, 1).toUpperCase()}
+        </Text>
+        {uri ? (
+          <Image
+            source={{ uri }}
+            contentFit="cover"
+            transition={150}
+            onError={() => setFailed(true)}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+          />
+        ) : null}
+      </View>
+    </View>
+  );
 }
 
 const securityRows = [
@@ -190,6 +280,31 @@ export default function ProfileScreen({
   const [frozen, setFrozen] = useState(false);
   const { copied, copy } = useCopy();
 
+  /**
+   * Who this profile belongs to, from the identity the sign-in flow actually
+   * recorded (lib/auth/identity.ts) — the screen that used to say "Dave
+   * Kadiri · @dave" from src/data/mock to every member. The headline is the
+   * best fact held: name, else handle, else email — and when nothing is held,
+   * it says so in so many words rather than leaving a gap that looks broken
+   * or filling it with someone who does not exist.
+   */
+  const { identity } = useAuth();
+  const headline =
+    identity?.displayName ??
+    (identity?.handle ? `@${identity.handle}` : null) ??
+    identity?.email ??
+    null;
+  const subline = [
+    // The handle rides under the name; when it IS the headline, once is enough.
+    identity?.displayName && identity.handle ? `@${identity.handle}`.toUpperCase() : null,
+    // Same rule for the email — and it is never uppercased: a local part is
+    // case-sensitive in principle, and this row may be read back to support.
+    identity?.email && headline !== identity.email ? identity.email : null,
+    identity ? METHOD_LABEL[identity.method] : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
+
   // The same hook the fiat surface reads. A number is shown only on `ready`,
   // and only if one actually came back — never assembled from anything local.
   const { phase: bankPhase, account } = useLinkpayAccount();
@@ -217,28 +332,32 @@ export default function ProfileScreen({
           paddingBottom: 4,
         }}
       >
-        <View
-          style={{
-            width: 84,
-            height: 84,
-            borderRadius: 44,
-            borderWidth: 1.5,
-            borderColor: C.brandSoft,
-            padding: 3,
-          }}
-        >
-          <Image
-            source={require("@/assets/images/avatar.png")}
-            style={{ width: "100%", height: "100%", borderRadius: 40 }}
-            contentFit="cover"
-          />
-        </View>
-        <Display size={22} style={{ marginTop: 14 }}>
-          {user.name}
-        </Display>
-        <Mono size={11} color={C.dim} style={{ marginTop: 6, letterSpacing: 1 }}>
-          {user.tag.toUpperCase()} · VIA KINGSCHAT
-        </Mono>
+        <ProfileAvatar
+          // Keyed so a re-recorded picture starts with a clean failure state
+          // rather than inheriting the old URL's.
+          key={identity?.picture ?? "none"}
+          picture={identity?.picture ?? null}
+          initial={
+            identity?.displayName ?? identity?.handle ?? identity?.email ?? null
+          }
+        />
+        {headline ? (
+          <Display size={22} numberOfLines={1} style={{ marginTop: 14 }}>
+            {headline}
+          </Display>
+        ) : (
+          // The honest absent state, in the headline's own slot so the block
+          // holds its shape. Dim on purpose: it is a statement about the
+          // record, not a name.
+          <Display size={22} color={C.dim} style={{ marginTop: 14 }}>
+            No name on file
+          </Display>
+        )}
+        {subline ? (
+          <Mono size={11} color={C.dim} style={{ marginTop: 6, letterSpacing: 1 }}>
+            {subline}
+          </Mono>
+        ) : null}
       </View>
 
       <SectionRule space={22} />

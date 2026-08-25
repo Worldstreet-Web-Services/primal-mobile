@@ -21,7 +21,6 @@ export default function Games() {
         wordmark="GAMES$"
         tagline="POWERED BY ARK"
         direction="column"
-        unread
         onBack={() => router.back()}
         onHeightChange={setHeaderHeight}
       />

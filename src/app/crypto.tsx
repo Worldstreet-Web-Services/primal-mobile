@@ -15,15 +15,12 @@ export default function Crypto() {
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <CryptoSpaceScreen
         top={headerHeight}
-        onBuy={() => router.push("/buy")}
-        onDeposit={() => router.push("/receive")}
-        onWithdraw={() => router.push("/withdraw")}
+        onPrices={() => router.push("/buy")}
       />
       <NavHeader
         wordmark="CRYPTO"
-        tagline="POWERED BY LINKPAY"
+        tagline="SELF-CUSTODY · READ ONLY"
         direction="column"
-        unread
         onBack={() => router.back()}
         onHeightChange={setHeaderHeight}
       />

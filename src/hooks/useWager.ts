@@ -229,7 +229,7 @@ export function useVaultActions() {
           // static snapshot) rather than refusing the first-ever game: the
           // chain floor still guards the low side, and an over-estimate only
           // starts a slightly richer game.
-          usdPerEth = (await fetchPricesUsd(["ETH"])).ETH ?? 0;
+          usdPerEth = (await fetchPricesUsd(["ETH"])).prices.ETH ?? 0;
         }
         if (!(usdPerEth > 0)) {
           setError("Couldn't price the stake, try again in a moment.");

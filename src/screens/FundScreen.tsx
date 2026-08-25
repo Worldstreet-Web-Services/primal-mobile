@@ -1,141 +1,23 @@
-import React from "react";
 import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
 import { C } from "../theme/tokens";
 import {
   Screen,
   BackHeader,
   GhostButton,
   Label,
-  Mono,
   Body,
   Display,
-  PressableScale,
-  Shine,
 } from "../components/ui";
+import {
+  BankGlyph,
+  CryptoGlyph,
+  MovementMethodPlate,
+} from "../components/MovementMethodPlate";
+import { GATEWAY_CAPABILITIES } from "../lib/gateway/capabilities";
 
-// Fund wallet — the money-in hub.
-//
-// This screen used to offer a second route: "Crypto deposit", an eight-network
-// picker that ended on a QR, a copy button and a "watching the chain" ticker.
-// Every part of it was invented. The addresses were hardcoded literals, the
-// 900ms "MINTING YOUR … ADDRESS" wait was a setTimeout, and the poll that
-// claimed to be checking the chain made no request at all — it only re-read the
-// clock. Two taps from /fiat, it handed a stranger's address to anyone with
-// money to send.
-//
-// It is gone rather than wired because there is nothing to wire it to: the
-// gateway's OpenAPI has no LinkPay crypto on-ramp, and Dextopus is
-// subscription-only. A convincing address with no custodian behind it is money
-// sent to an account nobody holds the key to, so the route does not exist until
-// the rail does.
-//
-// What is left is the thing that was always real: the bank hand-off, which
-// /fund-bank serves out of `useLinkpayAccount()`.
-
-function Chevron({ color = C.dim }: { color?: string }) {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 24 24">
-      <Path
-        d="M9.5 5 16 12l-6.5 7"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
-/**
- * A funding method as a full plate rather than a list line. The method choice
- * is the only decision on this screen, so it gets the room it deserves.
- */
-function MethodPlate({
-  title,
-  sub,
-  detail,
-  glyph,
-  onPress,
-}: {
-  title: string;
-  sub: string;
-  detail: string;
-  glyph: React.ReactNode;
-  onPress?: () => void;
-}) {
-  return (
-    <PressableScale onPress={onPress} scale={0.985}>
-      <View
-        accessibilityRole="button"
-        accessibilityLabel={title}
-        style={{
-          backgroundColor: C.raised,
-          borderWidth: 1,
-          borderColor: C.border,
-          borderRadius: 20,
-          padding: 16,
-          overflow: "hidden",
-        }}
-      >
-        <Shine />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 13 }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 13,
-              backgroundColor: C.inset,
-              borderWidth: 1,
-              borderColor: C.hairline,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {glyph}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Body size={15} semibold>
-              {title}
-            </Body>
-            <Body size={12} color={C.sub} style={{ marginTop: 3 }}>
-              {sub}
-            </Body>
-          </View>
-          <Chevron />
-        </View>
-        <View
-          style={{
-            marginTop: 13,
-            paddingTop: 11,
-            borderTopWidth: 1,
-            borderTopColor: C.hairline,
-          }}
-        >
-          <Mono size={10} color={C.dim} style={{ letterSpacing: 1.1 }}>
-            {detail}
-          </Mono>
-        </View>
-      </View>
-    </PressableScale>
-  );
-}
-
-function BankGlyph() {
-  return (
-    <Svg width={19} height={19} viewBox="0 0 24 24">
-      <Path
-        d="M3 9.5 12 4l9 5.5M5 10v8m4.5-8v8m5-8v8m4.5-8v8M3 20h18"
-        stroke={C.silver}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </Svg>
-  );
-}
+// One Ark-style entry point that also exposes the current backend boundary.
+// Bank transfers credit the LinkPay naira ledger; crypto remains disabled until
+// the public Gateway owns a documented deposit-address lifecycle.
 
 export default function FundScreen({
   onBack,
@@ -153,7 +35,7 @@ export default function FundScreen({
 
       <View style={{ marginTop: 18 }}>
         <Display size={19} color={C.silver} style={{ lineHeight: 27 }}>
-          One way in, and it lands{"\n"}in an account in your name.
+          Bank funding is available now.{"\n"}Crypto needs a Gateway route.
         </Display>
 
         <Label style={{ marginTop: 26 }}>How money gets in</Label>
@@ -162,13 +44,22 @@ export default function FundScreen({
               over. The earlier "a one-off account, issued to you for this
               transfer" promised an expiring number LinkPay does not issue — the
               next screen would have contradicted it on arrival. */}
-          <MethodPlate
+          <MovementMethodPlate
             title="Bank transfer"
-            sub="Your own naira account. Send to it from any Nigerian bank."
-            detail="PERMANENT NUMBER · CREDITED ON CONFIRMATION"
+            sub="Send naira from any Nigerian bank into your fiat balance."
+            detail="LINKPAY · PERMANENT ACCOUNT · NAIRA BALANCE"
             glyph={<BankGlyph />}
             onPress={onBankTransfer}
           />
+          <View style={{ marginTop: 12 }}>
+            <MovementMethodPlate
+              title="Crypto deposit"
+              sub="Waiting for a public Gateway deposit-address contract."
+              detail="CRYPTO DEPOSIT · NOT EXPOSED BY API V0.1"
+              glyph={<CryptoGlyph direction="in" />}
+              disabled={!GATEWAY_CAPABILITIES.cryptoDeposits}
+            />
+          </View>
         </View>
 
         <View
@@ -189,16 +80,14 @@ export default function FundScreen({
           </Body>
         </View>
 
-        {/* Said once, quietly, rather than left as a route that mimes a
-            deposit. Someone who used to reach the crypto picker from here
-            deserves to know it is not open, not to find an address waiting. */}
         <Body
           size={11}
           color={C.dim}
           style={{ marginTop: 22, lineHeight: 17 }}
         >
-          Crypto deposits that convert to naira are not open yet. Your wallet
-          can still receive crypto — it stays crypto.
+          Bank funding is live through LinkPay. Crypto funding and conversion
+          will appear only when the Gateway can quote and settle them end to
+          end.
         </Body>
       </View>
     </Screen>

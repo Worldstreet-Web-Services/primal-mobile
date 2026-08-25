@@ -33,6 +33,13 @@ export default function Index() {
   const [finished, setFinished] = useState(false);
   const { status, step, primal, creatingWallet } = useAuth();
 
+  // Says which dev bypasses are on, once per launch, and no-ops when none are.
+  // Called here — the first component every launch renders — rather than inside
+  // any particular branch: the fixtures flag makes the not-entitled branch
+  // unreachable (the probe answers ACTIVE), so an announce that lived there
+  // would be silenced by the very flag it exists to disclose.
+  announceDevMode();
+
   if (!finished || status === "loading") {
     return <Splash animated onDone={() => setFinished(true)} />;
   }
@@ -74,9 +81,9 @@ export default function Index() {
     // Dev builds may walk past this (EXPO_PUBLIC_DEV_SKIP_PAYWALL) so the
     // wallet-side surfaces stay testable while the paid path is being proven.
     // It only moves this redirect — the gateway still refuses every LinkPay
-    // request, so nothing behind the gate becomes usable, and `announceDevMode`
-    // says so in the log rather than letting the 403s read as broken code.
-    announceDevMode();
+    // request, so nothing behind the gate becomes usable — the launch-time
+    // announce above says so in the log rather than letting 403s read as
+    // broken code.
     if (!skipPaywall) return <Redirect href={SUBSCRIPTION_ROUTE} />;
   }
 

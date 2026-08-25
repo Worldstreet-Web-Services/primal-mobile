@@ -1,365 +1,205 @@
-import React, { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
-import { C } from "../theme/tokens";
-import {
-  BackHeader,
-  MetallicButton,
-  GhostButton,
-  Label,
-  Mono,
-  Body,
-  Display,
-  PinDots,
-  Keypad,
-} from "../components/ui";
 import {
   InstrumentRow,
   MetaChip,
-  QuoteCard,
-  QuoteRow,
+  RowSkeletonList,
   SectionHead,
   Settle,
 } from "../components/crypto";
-import { useFiatOverview } from "../hooks/useLinkpay";
-import { formatMoney } from "../lib/gateway/money";
+import {
+  BackHeader,
+  Body,
+  Card,
+  GhostButton,
+  Mono,
+  Screen,
+} from "../components/ui";
+import { TOKEN_CATALOG } from "../lib/crypto/catalog";
+import { fetchPricesUsd } from "../lib/crypto/prices";
+import { C } from "../theme/tokens";
 
-// Buy & hold — pick an asset, key in ₦, PIN to buy. Fiat balance funds it.
-const PIN_LENGTH = 4;
-const FEE = 250;
+/*
+ * Buy — real prices, and the truth about buying.
+ *
+ * This screen used to be a complete purchase flow: hardcoded naira prices
+ * ("₦161,224,000" per BTC, typed by hand), invented 24h deltas, an amount
+ * keypad, a PIN gate that verified nothing, and a "Bought and holding" success
+ * screen after which the user owned nothing. Every stage of it was theatre —
+ * there is no fiat→crypto rail anywhere behind this app (no gateway route
+ * sells crypto for naira), and there is no NGN/USD rate to even price the
+ * theatre in.
+ *
+ * So the screen now shows USD prices through the same seam that values the
+ * portfolio, and says plainly that buying needs a public Gateway contract.
+ */
 
-type Asset = {
+interface BuyAsset {
   sym: string;
   name: string;
-  price: number;
-  priceLabel: string;
-  delta: string;
-  up: boolean;
-  /** Dollar-pegged — the disc carries `up`, as on every other crypto list. */
-  stable?: boolean;
-};
-const assets: Asset[] = [
-  {
-    sym: "BTC",
-    name: "Bitcoin",
-    price: 161224000,
-    priceLabel: "₦161,224,000",
-    delta: "+2.4%",
-    up: true,
-  },
-  {
-    sym: "ETH",
-    name: "Ethereum",
-    price: 5110000,
-    priceLabel: "₦5,110,000",
-    delta: "+1.1%",
-    up: true,
-  },
-  {
-    sym: "SOL",
-    name: "Solana",
-    price: 219800,
-    priceLabel: "₦219,800",
-    delta: "-0.8%",
-    up: false,
-  },
-  {
-    sym: "USDC",
-    name: "USD Coin",
-    price: 1590,
-    priceLabel: "₦1,590",
-    delta: "+0.1%",
-    up: true,
-    stable: true,
-  },
-];
+  /** Dollar-pegged — the disc carries the stable accent, as on every list. */
+  stable: boolean;
+}
 
-const withCommas = (s: string) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-// ₦50,000 of BTC reads "0.00031" — two significant figures, never scientific.
-const fmtQty = (q: number) => {
-  if (q >= 1) return withCommas(q.toFixed(2));
-  const s = q.toPrecision(2);
-  return s.includes("e") ? q.toFixed(8) : s;
-};
+/**
+ * One row per distinct symbol in the on-chain catalog — the assets a deposit
+ * can actually land as. Natives lead, dollar-pegged follow, so the rows that
+ * move sit above the rows that by design do not.
+ */
+const ASSETS: BuyAsset[] = (() => {
+  const seen = new Set<string>();
+  const out: BuyAsset[] = [];
+  for (const t of TOKEN_CATALOG) {
+    if (seen.has(t.symbol)) continue;
+    seen.add(t.symbol);
+    out.push({ sym: t.symbol, name: t.name, stable: t.stable ?? false });
+  }
+  return [...out.filter((a) => !a.stable), ...out.filter((a) => a.stable)];
+})();
 
-type Step = "asset" | "amount" | "confirm" | "done";
+/** Sub-dollar assets need their working digits; everything else takes cents. */
+const priceLabel = (p: number) =>
+  `$${p.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: p < 1 ? 4 : 2,
+  })}`;
 
-export default function BuyScreen({
-  onBack,
-  onDone,
-}: {
-  onBack?: () => void;
-  onDone?: () => void;
-}) {
-  const [step, setStep] = useState<Step>("asset");
-  const [asset, setAsset] = useState<Asset>(assets[0]);
-  const [digits, setDigits] = useState("");
-  const [pin, setPin] = useState("");
+/**
+ * Whether a live overlay is even possible. The price seam degrades silently —
+ * no key means it returns its hand-checked snapshot without touching the
+ * network — and a screen whose whole content is prices must not stamp
+ * snapshot values with an "as of <now>" that implies the market was asked.
+ * With no key configured, the answer is knowable before asking: it wasn't.
+ */
+const HAS_PRICE_FEED = Boolean(process.env.EXPO_PUBLIC_ALCHEMY_API_KEY);
 
-  // The spending balance, from the gateway — the same read FiatSpaceScreen and
-  // FundBankScreen make. It replaces a hardcoded "₦482,650.00" that was shown
-  // flatly as this user's money, on the screen where they decide how much of it
-  // to spend. `balance` is only ever set from a `ready` account, so a null here
-  // is an honest "we have not been told", and the labels below say that rather
-  // than filling the gap.
-  const { balance } = useFiatOverview();
-  const availableLabel = balance?.available
-    ? formatMoney(balance.available)
-    : null;
+export default function BuyScreen({ onBack }: { onBack?: () => void }) {
+  const [prices, setPrices] = useState<Record<string, number> | null>(null);
+  /** When WE asked — the one timestamp this screen can honestly put on them. */
+  const [asOf, setAsOf] = useState<Date | null>(null);
+  /**
+   * Whether every listed asset was priced by the live API on this pass. The
+   * fetcher degrades to its static snapshot on any failure WITHOUT throwing,
+   * so a configured key is no proof the market answered — a keyed-but-offline
+   * session used to stamp "AS OF 14:32" over the hand-checked snapshot, which
+   * is the exact lie the chip below exists to prevent.
+   */
+  const [liveQuotes, setLiveQuotes] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const amt = Number(digits || "0");
-  const qty = fmtQty(amt / asset.price);
-  /** Nothing keyed yet — the ₦0 on screen is scaffolding, not an amount. */
-  const noAmount = digits === "";
-
-  const handleAmountKey = (k: string) => {
-    if (k === "del") {
-      setDigits(digits.slice(0, -1));
-      return;
+  const load = useCallback(async () => {
+    setFailed(false);
+    setPrices(null);
+    setAsOf(null);
+    setLiveQuotes(false);
+    try {
+      const { prices: out, live } = await fetchPricesUsd(ASSETS.map((a) => a.sym));
+      setPrices(out);
+      setLiveQuotes(ASSETS.every((a) => live.has(a.sym)));
+      setAsOf(new Date());
+    } catch {
+      // fetchPricesUsd degrades internally rather than throwing, so reaching
+      // here is unexpected — but an unexpected failure still gets an honest
+      // panel, never a stand-in figure.
+      setFailed(true);
     }
-    if (digits.length >= 9) return;
-    if (!digits && k === "0") return;
-    setDigits(digits + k);
-  };
+  }, []);
 
-  const handlePinKey = (k: string) => {
-    if (k === "del") {
-      setPin(pin.slice(0, -1));
-      return;
-    }
-    if (pin.length >= PIN_LENGTH) return;
-    const next = pin + k;
-    setPin(next);
-    if (next.length === PIN_LENGTH) setTimeout(() => setStep("done"), 350);
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  if (step === "done") {
-    return (
-      <View
-        style={{ flex: 1, backgroundColor: C.canvas, paddingHorizontal: 22 }}
-      >
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <Settle distance={14}>
-            <View style={{ alignItems: "center" }}>
-              <View
-                style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 38,
-                  backgroundColor: C.brandGlow,
-                  borderWidth: 1,
-                  borderColor: "rgba(227,182,47,0.35)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Svg width={34} height={34} viewBox="0 0 24 24">
-                  <Path
-                    d="m5 12.5 4.5 4.5L19 7.5"
-                    stroke={C.brand}
-                    strokeWidth={2.4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </Svg>
-              </View>
-              <Display size={26} style={{ marginTop: 24 }}>
-                Bought and holding
-              </Display>
-              <Mono size={13.5} color={C.up} style={{ marginTop: 12 }}>
-                {qty} {asset.sym} · ₦{withCommas(digits)}.00
-              </Mono>
-              <Body
-                size={12.5}
-                color={C.dim}
-                style={{ marginTop: 10, textAlign: "center", lineHeight: 18 }}
-              >
-                It lands in your crypto holdings. Sell anytime.
-              </Body>
-            </View>
-          </Settle>
-        </View>
-        <View style={{ paddingBottom: 36 }}>
-          <MetallicButton label="Done" onPress={onDone} />
-        </View>
-      </View>
-    );
-  }
-
-  if (step === "amount") {
-    return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
-          <BackHeader
-            title={"Buy " + asset.sym}
-            onBack={() => setStep("asset")}
-          />
-        </View>
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          <View style={{ alignItems: "center" }}>
-            <Label>Buying</Label>
-            <Display
-              size={44}
-              color={noAmount ? C.placeholder : C.text}
-              style={{ marginTop: 12 }}
-            >
-              ₦{withCommas(digits || "0")}
-            </Display>
-            {noAmount ? (
-              // Carries the meaning the ghost figure above deliberately cannot,
-              // and replaces an "≈ 0.00 BTC" that was a quote for nothing.
-              <Body size={12.5} color={C.sub} style={{ marginTop: 10 }}>
-                Enter an amount to buy
-              </Body>
-            ) : (
-              <Mono size={12.5} color={C.sub} style={{ marginTop: 10 }}>
-                ≈ {qty} {asset.sym}
-              </Mono>
-            )}
-            <View style={{ marginTop: 14 }}>
-              <MetaChip label={`1 ${asset.sym} = ${asset.priceLabel}`} />
-            </View>
-          </View>
-        </View>
-        <View
-          style={{
-            paddingHorizontal: 22,
-            paddingBottom: 36,
-          }}
-        >
-          <Mono size={11.5} color={C.dim} style={{ marginBottom: 14 }}>
-            {availableLabel
-              ? `Pays from fiat · ${availableLabel}`
-              : "Pays from your fiat balance"}
-          </Mono>
-          <Keypad onKey={handleAmountKey} />
-          <View style={{ marginTop: 16 }}>
-            {amt > 0 ? (
-              <MetallicButton
-                label="Review buy"
-                onPress={() => setStep("confirm")}
-              />
-            ) : (
-              <GhostButton label="Enter an amount" height={52} />
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  if (step === "confirm") {
-    return (
-      <View style={{ flex: 1, backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: 22 }}>
-          <BackHeader
-            title="Confirm buy"
-            onBack={() => {
-              setPin("");
-              setStep("amount");
-            }}
-          />
-        </View>
-        <Settle>
-          <View style={{ marginTop: 26, alignItems: "center" }}>
-            <Label>Buying</Label>
-            <Display size={40} style={{ marginTop: 10 }}>
-              ₦{withCommas(digits)}
-              <Display size={24} color={C.figureTail}>
-                .00
-              </Display>
-            </Display>
-            <Mono size={12.5} color={C.sub} style={{ marginTop: 8 }}>
-              ≈ {qty} {asset.sym}
-            </Mono>
-          </View>
-          <QuoteCard style={{ marginTop: 22, marginHorizontal: 22 }}>
-            <QuoteRow label="Asset" value={`${asset.name} · ${asset.sym}`} />
-            <QuoteRow
-              label="Rate"
-              value={`1 ${asset.sym} = ${asset.priceLabel}`}
-            />
-            <QuoteRow label="Fee" value="₦250" tail="· in quote" />
-            <QuoteRow
-              label="Total debit"
-              value={`₦${withCommas(String(amt + FEE))}.00`}
-              strong
-              last
-            />
-          </QuoteCard>
-        </Settle>
-        <View
-          style={{
-            marginTop: "auto",
-            paddingHorizontal: 22,
-            paddingBottom: 36,
-          }}
-        >
-          <View style={{ alignItems: "center" }}>
-            <Label>Enter PIN to buy</Label>
-          </View>
-          <View style={{ marginTop: 16, marginBottom: 20 }}>
-            <PinDots filled={pin.length} />
-          </View>
-          <Keypad onKey={handlePinKey} />
-        </View>
-      </View>
-    );
-  }
+  const pending = prices === null && !failed;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas }}>
-      <View style={{ flex: 1, paddingHorizontal: 22 }}>
-        <BackHeader title="Buy" onBack={onBack} />
-        <View style={{ marginTop: 24 }}>
-          <SectionHead
-            label="Pick an asset"
-            right={
+    <Screen pad={22}>
+      <BackHeader title="Market prices" onBack={onBack} />
+
+      <View style={{ marginTop: 24 }}>
+        <SectionHead
+          label="Prices · USD"
+          right={
+            !pending && !failed && !liveQuotes ? (
+              // Not a timestamp: whether the key is missing or the market
+              // simply did not answer, these are snapshot values, and
+              // "as of 14:32" over a snapshot would be a lie.
+              <MetaChip label="Snapshot · not live" tone="warn" />
+            ) : asOf ? (
               <Mono size={9.5} color={C.dim} style={{ letterSpacing: 1.3 }}>
-                PRICE · 24H
+                AS OF{" "}
+                {asOf
+                  .toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                  .toUpperCase()}
               </Mono>
-            }
-          />
-          <View style={{ marginTop: 2 }}>
-            {assets.map((a, i) => (
+            ) : null
+          }
+        />
+        <View style={{ marginTop: 2 }}>
+          {pending ? (
+            <RowSkeletonList rows={ASSETS.length} />
+          ) : failed ? (
+            <View style={{ paddingVertical: 24 }}>
+              <Body size={12.5} color={C.sub} style={{ lineHeight: 19 }}>
+                Paradigm could not fetch prices, so it will not show you old
+                ones as if they were current.
+              </Body>
+              <View style={{ marginTop: 14, alignSelf: "flex-start" }}>
+                <GhostButton
+                  label="Try again"
+                  height={40}
+                  radius={12}
+                  onPress={() => void load()}
+                  style={{ paddingHorizontal: 22 }}
+                />
+              </View>
+            </View>
+          ) : (
+            ASSETS.map((a, i) => (
               <InstrumentRow
                 key={a.sym}
                 symbol={a.sym}
                 name={a.name}
                 sub={a.sym}
-                value={a.priceLabel}
-                meta={`${a.delta} · 24h`}
-                metaTone={a.up ? "up" : "down"}
+                value={prices?.[a.sym] != null ? priceLabel(prices[a.sym]) : "—"}
+                // An em dash needs its reason beside it, or it reads as a bug.
+                meta={prices?.[a.sym] != null ? undefined : "no source priced it"}
                 stable={a.stable}
-                last={i === assets.length - 1}
-                accessibilityLabel={`Buy ${a.name}`}
-                onPress={() => {
-                  setAsset(a);
-                  setDigits("");
-                  setPin("");
-                  setStep("amount");
-                }}
+                last={i === ASSETS.length - 1}
               />
-            ))}
-          </View>
+            ))
+          )}
         </View>
-        <View style={{ flex: 1 }} />
-        <View style={{ alignItems: "center", gap: 12, paddingBottom: 34 }}>
-          <Body size={11.5} color={C.dim} style={{ textAlign: "center" }}>
-            Bought assets settle into your crypto holdings.
+        {/* No 24h column. The old "+2.4% · 24h" deltas were typed into the
+            file, and the price seam returns spot values only — a movement
+            figure needs a source that reports movement. */}
+        {pending || failed ? null : (
+          <Body size={11} color={C.dim} style={{ marginTop: 12, lineHeight: 16 }}>
+            {HAS_PRICE_FEED
+              ? "Live from the market feed when it answers; otherwise the last hand-checked snapshot stands. USD only — no naira rate is quoted anywhere yet, so none is shown."
+              : "This build has no market-feed key, so these are the last hand-checked snapshot prices — indicative, not live. USD only — no naira rate is quoted anywhere yet, so none is shown."}
           </Body>
-          <MetaChip
-            label={
-              availableLabel
-                ? `Fiat balance · ${availableLabel}`
-                : "Fiat balance not available yet"
-            }
-          />
-        </View>
+        )}
       </View>
-    </View>
+
+      <Settle>
+        <Card style={{ marginTop: 26, padding: 18, borderRadius: 18 }}>
+          <Body size={13.5} semibold>
+            Buying needs a Gateway contract
+          </Body>
+          <Body
+            size={12}
+            color={C.sub}
+            style={{ marginTop: 8, lineHeight: 18 }}
+          >
+            API v0.1 exposes no naira→crypto quote, conversion, settlement, or
+            status route. Prices are informational; Primal will not mime a
+            purchase or call a provider directly from the app.
+          </Body>
+        </Card>
+      </Settle>
+    </Screen>
   );
 }

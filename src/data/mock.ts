@@ -1,105 +1,14 @@
-export const user = {
-  name: "Dave Kadiri",
-  tag: "@dave",
-  initial: "D",
-  va: "9012 883 774",
-  bank: "Rubies MFB",
-  evm: "0x7A3fD24b81cE5501a2Fb44C09E4c88A1",
-  sol: "9xJdW2vNqPh4tR8kFzLm3QbC5sYwQm2P",
-};
-
-export const hubTiles = [
-  {
-    key: "fiat",
-    title: "Fiat account",
-    value: "\u20a6482,650.00",
-    sub: "9012 883 774 · Rubies MFB",
-  },
-  {
-    key: "crypto",
-    title: "Crypto",
-    value: "$312.40",
-    sub: "ETH · SOL · USDC · 4 networks",
-  },
-  {
-    key: "trade",
-    title: "Copy trading",
-    value: "$261.20",
-    delta: "+4.5%",
-    sub: "Copying Amara · 3 positions",
-  },
-  {
-    key: "earn",
-    title: "Earn · Kash",
-    value: "128.40 KSH",
-    sub: "1,240 pts settle Sat 00:00 UTC",
-  },
-  {
-    key: "games",
-    title: "Games",
-    value: "$85.00",
-    badge: "CLAIM $920",
-    sub: "Last Man round #63 live · 04:32",
-  },
-  {
-    key: "remit",
-    title: "Cross-border",
-    value: "NGN \u2192 GHS",
-    warn: "\u20a682,300 in transit to Kofi".replace("\u20a6", "\u20a6"),
-    sub: "",
-  },
-];
-
-export const fiatActivity = [
-  {
-    icon: "\u2193",
-    dir: "in",
-    title: "Crypto deposit \u2192 \u20a6",
-    sub: "45 USDC · Base · optimistic fill",
-    amount: "+\u20a645,000.00",
-    status: "Converting\u2026",
-    pending: true,
-  },
-  {
-    icon: "\u2193",
-    dir: "in",
-    title: "Bank transfer",
-    sub: "Adebayo K. · GTBank",
-    amount: "+\u20a6120,000.00",
-    credit: true,
-    status: "Completed",
-  },
-  {
-    icon: "\u2191",
-    dir: "out",
-    title: "Cross-border · GHS",
-    sub: "Stanbic Bank Ghana",
-    amount: "\u2212\u20a682,300.00",
-    status: "In transit",
-    pending: true,
-  },
-  {
-    icon: "\u2191",
-    dir: "out",
-    title: "Send · @tobi",
-    sub: "In-app P2P",
-    amount: "\u2212\u20a615,000.00",
-    status: "Completed",
-  },
-];
-
-export const holdings = [
-  { sym: "ETH", name: "Ethereum", qty: "0.031 ETH", usd: "$98.10" },
-  { sym: "SOL", name: "Solana", qty: "0.62 SOL", usd: "$84.30" },
-  {
-    sym: "USDC",
-    name: "USD Coin",
-    qty: "130.00 USDC · Base",
-    usd: "$130.00",
-    green: true,
-  },
-];
-
+/**
+ * Demo data for surfaces that have no backend yet.
+ *
+ * `leaders` (copy-trading, a WorldStreet surface with no public routes) is the
+ * ONLY export left. This file used to also carry a whole fabricated identity —
+ * "Dave Kadiri", @dave, a NUBAN-shaped account number, wallet addresses — and
+ * every one of those leaked onto a real screen at some point before being
+ * hunted back out. Dead fabrications are one import away from shipping, so
+ * they are deleted, not parked. Add mock data here only for a surface that
+ * cannot exist yet, and make it self-labeling.
+ */
 export const leaders = [
   {
     ini: "AO",
@@ -133,50 +42,5 @@ export const leaders = [
     spark: "0,20 8,10 16,15 24,6 32,14 40,4 48,12 56,3 64,8",
     up: true,
     risky: true,
-  },
-];
-
-export const bounties = [
-  {
-    title: "Copy your first trader",
-    sub: "Any allocation counts",
-    pts: "+750 pts",
-  },
-  {
-    title: "Send cross-border",
-    sub: "First corridor payment",
-    pts: "+500 pts",
-  },
-  {
-    title: "Win a Last Man round",
-    sub: "Outlast the clock",
-    pts: "+2,000 pts",
-  },
-];
-
-export const networks = [
-  {
-    key: "evm",
-    label: "EVM",
-    addr: "0x7A3fD24b81cE5501a2Fb44C09E4c88A1",
-    note: "One address for Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche",
-  },
-  {
-    key: "sol",
-    label: "Solana",
-    addr: "9xJdW2vNqPh4tR8kFzLm3QbC5sYwQm2P",
-    note: "SPL tokens supported",
-  },
-  {
-    key: "trx",
-    label: "Tron",
-    addr: "TQm4xW8pKvN2dR7hLcE9fBzA3sYw2Kd",
-    note: "TRC-20",
-  },
-  {
-    key: "btc",
-    label: "Bitcoin",
-    addr: "bc1q8w2p4kvn2dr7hlce9fbza3syw2kd94x",
-    note: "BTC mainnet",
   },
 ];

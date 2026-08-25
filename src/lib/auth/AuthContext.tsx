@@ -22,6 +22,8 @@ import React, {
 import * as biometrics from "@/lib/auth/biometrics";
 import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
+import * as identityStore from "@/lib/auth/identity";
+import type { IdentityRecord } from "@/lib/auth/identity";
 import * as storage from "@/lib/auth/storage";
 import * as wire from "@/lib/auth/wire";
 import * as gatewayAuth from "@/lib/gateway/auth";
@@ -131,6 +133,15 @@ interface AuthApi extends AuthState {
    * plausible-looking fake, since a wrong address is money sent nowhere.
    */
   addresses: DecaneSession["addresses"] | null;
+  /**
+   * Who is signed in, as far as any real source has said — see identity.ts
+   * for the sources and their limits. Null until a session exists AND a
+   * sign-in flow has recorded something; screens render the honest absence
+   * (a greeting with no name) rather than a stand-in. Distinct from
+   * `primal.identity`, which is the GATEWAY's account record
+   * ({userId, walletAddress, sessionId}) and carries no name either.
+   */
+  identity: IdentityRecord | null;
   signIn: (method: Exclude<AuthMethod, "email">) => Promise<void>;
   startEmailSignIn: (email: string) => Promise<void>;
   verifyEmailCode: (email: string, code: string) => Promise<void>;
@@ -171,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [capability, setCapability] =
     useState<biometrics.BiometricCapability | null>(null);
   const [primal, setPrimal] = useState<PrimalState>(IDLE_PRIMAL);
+  const [identity, setIdentity] = useState<IdentityRecord | null>(null);
 
   /**
    * The in-flight gateway sync. Held in a ref, not state, so the effect below
@@ -199,16 +211,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const [session, pinSet, cap] = await Promise.all([
+      const [session, pinSet, cap, knownIdentity] = await Promise.all([
         decane.restoreSession(),
         storage.hasPin(),
         biometrics.getCapability(),
+        identityStore.loadIdentity(),
       ]);
       if (cancelled) return;
 
       setCapability(cap);
 
       if (!session) {
+        // Note the identity state stays null here even if a record survived
+        // on disk (a lapsed session leaves one behind): a name on screen with
+        // no session behind it would be a claim about nobody. The record
+        // itself is left for the next sign-in to overwrite.
         setState((s) => ({
           ...s,
           status: "signedOut",
@@ -218,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      setIdentity(knownIdentity);
       setState((s) => ({
         ...s,
         status: pinSet ? "locked" : "onboarding",
@@ -523,7 +541,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // A returning user who still has a PIN skips straight past onboarding.
-    const pinSet = await storage.hasPin();
+    // The sign-in flow that produced this session has already recorded what
+    // it learned about the person (decane.ts); this is the read side.
+    const [pinSet, knownIdentity] = await Promise.all([
+      storage.hasPin(),
+      identityStore.loadIdentity(),
+    ]);
+    setIdentity(knownIdentity);
     setState((s) => ({
       ...s,
       status: pinSet ? "ready" : "onboarding",
@@ -592,6 +616,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearVasState();
     await decane.signOut();
     await storage.clearAll();
+    // The identity record goes with the session that vouched for it — a name
+    // left behind would greet the NEXT person to sign in on this device.
+    await identityStore.clearIdentity();
+    setIdentity(null);
 
     primalSync.current = null;
     // Without this, signing straight back in on the SAME wallet would find the
@@ -660,6 +688,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...state,
       addresses: state.session?.addresses ?? null,
+      identity,
       capability,
       signIn,
       startEmailSignIn,
@@ -676,6 +705,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       state,
+      identity,
       capability,
       signIn,
       startEmailSignIn,

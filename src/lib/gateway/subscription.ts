@@ -29,6 +29,7 @@
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { isAddress } from "viem";
 
 import * as client from "./client";
 import * as entitlement from "./entitlement";
@@ -37,8 +38,7 @@ import { millisUntil } from "./time";
 import {
   ApiError,
   NetworkError,
-  asPaymentStatus,
-  asSubscriptionStatus,
+  SessionExpiredError,
   type CryptoPayment,
   type Money,
   type PaymentStatus,
@@ -46,6 +46,12 @@ import {
   type SubscriptionStatus,
   type WireTimestamp,
 } from "./types";
+import {
+  readPayment,
+  readSubscription,
+} from "./subscriptionWire";
+
+export { readPayment, readSubscription } from "./subscriptionWire";
 
 /* ------------------------------------------------------------------- price */
 
@@ -56,12 +62,6 @@ import {
  * wins: it is what this account is actually billed.
  */
 export const MEMBERSHIP_PRICE: Money = { amountMinor: "100000", currency: "USD" };
-
-/** What must land on the settlement chain: 1,000 USDC at 6dp. */
-export const MEMBERSHIP_SETTLEMENT: Money = {
-  amountMinor: "1000000000",
-  currency: "USDC",
-};
 
 export const MEMBERSHIP_PERIOD = "month";
 
@@ -90,10 +90,10 @@ export interface OriginNetwork {
 /**
  * The networks and tokens a membership payment may originate from.
  *
- * Addresses are the canonical native USDC deployments, matching the repo's own
- * `src/lib/crypto/catalog.ts`. This table is the ONLY place a contract address
- * becomes a human-readable symbol. Extending it is a code review; a response
- * field claiming to be "USDC" is not.
+ * The integration contract currently identifies Base mainnet as the initial
+ * production route. The app's broader crypto catalogue is not evidence that
+ * subscription checkout accepts those chains. This table is therefore Base
+ * only until the backend publishes or confirms another allowlisted pair.
  */
 export const ORIGIN_NETWORKS: readonly OriginNetwork[] = [
   {
@@ -104,50 +104,6 @@ export const ORIGIN_NETWORKS: readonly OriginNetwork[] = [
         symbol: "USDC",
         decimals: 6,
         address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      },
-    ],
-  },
-  {
-    chainId: 1,
-    name: "Ethereum",
-    assets: [
-      {
-        symbol: "USDC",
-        decimals: 6,
-        address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      },
-    ],
-  },
-  {
-    chainId: 42161,
-    name: "Arbitrum",
-    assets: [
-      {
-        symbol: "USDC",
-        decimals: 6,
-        address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-      },
-    ],
-  },
-  {
-    chainId: 10,
-    name: "Optimism",
-    assets: [
-      {
-        symbol: "USDC",
-        decimals: 6,
-        address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
-      },
-    ],
-  },
-  {
-    chainId: 137,
-    name: "Polygon",
-    assets: [
-      {
-        symbol: "USDC",
-        decimals: 6,
-        address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
       },
     ],
   },
@@ -250,7 +206,13 @@ export function readOriginQuote(payment: CryptoPayment | null | undefined): Orig
     assetAddress: payment?.originAsset ?? null,
     amountText,
     amountPlain: asset ? formatAsset(payment?.originAmount, asset, false) : null,
-    safe: Boolean(network && asset && amountText && payment?.depositAddress),
+    safe: Boolean(
+      network &&
+        asset &&
+        amountText &&
+        payment?.depositAddress &&
+        isAddress(payment.depositAddress),
+    ),
   };
 }
 
@@ -338,90 +300,16 @@ export function addressEdges(address: string): {
  */
 export function newCheckoutTrace(): string {
   try {
-    return `checkout-${Crypto.randomUUID()}`;
+    return Crypto.randomUUID();
   } catch {
     // expo-crypto is a native module. A build without it must not take a
-    // checkout down over a log header.
-    return `checkout-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    // checkout down over a log header. Keep the fallback UUID-shaped because
+    // the gateway contract calls this header a client-generated UUID.
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (token) => {
+      const nibble = Math.floor(Math.random() * 16);
+      return (token === "x" ? nibble : (nibble & 0x3) | 0x8).toString(16);
+    });
   }
-}
-
-/* ------------------------------------------------------------ normalizers */
-
-function str(value: unknown): string | null {
-  return typeof value === "string" && value !== "" ? value : null;
-}
-
-function readMoney(node: Record<string, unknown>, key: string): Money | undefined {
-  const raw = node[key] as Record<string, unknown> | undefined;
-  if (raw && typeof raw === "object") {
-    const amountMinor = str(raw.amountMinor);
-    const currency = str(raw.currency);
-    if (amountMinor && currency) return { amountMinor, currency };
-  }
-  // The create response states the price flat on the subscription rather than
-  // nested; accept both so a shape change does not blank the paywall.
-  const flatAmount = str(node.amountMinor);
-  const flatCurrency = str(node.currency);
-  if (key === "price" && flatAmount && flatCurrency) {
-    return { amountMinor: flatAmount, currency: flatCurrency };
-  }
-  return undefined;
-}
-
-/**
- * Wire → `Subscription`. Unknown statuses become `UNKNOWN` rather than throwing:
- * a gateway that ships a new state tomorrow must not blank this screen.
- */
-export function readSubscription(raw: unknown): Subscription | null {
-  const o = raw as Record<string, unknown> | null;
-  if (!o || typeof o !== "object") return null;
-  const node = ((o.subscription as Record<string, unknown>) ?? o) as Record<string, unknown>;
-  const id = str(node.id);
-  if (!id) return null;
-
-  return {
-    id,
-    status: asSubscriptionStatus(node.status),
-    price: readMoney(node, "price"),
-    currentPeriodStart: node.currentPeriodStart as Subscription["currentPeriodStart"],
-    currentPeriodEnd: node.currentPeriodEnd as Subscription["currentPeriodEnd"],
-    cancelAtPeriodEnd:
-      typeof node.cancelAtPeriodEnd === "boolean" ? node.cancelAtPeriodEnd : undefined,
-    createdAt: node.createdAt as Subscription["createdAt"],
-    updatedAt: node.updatedAt as Subscription["updatedAt"],
-  };
-}
-
-/**
- * Wire → `CryptoPayment`.
- *
- * `depositAddress` is required: a payment without one cannot be paid, and
- * rendering a checkout around a blank address invites a send to nowhere.
- */
-export function readPayment(raw: unknown): CryptoPayment | null {
-  const o = raw as Record<string, unknown> | null;
-  if (!o || typeof o !== "object") return null;
-  const node = ((o.payment as Record<string, unknown>) ?? o) as Record<string, unknown>;
-  const depositAddress = str(node.depositAddress);
-  if (!depositAddress) return null;
-
-  return {
-    id: str(node.id) ?? "",
-    subscriptionId: str(node.subscriptionId) ?? undefined,
-    status: asPaymentStatus(node.status),
-    depositAddress,
-    originChainId:
-      typeof node.originChainId === "number" ? node.originChainId : undefined,
-    originAsset: str(node.originAsset) ?? undefined,
-    originAmount: str(node.originAmount) ?? undefined,
-    requiredSettlementAmount: str(node.requiredSettlementAmount) ?? undefined,
-    amountMinor: str(node.amountMinor) ?? undefined,
-    currency: str(node.currency) ?? undefined,
-    refundTo: str(node.refundTo) ?? undefined,
-    expiresAt: node.expiresAt as CryptoPayment["expiresAt"],
-    createdAt: node.createdAt as CryptoPayment["createdAt"],
-  };
 }
 
 /* --------------------------------------------------------- status helpers */
@@ -503,6 +391,27 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
 };
 const isWeb = Platform.OS === "web";
 
+/**
+ * The device could not preserve the identity of a checkout attempt.
+ *
+ * This is a hard stop before POST. Continuing would make a timeout or app kill
+ * unrecoverable, and the next tap could create a second subscription under a
+ * new key.
+ */
+export class CheckoutStorageError extends Error {
+  constructor(message = "This device could not safely preserve the checkout.") {
+    super(message);
+    this.name = "CheckoutStorageError";
+  }
+
+  static is(error: unknown): error is CheckoutStorageError {
+    return (
+      error instanceof CheckoutStorageError ||
+      (error as CheckoutStorageError)?.name === "CheckoutStorageError"
+    );
+  }
+}
+
 function isIntent(value: unknown): value is CheckoutIntent {
   const i = value as CheckoutIntent;
   return (
@@ -510,31 +419,54 @@ function isIntent(value: unknown): value is CheckoutIntent {
     i !== null &&
     typeof i.idempotencyKey === "string" &&
     i.idempotencyKey.length >= 8 &&
+    i.idempotencyKey.length <= 128 &&
     typeof i.originChainId === "number" &&
+    Number.isSafeInteger(i.originChainId) &&
+    i.originChainId > 0 &&
     typeof i.originAsset === "string" &&
-    typeof i.refundTo === "string"
+    Boolean(assetFor(i.originChainId, i.originAsset)) &&
+    typeof i.refundTo === "string" &&
+    isAddress(i.refundTo) &&
+    typeof i.createdAt === "number" &&
+    Number.isFinite(i.createdAt) &&
+    (i.subscriptionId === null || typeof i.subscriptionId === "string")
   );
 }
 
 export async function loadIntent(): Promise<CheckoutIntent | null> {
-  if (isWeb) return null;
+  if (isWeb) {
+    throw new CheckoutStorageError(
+      "Subscription checkout is available only in the native app.",
+    );
+  }
   try {
     const raw = await SecureStore.getItemAsync(INTENT_KEY, OPTIONS);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isIntent(parsed) ? parsed : null;
-  } catch {
-    return null;
+    if (!isIntent(parsed)) {
+      throw new CheckoutStorageError(
+        "The saved checkout could not be verified. Contact support before starting another.",
+      );
+    }
+    return parsed;
+  } catch (error) {
+    if (CheckoutStorageError.is(error)) throw error;
+    throw new CheckoutStorageError();
   }
 }
 
 async function saveIntent(intent: CheckoutIntent): Promise<void> {
-  if (isWeb) return;
+  if (isWeb) {
+    throw new CheckoutStorageError(
+      "Subscription checkout is available only in the native app.",
+    );
+  }
   try {
     await SecureStore.setItemAsync(INTENT_KEY, JSON.stringify(intent), OPTIONS);
-  } catch {
-    // Storage refused. The key still holds for this launch, which covers the
-    // retry-after-timeout case; only a relaunch mid-checkout loses it.
+  } catch (error) {
+    throw new CheckoutStorageError(
+      "This device could not save the checkout safely. No payment request was sent.",
+    );
   }
 }
 
@@ -546,12 +478,16 @@ async function saveIntent(intent: CheckoutIntent): Promise<void> {
  * never because a screen unmounted — those are all cases where the same key must
  * be sent again.
  */
-export async function clearIntent(): Promise<void> {
+export async function clearIntent(options?: { required?: boolean }): Promise<void> {
   if (isWeb) return;
   try {
     await SecureStore.deleteItemAsync(INTENT_KEY, OPTIONS);
   } catch {
-    // Nothing to do.
+    if (options?.required) {
+      throw new CheckoutStorageError(
+        "The completed checkout could not be cleared safely. Try again before starting another.",
+      );
+    }
   }
 }
 
@@ -574,11 +510,12 @@ export interface Checkout {
 
 export function getSubscription(
   id: string,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; correlationId?: string },
 ): Promise<Subscription | null> {
   return client
     .get<unknown>(`/v1/subscriptions/${encodeURIComponent(id)}`, {
       signal: options?.signal,
+      correlationId: options?.correlationId,
     })
     .then(readSubscription);
 }
@@ -598,7 +535,7 @@ export function getPayment(
 /** Both legs of one checkout. Creates nothing. */
 export async function loadCheckout(
   subscriptionId: string,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; correlationId?: string },
 ): Promise<Checkout | null> {
   const [subscription, payment] = await Promise.all([
     getSubscription(subscriptionId, options),
@@ -622,6 +559,7 @@ export async function loadCheckout(
  */
 export async function resumeCheckout(options?: {
   signal?: AbortSignal;
+  correlationId?: string;
 }): Promise<Checkout | null> {
   const intent = await loadIntent();
   const id =
@@ -635,6 +573,7 @@ export async function resumeCheckout(options?: {
     // it is spent. A fresh checkout is then a genuinely new operation.
     if (ApiError.is(error) && error.statusCode === 404) {
       await clearIntent();
+      await entitlement.forgetSubscriptionId();
       return null;
     }
     throw error;
@@ -662,8 +601,18 @@ export async function resumeCheckout(options?: {
  */
 export async function startCheckout(
   params: CheckoutParams,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; correlationId?: string },
 ): Promise<Checkout> {
+  const trustedAsset = assetFor(params.originChainId, params.originAsset);
+  if (!trustedAsset || !isAddress(params.refundTo)) {
+    throw new ApiError({
+      statusCode: 400,
+      message:
+        "The selected payment route or refund wallet is invalid. Reopen checkout and try again.",
+      correlationId: options?.correlationId,
+    });
+  }
+
   const existing = await loadIntent();
 
   if (existing && existing.subscriptionId) {
@@ -677,12 +626,27 @@ export async function startCheckout(
     if (current) {
       const status = current.payment?.status ?? "UNKNOWN";
       // Live, or already paid: hand it back rather than start anything.
-      if (!current.payment || !isTerminalPayment(status) || status === "SETTLED") {
+      if (current.payment && (!isTerminalPayment(status) || status === "SETTLED")) {
         return current;
+      }
+      if (!current.payment) {
+        const concluded = new Set<SubscriptionStatus>([
+          "EXPIRED",
+          "CANCELED",
+          "REVOKED",
+        ]);
+        if (!concluded.has(current.subscription.status)) {
+          throw new ApiError({
+            statusCode: 502,
+            message:
+              "Primal has this subscription but no usable payment instructions. Contact support before starting another.",
+            correlationId: options?.correlationId,
+          });
+        }
       }
     }
     // Dead or missing: this operation is over, so the next one is new.
-    await clearIntent();
+    await clearIntent({ required: true });
   }
 
   // An intent still on disk with no `subscriptionId` is UNRESOLVED: the POST
@@ -720,7 +684,7 @@ export async function startCheckout(
       originAsset: intent.originAsset,
       refundTo: intent.refundTo,
     },
-    { signal: options?.signal },
+    { signal: options?.signal, correlationId: options?.correlationId },
   );
 
   const subscription = readSubscription(raw);
@@ -734,6 +698,15 @@ export async function startCheckout(
 
   await saveIntent({ ...intent, subscriptionId: subscription.id });
   await entitlement.rememberSubscriptionId(subscription.id);
+
+  if (!payment) {
+    throw new ApiError({
+      statusCode: 502,
+      message:
+        "Primal created the subscription but returned no usable payment instructions. Contact support before starting another.",
+      correlationId: options?.correlationId,
+    });
+  }
 
   return { subscription, payment, resumed: false };
 }
@@ -759,14 +732,54 @@ export async function concludeCheckout(status: PaymentStatus): Promise<void> {
 export async function cancelSubscription(
   id: string,
   atPeriodEnd: boolean,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; correlationId?: string },
 ): Promise<Subscription | null> {
-  const raw = await client.post<unknown>(
-    `/v1/subscriptions/${encodeURIComponent(id)}/cancel`,
-    { atPeriodEnd },
-    { signal: options?.signal },
-  );
-  return readSubscription(raw);
+  const path = `/v1/subscriptions/${encodeURIComponent(id)}/cancel`;
+  try {
+    const raw = await client.post<unknown>(
+      path,
+      { atPeriodEnd },
+      {
+        signal: options?.signal,
+        correlationId: options?.correlationId,
+        // Cancellation has no idempotency key in the public contract. Never
+        // replay it automatically after a timeout.
+        retry: false,
+        maxAttempts: 1,
+      },
+    );
+    return readSubscription(raw);
+  } catch (error) {
+    const ambiguous =
+      NetworkError.is(error) ||
+      (ApiError.is(error) && [502, 503, 504].includes(error.statusCode));
+    if (!ambiguous) throw error;
+
+    // The request may have reached the backend. Reconcile with one safe read
+    // instead of repeating a mutation whose result we do not know.
+    try {
+      const current = await getSubscription(id, {
+        signal: options?.signal,
+        correlationId: options?.correlationId,
+      });
+      if (current) {
+        const periodEndApplied =
+          current.status === "CANCEL_AT_PERIOD_END" ||
+          current.cancelAtPeriodEnd === true;
+        const immediateApplied =
+          current.status === "CANCELED" ||
+          current.status === "EXPIRED" ||
+          current.status === "REVOKED";
+        if ((atPeriodEnd && periodEndApplied) || (!atPeriodEnd && immediateApplied)) {
+          return current;
+        }
+      }
+    } catch (readError) {
+      if (SessionExpiredError.is(readError)) throw readError;
+      // Preserve the original mutation's support reference.
+    }
+    throw error;
+  }
 }
 
 /* -------------------------------------------------------- polling policy */
@@ -844,6 +857,15 @@ export interface FailureNotice {
  * decision (sign in again), and callers must branch on it before reaching this.
  */
 export function describeFailure(error: unknown): FailureNotice {
+  if (CheckoutStorageError.is(error)) {
+    return {
+      title: "Checkout cannot start safely",
+      detail: error.message,
+      correlationId: null,
+      kind: "unknown",
+      retryable: false,
+    };
+  }
   if (NetworkError.is(error)) {
     return {
       title: error.timedOut ? "That took too long" : "No connection",

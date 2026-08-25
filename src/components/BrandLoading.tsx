@@ -1,6 +1,7 @@
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
@@ -41,6 +42,26 @@ const VEIL = "rgba(26,26,26,0.40)";
 const EDGE = "rgba(10,10,10,0.48)";
 /** The horizontal ramp is the weaker of the two — a phone is taller than wide. */
 const EDGE_SIDE = "rgba(10,10,10,0.34)";
+
+/**
+ * Whether this BINARY carries expo-blur's native side, asked of the module
+ * registry once at load. The JS half of `expo-blur` rides in over Metro the
+ * moment it lands in package.json, but the view manager is compiled in — so a
+ * dev client built before the dependency renders `<BlurView>` as a red
+ * "Unimplemented component" box, straight through the veil it was supposed to
+ * be. A loading overlay must never be the thing that looks broken, so the blur
+ * is only mounted when the registry actually has it.
+ */
+const BLUR_AVAILABLE = requireOptionalNativeModule("ExpoBlur") != null;
+
+/**
+ * The wash for a binary with no blur: the same layered scrim this overlay had
+ * before expo-blur, carried by alpha alone. The blur was doing half the
+ * covering — softening the sharp text behind — so without it the wash has to
+ * be heavy enough that the covered screen stops being readable, or the "wait"
+ * reads as a tint over controls that look pressable.
+ */
+const VEIL_UNBLURRED = "rgba(24,24,24,0.86)";
 
 /**
  * A soft radial disc — the light the crown stands in.
@@ -169,17 +190,24 @@ export function BrandLoading({
           `expo-blur` rather than the glass effect this first shipped with, which
           was a live blur only on iOS 26+ and nothing whatsoever below it. The
           wash and ramps beneath still carry the depth, so the picture degrades
-          to the same composition if a platform ever refuses the blur. */}
-      <BlurView
-        pointerEvents="none"
-        intensity={38}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
+          to the same composition if a platform ever refuses the blur — and on a
+          binary that predates the dependency (BLUR_AVAILABLE) it is not mounted
+          at all, because an absent view manager renders as a red error box. */}
+      {BLUR_AVAILABLE ? (
+        <BlurView
+          pointerEvents="none"
+          intensity={38}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
 
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: VEIL }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: BLUR_AVAILABLE ? VEIL : VEIL_UNBLURRED },
+        ]}
       />
       {/* The two ramps are the depth. Top-to-bottom first, then side-to-side,
           both transparent through the middle so the crown keeps its air. */}

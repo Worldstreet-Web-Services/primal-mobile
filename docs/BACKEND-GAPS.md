@@ -1,8 +1,30 @@
 # Primal backend fast-track handoff
 
-Last verified: 2026-08-24  
-Gateway: `https://api.tsion.io`  
+Last verified: 2026-08-25
+Gateway: `https://api.tsion.io`
 Deployed contract: `https://api.tsion.io/openapi.json`
+
+## Live subscription smoke test — 2026-08-25
+
+An authorized production-path smoke test used a new ephemeral EVM wallet whose
+private key, SIWE signature and token pair stayed in memory and were never
+printed or persisted.
+
+- `POST /v1/auth/challenge`: succeeded;
+- exact-message SIWE signing: succeeded;
+- `POST /v1/auth/verify`: succeeded and returned a usable Primal session;
+- `GET /v1/auth/me`: succeeded;
+- `POST /v1/subscriptions`: failed with HTTP `500 Internal server error`;
+- checkout correlation ID: `953950ef-b513-478f-b36e-059c9a6fd373`;
+- no payment transfer was made;
+- logout was attempted in cleanup and the in-memory token pair was discarded.
+
+The checkout request used Base mainnet (`8453`), canonical Base USDC
+(`0x833589fcd6edb6e08f4c7c32d4f71b54bda02913`), the authenticated wallet as
+`refundTo`, and a valid unique idempotency key. Because creation returned 500,
+no subscription/payment response was available to poll. Backend action: trace
+the correlation ID through API Gateway → Subscription → Dextopus and identify
+the failing dependency or configuration before another live checkout attempt.
 
 ## Frontend boundary now enforced
 

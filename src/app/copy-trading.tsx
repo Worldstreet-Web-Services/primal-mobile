@@ -45,15 +45,6 @@ export default function CopyTrading() {
         // goes nowhere is what makes a screen feel broken.
       />
 
-      {/* Summoned by the Deposit action, so it is dismissible — drag it down, tap
-          the scrim, or Android back. `GlassDrawer` is the wrong tool here: it
-          is fixed chrome that slides in once and stays.
-
-          `sheet={false}` keeps the whole flow on this one surface: the checkout
-          replaces the option list rather than stacking a second modal on top of
-          it, so its back arrow returns to the list and only × or a drag ends
-          the flow. */}
-
       <NavHeader
         wordmark="COPY TRADING"
         tagline="POWERED BY ARK"

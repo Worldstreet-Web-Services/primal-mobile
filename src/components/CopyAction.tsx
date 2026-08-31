@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Animated, Pressable, View, ViewStyle } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import { Mono } from "./ui";
 import { cn } from "@/lib/cn";
 
@@ -211,7 +211,7 @@ export function CopyField({
         className="flex-row items-center gap-[12px] bg-card border rounded-[16px] py-[14px] px-[16px]"
         style={[
           {
-            borderColor: copied ? "rgba(124,231,176,0.4)" : C.border,
+            borderColor: copied ? withAlpha(C.up, 0.4) : C.border,
             transform: [{ scale: v }],
           },
           style,

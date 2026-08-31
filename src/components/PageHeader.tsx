@@ -65,7 +65,9 @@ export function PageHeader({
       </Text>
 
       {onBack ? (
-        <View style={{ position: "absolute", left: 14, top: insets.top }}>
+        // Same offset as the right slot and the container's own top padding, so
+        // the two buttons sit on the title's line rather than 6pt above it.
+        <View style={{ position: "absolute", left: 14, top: insets.top + 6 }}>
           <CircleAction onPress={onBack} size={36} accessibilityLabel="Go back">
             <BackChevron color={C.text} />
           </CircleAction>

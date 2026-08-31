@@ -92,7 +92,7 @@ export default function PodcastScreen({
             unread ? "Notifications, unread" : "Notifications"
           }
           style={{
-            backgroundColor: "rgba(255,255,255,0.14)",
+            backgroundColor: C.card,
             borderColor: "transparent",
           }}
         >

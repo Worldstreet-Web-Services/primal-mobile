@@ -1,9 +1,9 @@
 import { Pressable, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { C } from "../../theme/tokens";
+import { Body, MetalButton, Mono, OutlineButton, Pulse } from "@/components/ui";
+import { C, LIFT } from "@/theme/tokens";
 import { PlusIcon, SendIcon, WalletIcon } from "../icons";
-import { Body, MetalButton, Mono, Pulse, QuietButton } from "../ui";
 
 /**
  * The portfolio card, and what it is allowed to say about money.
@@ -256,7 +256,6 @@ function DeltaLine({
   return (
     <Body
       className="text-[17px] font-body-semibold mt-[6px] tracking-[0.1px]"
-
       color={tone}
     >
       {hidden ? "•••••" : delta.label}
@@ -413,10 +412,12 @@ function Actions({
         />
       ) : null}
       {onTransfer ? (
-        <QuietButton
+        <OutlineButton
           label="Transfer"
           height={ACTION_H}
-          icon={<SendIcon size={18} color={C.text} />}
+          tone="auth"
+          // color={C.text}
+          icon={<SendIcon size={18} />}
           onPress={onTransfer}
           style={{ flex: 1 }}
         />
@@ -482,6 +483,7 @@ export function PortfolioCard({
     <View
       className="bg-canvas-raised border border-rule px-[20px] pt-[22px] pb-[22px] items-center overflow-hidden"
       style={[
+        LIFT,
         {
           borderRadius: RADIUS,
         },
@@ -546,6 +548,7 @@ export function PortfolioCard({
               <LegRow key={leg.key} leg={leg} hidden={hidden} />
             ))}
           </View>
+
           <Actions onDeposit={onDeposit} onTransfer={onTransfer} />
         </>
       ) : (
@@ -569,9 +572,10 @@ export function PortfolioCard({
               <MissingRow key={m.key} missing={m} />
             ))}
           </View>
-          {/* Deposit still stands on a blocked card — not being able to READ a
-              balance is no reason to bar someone from adding to it. */}
-          <Actions onDeposit={onDeposit} />
+          <View className="flex items-center flex-row gap-3">
+            <Actions onDeposit={onDeposit} />
+            <Actions onTransfer={onTransfer} />
+          </View>
         </>
       )}
     </View>

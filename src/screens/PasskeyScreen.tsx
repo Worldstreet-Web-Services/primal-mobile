@@ -43,7 +43,7 @@ export default function PasskeyScreen({
         <View
           className="w-[92px] h-[92px] rounded-[28px] border border-border-strong items-center justify-center"
           style={{
-            backgroundColor: "rgba(255,255,255,0.06)",
+            backgroundColor: C.card,
           }}
         >
           <Svg width={46} height={46} viewBox="0 0 24 24">
@@ -66,12 +66,6 @@ export default function PasskeyScreen({
           PIN still stands behind it, and it is still what authorises money
           leaving.
         </Body>
-        {placeholder ? (
-          <Body className="text-[11.5px] text-dim text-center leading-[18px]">
-            This device has no {label} available, so the prompt is simulated and
-            always succeeds. Development builds only.
-          </Body>
-        ) : null}
       </View>
       <View className="gap-[10px]">
         <MetallicButton

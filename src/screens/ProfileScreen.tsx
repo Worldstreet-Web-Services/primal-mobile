@@ -305,14 +305,14 @@ export default function ProfileScreen({
               frozen ? "border-amber" : "border-rule",
             )}
             style={{
-              backgroundColor: frozen ? C.amber : "rgba(255,255,255,0.16)",
+              backgroundColor: frozen ? C.amber : C.inset,
               alignItems: frozen ? "flex-end" : "flex-start",
             }}
           >
             <View
               className={cn(
                 "w-[22px] h-[22px] rounded-[11px]",
-                frozen ? "bg-ink" : "bg-text",
+                frozen ? "bg-amber-ink" : "bg-text",
               )}
             />
           </Pressable>

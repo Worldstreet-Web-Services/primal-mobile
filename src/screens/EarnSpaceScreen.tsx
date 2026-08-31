@@ -12,6 +12,7 @@ import {
   ProgressBar,
   BackChevron,
 } from "../components/ui";
+import { C } from "../theme/tokens";
 
 // Design 3b: earn space — KSH balance, claimable points, weekly settlement, bounties.
 const kash = {
@@ -49,7 +50,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
         <View
           className="w-[30px] h-[30px] rounded-[16px] items-center justify-center"
           style={{
-            backgroundColor: "rgba(255,255,255,0.08)",
+            backgroundColor: C.card,
           }}
         >
           <Text className="text-[13px] text-accent">◆</Text>
@@ -59,7 +60,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
       <Card
         className="mt-[18px] rounded-[22px] p-[18px]"
         style={{
-          borderColor: "rgba(255,255,255,0.14)",
+          borderColor: C.border,
         }}
       >
         <View className="flex-row justify-between items-center">
@@ -77,7 +78,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
         <View
           className="h-[1px] my-[14px]"
           style={{
-            backgroundColor: "rgba(255,255,255,0.1)",
+            backgroundColor: C.hairline,
           }}
         />
         <View className="flex-row items-center justify-between">
@@ -126,7 +127,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
             <View
               className="w-[36px] h-[36px] rounded-[12px] items-center justify-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.06)",
+                backgroundColor: C.card,
               }}
             >
               <Text className="text-[13px] text-accent">◈</Text>
@@ -141,7 +142,7 @@ export default function EarnSpaceScreen({ onBack }: { onBack?: () => void }) {
               className="text-[11.5px] text-accent rounded-[8px] py-[5px] px-[10px] overflow-hidden"
 
               style={{
-                backgroundColor: "rgba(255,255,255,0.06)",
+                backgroundColor: C.card,
               }}
             >
               {b.pts}

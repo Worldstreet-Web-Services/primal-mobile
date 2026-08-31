@@ -404,6 +404,26 @@ export function AlertIcon({
   );
 }
 
+/** Circled "i" — the quiet "what is this?" affordance at the edge of a header. */
+export function InfoIcon({
+  size = 18,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={strokeWidth} />
+      <Path
+        d="M12 11.2v5.4"
+        stroke={color}
+        strokeWidth={strokeWidth + 0.3}
+        strokeLinecap="round"
+      />
+      <Circle cx={12} cy={7.9} r={1} fill={color} />
+    </Svg>
+  );
+}
+
 /** Concentric arcs — the ambient ring motif behind the greeting. */
 export function RingDecor({
   size = 260,
@@ -1057,6 +1077,228 @@ export function WaveIcon({ size = 14, color = C.text }: IconProps) {
           fill={color}
         />
       ))}
+    </Svg>
+  );
+}
+
+/* ------------------------------------------------------------- settings --
+ *
+ * The glyphs the settings rows are built from. All 24-box strokes at the same
+ * weight as the set above, so a column of them reads as one family whatever
+ * each row is about.
+ */
+
+/** Theme: the light one. */
+export function SunIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  // Eight rays on the diagonal and the axes, drawn from a table so the gaps
+  // stay even — eight hand-written paths drift by a degree or two each.
+  const rays = [0, 45, 90, 135, 180, 225, 270, 315];
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle
+        cx={12}
+        cy={12}
+        r={4.2}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      {rays.map((deg) => {
+        const rad = (deg * Math.PI) / 180;
+        const dx = Math.cos(rad);
+        const dy = Math.sin(rad);
+        return (
+          <Path
+            key={deg}
+            d={`M${12 + dx * 7.4} ${12 + dy * 7.4}L${12 + dx * 9.4} ${12 + dy * 9.4}`}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </Svg>
+  );
+}
+
+/** Theme: the dark one. */
+export function MoonIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20 14.4A8.6 8.6 0 0 1 9.6 4a8.6 8.6 0 1 0 10.4 10.4Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Theme: whatever the handset says — hence a handset. */
+export function DeviceIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={6.6}
+        y={2.8}
+        width={10.8}
+        height={18.4}
+        rx={2.6}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M10.6 18.4h2.8"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** The app lock — closed, because that is the state the control produces. */
+export function LockIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={4.8}
+        y={10.4}
+        width={14.4}
+        height={9.8}
+        rx={2.6}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M8.4 10.4V7.9a3.6 3.6 0 0 1 7.2 0v2.5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** The transaction PIN. A key, not a keypad — the keypad is the screen. */
+export function KeyIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle
+        cx={8.6}
+        cy={8.6}
+        r={4.3}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="m11.7 11.7 7.5 7.5m-2.6-2.6-1.9 1.9m4.5.7-1.6 1.6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Hidden balances — the eye with the stroke through it. */
+export function EyeOffIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6.3 6.9C4.2 8.4 2.8 10.4 2.4 12c.9 3 4.9 5.8 9.6 5.8 1.6 0 3.1-.3 4.4-.9m2.9-1.8c1.3-1 2.2-2.2 2.5-3.1-.9-3-4.9-5.8-9.6-5.8-.6 0-1.2 0-1.8.1"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M9.9 9.9a3 3 0 0 0 4.2 4.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M3.6 3.6l16.8 16.8"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** Help — a life ring, which says "reach someone" rather than "read a FAQ". */
+export function LifeRingIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={strokeWidth} />
+      <Circle
+        cx={12}
+        cy={12}
+        r={3.6}
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="m5.6 5.6 3.9 3.9m5 5 3.9 3.9m0-12.8-3.9 3.9m-5 5-3.9 3.9"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** The legal pages. A sheet with a folded corner. */
+export function DocIcon({
+  size = 20,
+  color = C.silver,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M13.6 2.9H7.4a2.6 2.6 0 0 0-2.6 2.6v13a2.6 2.6 0 0 0 2.6 2.6h9.2a2.6 2.6 0 0 0 2.6-2.6V8.5Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M13.6 2.9v5.6h5.6M8.6 13h6.8m-6.8 3.6h4.4"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }

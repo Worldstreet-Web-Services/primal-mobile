@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import PasskeyScreen from "@/screens/PasskeyScreen";
 
 export default function Passkey() {
-  const { enableBiometrics, skipBiometrics, capability } = useAuth();
+  const { enableBiometrics, skipBiometrics, capability, refreshCapability } =
+    useAuth();
   const toast = useToast();
   const [enabling, setEnabling] = useState(false);
 
@@ -17,27 +18,33 @@ export default function Passkey() {
   const finish = () => router.replace("/");
 
   const onEnable = async () => {
-    // Only reachable on a real device with nothing enrolled: in a dev build the
-    // stand-in reports itself as available, so the step can be completed rather
-    // than only skipped.
-    if (!capability?.available) {
-      toast.warning(
-        "No biometrics enrolled",
-        "Add Face ID or a fingerprint in your device settings, then come back.",
-      );
-      return;
-    }
-
     setEnabling(true);
     try {
+      /**
+       * Ask the device NOW, rather than trusting the answer this screen
+       * rendered with.
+       *
+       * Enrolling a face is something you leave the app to do, and the obvious
+       * order of events is to open this step, discover you have not enrolled,
+       * go and enrol, come back and tap again. Refusing on the capability read
+       * at mount makes that sequence impossible: the toast says "add a face in
+       * your device settings", and doing exactly that changes nothing, because
+       * the only thing standing in the way is a stale boolean. A tap is a
+       * question the user is asking the device, so it is put to the device.
+       */
+      const current = await refreshCapability();
+
+      if (!current.available) {
+        toast.warning(
+          "No biometrics enrolled",
+          "Add Face ID or a fingerprint in your device settings, then try again.",
+        );
+        return;
+      }
+
       const outcome = await enableBiometrics();
       if (outcome.ok) {
-        toast.success(
-          `${capability.label} enabled`,
-          capability.placeholder
-            ? "Simulated — this build has no real biometric to check."
-            : "Use it to unlock KashPlus.",
-        );
+        toast.success(`${current.label} enabled`, "Use it to unlock KashPlus.");
         finish();
         return;
       }
@@ -57,9 +64,10 @@ export default function Passkey() {
 
   const onSkip = async () => {
     await skipBiometrics();
-    // Deliberately does not promise a Profile toggle: there is no wired control
-    // there yet, and the lock screen now honours this choice, so "any time in
-    // Profile" would be the one instruction the app cannot carry out.
+    // The toggle this points at is real now — Settings › Security carries the
+    // same switch, writing the same preference — so the copy could name it.
+    // It still doesn't: this is the last step of onboarding, and a person who
+    // just said "not now" does not need directions to the thing they declined.
     toast.info("Skipped", "Your PIN unlocks KashPlus.");
     finish();
   };
@@ -71,7 +79,6 @@ export default function Passkey() {
         onSkip={onSkip}
         enabling={enabling}
         label={capability?.label ?? "Face ID"}
-        placeholder={capability?.placeholder ?? false}
       />
     </SafeAreaView>
   );

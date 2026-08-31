@@ -62,7 +62,7 @@ import {
   type Withdrawal,
   type WithdrawalQuote,
 } from "../lib/gateway/types";
-import { C, F } from "../theme/tokens";
+import { C, F, withAlpha } from "../theme/tokens";
 import { cn } from "@/lib/cn";
 
 /**
@@ -1100,7 +1100,7 @@ export default function SendConfirmScreen({
         <View
           className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            borderColor: "rgba(124,231,176,0.35)",
+            borderColor: withAlpha(C.up, 0.35),
           }}
         >
           <Check size={26} color={C.up} />
@@ -1316,7 +1316,7 @@ export default function SendConfirmScreen({
           <View
             className="bg-canvas-raised border rounded-[20px] overflow-hidden"
             style={{
-              borderColor: "rgba(131,190,96,0.34)",
+              borderColor: withAlpha(C.brand, 0.34),
               shadowColor: C.brand,
               shadowOpacity: 0.1,
               shadowRadius: 14,
@@ -1328,7 +1328,7 @@ export default function SendConfirmScreen({
               <View
                 className="w-[44px] h-[44px] rounded-[22px] bg-brand-glow border items-center justify-center"
                 style={{
-                  borderColor: "rgba(131,190,96,0.34)",
+                  borderColor: withAlpha(C.brand, 0.34),
                 }}
               >
                 <Check size={20} />
@@ -1368,7 +1368,7 @@ export default function SendConfirmScreen({
         <View
           className="mt-[22px] mx-[20px] bg-canvas-raised border rounded-[18px] px-[16px] overflow-hidden"
           style={{
-            borderColor: blocked ? "rgba(246,165,165,0.4)" : C.hairline,
+            borderColor: blocked ? withAlpha(C.down, 0.4) : C.hairline,
           }}
         >
           <Shine />

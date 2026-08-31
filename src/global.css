@@ -17,7 +17,26 @@
  * the same green is a legible ink in one theme and unreadable in the other.
  * Body-text tokens clear 4.5:1 on their own canvas in BOTH themes; the one
  * deliberate exception is `--figure-tail`, the muted ".00" on a large figure,
- * which is held to the 3:1 large-text floor.
+ * which is held to the 3:1 large-text floor — and held on every ground it can
+ * land on, not just the canvas. That is why light's is 120 127 136 rather than
+ * the 134 141 149 it started at: the lighter value cleared 3:1 on the canvas
+ * and then failed it (2.78) the moment the figure sat on a card or an inset,
+ * which is where these figures actually live.
+ *
+ * LIGHT IS A GROUND SCALE, NOT A BACKGROUND. The dark palette gets its
+ * structure for free — near-black is so far from everything that a 5% white
+ * wash is already a visible surface. On a light ground the same 5% is nothing,
+ * so the canvas is pitched DOWN to a cream at 235 228 211 to leave headroom on
+ * both sides: raised surfaces go up to a lighter cream (1.18:1 off the canvas),
+ * insets and wells go down to 224 216 198 (1.12:1), and the hairlines that
+ * separate them are ~1.4x rather than the 1.19x they were. Every one of those
+ * steps was inside 1.09-1.11 before, which is why the whole theme read as one
+ * flat wash.
+ *
+ * The washes stay `rgba(0,0,0,a)` rather than becoming mixed cream values on
+ * purpose: black at an alpha darkens whatever it is over WITHOUT shifting its
+ * hue, so `--card`, the three hairlines and `--placeholder` all pick the warmth
+ * up from the ground for free. Change the canvas again and they follow.
  *
  * TWO FORMATS, on purpose:
  *
@@ -39,59 +58,120 @@
 :root {
   /* -------------------------------------------------------------- ground */
   /* Light inverts the elevation relationship rather than the values: on black,
-     a raised surface is lighter than the canvas; on grey, it is white. A white
-     canvas with a whiter card has nowhere to go. */
-  --canvas: 244 245 247;
-  --canvas-raised: rgba(255, 255, 255, 0.96);
-  --canvas-inset: 232 234 237;
-  --sheet: 255 255 255;
-  --key: 233 235 238;
+     a raised surface is lighter than the canvas; on cream, it is white. A white
+     canvas with a whiter card has nowhere to go.
+
+     The ground is a warm off-white rather than the cool grey it started as.
+     That is a hue change, not a lightness one — white still sits 1.16:1 above
+     it, so every elevation step below is the one the grey ground was tuned to.
+     What it does change is the NEUTRALS: a blue-grey ink ramp on a cream ground
+     reads as dirty rather than quiet, so the text rungs are warmed to match
+     (same luminance, hue pulled off blue) and the chromatic tokens are left
+     exactly as they are — the brand's forest green and the bronze amber were
+     already earthy, and they sit better here than they did on the grey. */
+  --canvas: 235 228 211;
+  /* A cream, not white — and it has to stay CLEARLY above `--canvas`.
+     Pure white on a cream ground reads as a different material, a sheet of
+     paper dropped on linen, rather than as the same material lifted. But the
+     two are only one rung apart, so this is the token most easily broken by
+     hand: at rgb(238, 229, 211) it landed 1.007:1 off the canvas — a card
+     mathematically indistinguishable from the page behind it. Anything under
+     about 1.12:1 here means the app has no cards. This pair is 1.18:1, and
+     `--lift` casts the rest. */
+  --canvas-raised: rgba(252, 246, 235, 1);
+  --canvas-inset: 224 216 198;
+  --sheet: 252 246 235;
+  --key: 252 246 235;
+  /* A cast shadow, and nothing else — a shadow is dark on every ground, which
+     is why this one value serves both themes. It is NOT "the dark ink": three
+     call sites were using it as the knob or well on a lit chromatic fill, a job
+     that has to flip, and they read `--brand-ink` / `--amber-ink` /
+     `--metal-ink` now. */
   --ink: 10 10 10;
 
   /* ---------------------------------------------------------------- text */
-  --text: 11 13 16;
-  --sub: 78 85 94;
-  --dim: 101 108 117;
-  --silver: 78 85 94;
-  --silver-muted: 101 108 117;
-  --silver-faint: 134 141 149;
-  --figure-tail: 134 141 149;
-  --accent: 82 82 91;
-  --placeholder: rgba(0, 0, 0, 0.3);
+  --text: 26 22 18;
+  --sub: 88 81 71;
+  --dim: 100 91 80;
+  --silver: 88 81 71;
+  --silver-muted: 100 91 80;
+  --silver-faint: 131 121 107;
+  --figure-tail: 131 121 107;
+  --accent: 92 85 76;
+  --placeholder: rgba(0, 0, 0, 0.45);
 
   /* --------------------------------------------------------------- lines */
-  --card: rgba(0, 0, 0, 0.035);
-  --border: rgba(0, 0, 0, 0.12);
-  --border-strong: rgba(0, 0, 0, 0.26);
-  --hairline: rgba(0, 0, 0, 0.08);
+  --card: rgba(0, 0, 0, 0.05);
+  --border: rgba(0, 0, 0, 0.20);
+  --border-strong: rgba(0, 0, 0, 0.38);
+  --hairline: rgba(0, 0, 0, 0.15);
+  /* The specular top edge of a raised surface. On black a 28% white hairline
+     reads as light catching an edge; on a WHITE card there is no edge for it to
+     catch — white on white is nothing — and the lift comes from the card being
+     brighter than the canvas plus its own border. So light mode has no shine,
+     stated as a token rather than as a `Platform`/theme branch in `Shine`. */
+  --shine: rgba(255, 255, 255, 0);
+  /* And its counterpart, which is the half of elevation light mode actually
+     has. `--shine` describes an edge catching light, which only works when
+     there is a dark ground for it to catch against; the reason it is empty here
+     is the same reason this one is not.
+
+     A raised surface on black can always go lighter — there is unlimited room
+     above zero. On a cream ground the card is already at 253 250 244 and the
+     ceiling is white, so lifting it further is not available: the measured
+     ceiling for value alone is about 1.2:1, and reaching even that squeezes the
+     recessed rungs flat and drops four inks below their floor. So the lift is
+     cast DOWNWARD instead, as a shadow — which costs no contrast anywhere,
+     because it lands on the canvas rather than under the type.
+
+     Warm and near-black rather than neutral grey: a grey shadow on a cream
+     ground reads as a smudge. Consumed by `LIFT` in tokens.ts, since a cast
+     shadow is one of the things AGENTS.md keeps in `style`. */
+  --lift: rgba(74, 60, 38, 0.13);
 
   /* --------------------------------------------------------------- brand */
   /* Re-derived, not reused: the dark leaf green is 2.1:1 on this ground. This
-     one clears 5.09:1 as ink AND takes white ink at 5.56:1 as a fill, which is
+     one clears 5.37:1 as ink AND takes white ink at 7.11:1 as a fill, which is
      the pair of jobs `brand` has to do. `--brand-ink` therefore FLIPS between
-     themes — near-black on the bright dark-mode fill, white on this one. */
-  --brand: 63 117 34;
+     themes — near-black on the bright dark-mode fill, white on this one.
+     Measured against the WORST ground it can land on (the `card` wash and the
+     inset well, not the canvas): every chromatic ink below was pitched on the
+     canvas alone and then lost half a point the moment it sat inside a card,
+     which is where most of them actually appear. */
+  --brand: 53 99 28;
   --brand-ink: 255 255 255;
-  --brand-soft: 52 97 28;
+  --brand-soft: 42 79 22;
   --brand-soft-ink: 255 255 255;
-  --brand-glow: rgba(63, 117, 34, 0.12);
-  --green: 47 127 46;
+  --brand-glow: rgba(53, 99, 28, 0.16);
+  /* A touch deeper than the dark theme's face: on a light ground the lit green
+     has almost no edge of its own (1.42:1), so what actually draws the pill
+     while it is held is the deep rim, not the face. */
+  --brand-press-face: 183 218 156;
+  --brand-press-ink: 30 60 12;
+  --brand-press-glow: rgba(53, 99, 28, 0.3);
+  --green: 40 107 39;
   --green-ink: 255 255 255;
-  --green-glow: rgba(47, 127, 46, 0.12);
+  --green-glow: rgba(40, 107, 39, 0.16);
 
   /* --------------------------------------------------------------- money */
   /* Mint against rose, both pulled down until they are ink rather than tint.
      Still deliberately NOT the brand hue — a credit in a list must never be
      mistaken for a brand action sitting in the same row. */
-  --up: 11 122 76;
-  --up-tint: rgba(11, 122, 76, 0.1);
-  --down: 192 39 45;
+  --up: 9 103 64;
+  --up-tint: rgba(9, 103, 64, 0.14);
+  --down: 180 33 39;
 
   /* ------------------------------------------------------------- signals */
-  --live: 62 125 31;
-  --amber: 138 93 0;
-  --highlight: 175 196 42;
-  --highlight-ink: 18 24 10;
+  --live: 52 105 26;
+  --amber: 128 86 0;
+  /* The glyph on an amber fill, and it FLIPS like `--brand-ink` does: the
+     dark theme's amber is a bright marigold that takes near-black ink, this
+     one is a deep bronze that takes white. Without it the podcast play button
+     was `--ink` — a fixed near-black — sitting on a fill that had gone dark
+     underneath it, at 1.6:1. */
+  --amber-ink: 255 255 255;
+  --highlight: 88 100 5;
+  --highlight-ink: 255 255 255;
 
   /* --------------------------------------------------------------- metal */
   /* The one place light mode is a different OBJECT, not a different value. A
@@ -106,10 +186,31 @@
   --metal-shine: rgba(255, 255, 255, 0.35);
   --metal-ink: 255 255 255;
 
+  /* --------------------------------------------------------------- panel */
+  /* The bright card on the paywall, and the one surface in the app that does
+     NOT flip with the theme — which is why it is declared here and left alone
+     in `.dark:root`.
+     It is not a "light-mode sheet": it is a white object sitting on a fixed
+     dark composition (the ray burst and the phone render behind it), so it is
+     white in both themes for the same reason the phone mockup is dark in both.
+     Its ink is measured against ITS ground, not the canvas — `text` would be
+     near-white on white — so the panel carries its own two text rungs. */
+  --panel: 255 255 255;
+  --panel-ink: 42 45 49;
+  --panel-sub: 116 122 130;
+  --panel-inset: rgba(0, 0, 0, 0.045);
+
   /* --------------------------------------------------------------- glass */
-  --glass: rgba(255, 255, 255, 0.78);
-  --glass-tint: rgba(255, 255, 255, 0.5);
-  --glass-edge: rgba(244, 245, 247, 0.75);
+  --glass: rgba(253, 250, 244, 0.9);
+  --glass-tint: rgba(255, 255, 255, 0.6);
+  --glass-edge: rgba(235, 228, 211, 0.75);
+  /* Bare `R,G,B` — the only tokens in this file stored that way, because their
+     one consumer (`GlassSurface`) builds `rgba(...)` around a caller-supplied
+     `tintOpacity`. `tint` is what the native blur is tinted WITH; `fill` is the
+     flat stand-in on devices with no blur to sit on, so it is a hair off the
+     canvas rather than pure — see the note there. */
+  --glass-tint-rgb: 255, 255, 255;
+  --glass-fill-rgb: 250, 246, 238;
 }
 
 .dark:root {
@@ -143,6 +244,10 @@
   --border: rgba(255, 255, 255, 0.12);
   --border-strong: rgba(255, 255, 255, 0.28);
   --hairline: rgba(255, 255, 255, 0.08);
+  --shine: rgba(255, 255, 255, 0.28);
+  /* Nothing to cast: on black a shadow is invisible, and the lift is already
+     carried by the surface being lighter than the ground plus `--shine`. */
+  --lift: rgba(0, 0, 0, 0);
 
   /* --------------------------------------------------------------- brand */
   /* Leaf green, 2026-08-14. 9.5:1 on the black canvas, so it clears the
@@ -152,6 +257,14 @@
   --brand-soft: 116 172 85;
   --brand-soft-ink: 8 17 3;
   --brand-glow: rgba(131, 190, 96, 0.14);
+  /* The held state of a bevelled pill. The face goes UP into a lit green and
+     the label and rim go DOWN into a deep one — 7.65:1 between them, so the
+     label is more legible while held than at rest, not less. `press-glow` is
+     the halo thrown outside the rim, and carries its own alpha because it is
+     spread by a shadow rather than filled. */
+  --brand-press-face: 198 227 172;
+  --brand-press-ink: 36 70 15;
+  --brand-press-glow: rgba(131, 190, 96, 0.38);
   --green: 101 187 100;
   --green-ink: 6 20 10;
   --green-glow: rgba(101, 187, 100, 0.14);
@@ -164,6 +277,7 @@
   /* ------------------------------------------------------------- signals */
   --live: 220 243 204;
   --amber: 245 184 61;
+  --amber-ink: 18 12 0;
   --highlight: 217 242 75;
   --highlight-ink: 18 24 10;
 
@@ -183,4 +297,6 @@
   --glass: rgba(18, 18, 18, 0.72);
   --glass-tint: rgba(0, 0, 0, 0.5);
   --glass-edge: rgba(0, 0, 0, 0.6);
+  --glass-tint-rgb: 10, 11, 13;
+  --glass-fill-rgb: 20, 21, 25;
 }

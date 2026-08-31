@@ -139,7 +139,7 @@ export default function PortfolioScreen({
           <View
             className="w-[38px] h-[38px] rounded-[12px] items-center justify-center"
             style={{
-              backgroundColor: "rgba(255,255,255,0.08)",
+              backgroundColor: C.card,
             }}
           >
             <Text className="font-mono text-[14px] text-silver">{h.sym}</Text>

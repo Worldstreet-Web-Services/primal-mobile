@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { Animated, View, type ViewStyle } from "react-native";
 
-import { C, F } from "../../theme/tokens";
+import { C, F, withAlpha } from "../../theme/tokens";
 import { Body, Label, Mono, PressableScale, PulseDot } from "../ui";
 import { cn } from "@/lib/cn";
 
@@ -34,14 +34,14 @@ export function AssetDisc({
         width: size,
         height: size,
         borderRadius: size / 2,
-        borderColor: stable ? "rgba(124,231,176,0.3)" : C.hairline,
+        borderColor: stable ? withAlpha(C.up, 0.3) : C.hairline,
       }}
     >
       <View
         pointerEvents="none"
         className="absolute top-[0px] left-[7px] right-[7px] h-[1px]"
         style={{
-          backgroundColor: "rgba(255,255,255,0.18)",
+          backgroundColor: C.shine,
         }}
       />
       <Mono
@@ -80,8 +80,8 @@ export function MetaChip({
     <View
       className="flex-row items-center gap-[5px] px-[8px] py-[4px] rounded-[7px] border"
       style={{
-        backgroundColor: tone === "warn" ? "rgba(245,184,61,0.1)" : C.inset,
-        borderColor: tone === "warn" ? "rgba(245,184,61,0.28)" : C.hairline,
+        backgroundColor: tone === "warn" ? withAlpha(C.amber, 0.1) : C.inset,
+        borderColor: tone === "warn" ? withAlpha(C.amber, 0.28) : C.hairline,
       }}
     >
       {pulse ? <PulseDot color={fg} size={5} /> : null}
@@ -295,7 +295,7 @@ export function QuoteCard({
         pointerEvents="none"
         className="absolute top-[0px] left-[14px] right-[14px] h-[1px]"
         style={{
-          backgroundColor: "rgba(255,255,255,0.2)",
+          backgroundColor: C.shine,
         }}
       />
       {children}

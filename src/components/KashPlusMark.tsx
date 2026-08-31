@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Animated, Easing, View, type ViewStyle } from "react-native";
 import Svg, { G, Path } from "react-native-svg";
+import { C } from "../theme/tokens";
 
 /**
  * The KashPlus mark, as geometry rather than artwork.
@@ -39,7 +40,7 @@ function box(width?: number, height?: number) {
 export function KashPlusMark({
   width,
   height,
-  color = "#FFFFFF",
+  color = C.text,
   style,
 }: {
   width?: number;
@@ -81,7 +82,7 @@ const HOLD = 620;
 export function KashPlusLoader({
   width,
   height = 44,
-  color = "#FFFFFF",
+  color = C.text,
   style,
 }: {
   width?: number;
@@ -91,7 +92,6 @@ export function KashPlusLoader({
 }) {
   const size = box(width, height);
   // One driver per bar: they share a timeline but not a phase.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const bars = useMemo(() => BARS.map(() => new Animated.Value(0)), []);
 
   useEffect(() => {

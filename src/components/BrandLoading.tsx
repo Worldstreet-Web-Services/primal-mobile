@@ -7,6 +7,7 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { C } from "../theme/tokens";
 import { KashPlusLoader } from "./KashPlusMark";
+import { useColorScheme } from "nativewind";
 
 const CROWN = require("@/assets/images/crown.png");
 /** The artwork's own ratio (563x418) — width drives, height follows. */
@@ -37,10 +38,27 @@ const MARK_RATIO = 0.42;
  * The wash is light because the blur is doing half the job; doubling up muddies
  * the crown.
  */
-const VEIL = "rgba(26,26,26,0.40)";
-const EDGE = "rgba(10,10,10,0.48)";
-/** The horizontal ramp is the weaker of the two — a phone is taller than wide. */
-const EDGE_SIDE = "rgba(10,10,10,0.34)";
+/**
+ * Per theme, because a veil is a direction and not a colour. Darkening is what
+ * pushes a black canvas back; on the light ground the same three layers have to
+ * push the other way — toward white — or the curtain becomes the brightest
+ * thing on the screen with a near-black mark and a `text-sub` label sitting on
+ * it, neither of which can be read.
+ *
+ * The horizontal ramp is the weaker of the two — a phone is taller than wide.
+ */
+const VEILS = {
+  dark: {
+    veil: "rgba(26,26,26,0.40)",
+    edge: "rgba(10,10,10,0.48)",
+    edgeSide: "rgba(10,10,10,0.34)",
+  },
+  light: {
+    veil: "rgba(245,241,231,0.62)",
+    edge: "rgba(222,215,200,0.62)",
+    edgeSide: "rgba(222,215,200,0.44)",
+  },
+} as const;
 
 /**
  * A soft radial disc — the light the crown stands in.
@@ -116,6 +134,10 @@ export function BrandLoading({
   /** Crown width in points; everything else is derived from it. */
   size?: number;
 }) {
+  // Subscribed: this curtain covers the whole app, so it has no parent whose
+  // re-render it could ride on when the theme changes.
+  const { colorScheme: scheme } = useColorScheme();
+  const veil = VEILS[scheme === "light" ? "light" : "dark"];
   const crownH = size / CROWN_ASPECT;
   const markH = crownH * MARK_RATIO;
   // The bloom is the light the crown stands in, so it has to be wider than the
@@ -173,25 +195,28 @@ export function BrandLoading({
       <BlurView
         pointerEvents="none"
         intensity={38}
-        tint="dark"
+        // Follows the app's scheme. Pinned to "dark" it blurred the page down
+        // toward black under a light-mode veil, so the two layers of the same
+        // curtain pulled in opposite directions.
+        tint={scheme === "light" ? "light" : "dark"}
         style={StyleSheet.absoluteFill}
       />
 
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: VEIL }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: veil.veil }]}
       />
       {/* The two ramps are the depth. Top-to-bottom first, then side-to-side,
           both transparent through the middle so the crown keeps its air. */}
       <LinearGradient
         pointerEvents="none"
-        colors={[EDGE, "transparent", EDGE]}
+        colors={[veil.edge, "transparent", veil.edge]}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
         pointerEvents="none"
-        colors={[EDGE_SIDE, "transparent", EDGE_SIDE]}
+        colors={[veil.edgeSide, "transparent", veil.edgeSide]}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}

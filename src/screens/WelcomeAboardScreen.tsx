@@ -69,13 +69,20 @@ export default function WelcomeAboardScreen({
   const crownW = Math.min(width * 0.92, 350);
   const enter = useMemo(() => new Animated.Value(0), []);
   const crown = useMemo(() => new Animated.Value(0), []);
+  /** The idle bob, held separately so it can run forever under the entrance. */
+  const drift = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     const anim = Animated.parallel([
-      Animated.timing(crown, {
+      // Spring rather than a curve: the crown zooms up from small and passes
+      // its resting size by ~6% before settling. Damping 16 against stiffness
+      // 150 is a ratio of 0.65 — one visible bounce, not a wobble, and the
+      // whole thing is at rest inside half a second.
+      Animated.spring(crown, {
         toValue: 1,
-        duration: 760,
-        easing: Easing.bezier(0.22, 1, 0.36, 1),
+        stiffness: 150,
+        damping: 16,
+        mass: 1,
         useNativeDriver: true,
       }),
       Animated.timing(enter, {
@@ -87,10 +94,33 @@ export default function WelcomeAboardScreen({
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
+      // The bob, forever. Delayed past the spring's settle so the two are
+      // never moving the crown at once — the entrance finishes, THEN it
+      // breathes. `sin` in and out both ways: a linear bob has a corner at the
+      // top and bottom of its travel and reads as a twitch.
+      Animated.sequence([
+        Animated.delay(700),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(drift, {
+              toValue: 1,
+              duration: 1600,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(drift, {
+              toValue: 0,
+              duration: 1600,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]),
+        ),
+      ]),
     ]);
     anim.start();
     return () => anim.stop();
-  }, [enter, crown]);
+  }, [enter, crown, drift]);
 
   /** Slice `enter` into a rise-and-fade for the nth element down the screen. */
   const step = (i: number) => {
@@ -159,20 +189,39 @@ export default function WelcomeAboardScreen({
           <Animated.View
             className="items-center justify-center"
             style={{
-              opacity: crown,
+              // Clamped, and done well before the spring is: the crown should
+              // be fully opaque while it is still growing, so what reads is a
+              // zoom and not a fade.
+              opacity: crown.interpolate({
+                inputRange: [0, 0.35],
+                outputRange: [0, 1],
+                extrapolate: "clamp" as const,
+              }),
               transform: [
                 {
                   // Settles down onto the screen rather than rising into it: a
                   // crown is placed, not launched.
                   translateY: crown.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-26, 0],
+                    outputRange: [-14, 0],
                   }),
                 },
                 {
+                  // The idle bob, summed with the placement translate above.
+                  // Five points of travel over three and a bit seconds — at
+                  // this size it should be felt rather than watched.
+                  translateY: drift.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -5],
+                  }),
+                },
+                {
+                  // NOT clamped, unlike the opacity above — the spring drives
+                  // `crown` past 1, and it is that overshoot mapped through
+                  // here that gives the zoom its little kick at the top.
                   scale: crown.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.86, 1],
+                    outputRange: [0.55, 1],
                   }),
                 },
               ],

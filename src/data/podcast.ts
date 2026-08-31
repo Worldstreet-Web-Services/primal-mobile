@@ -71,6 +71,7 @@ export const catalog: PodcastEpisode[] = [
     summary:
       "Why your order shows as filled before the chain has agreed, what the desk is actually promising when it does, and the handful of cases where that promise is walked back.",
     durationSec: 1520,
+    artwork: require("@/assets/images/podcaster/podcaster_1.png"),
     progress: 0.42,
     chapters: [
       { key: "c1", title: "What an optimistic fill is", at: 0 },
@@ -85,6 +86,7 @@ export const catalog: PodcastEpisode[] = [
     summary:
       "The four readings the pulse screen puts in front of you, and the order to read them in when the market is moving faster than you are.",
     durationSec: 1265,
+    artwork: require("@/assets/images/podcaster/podcaster_2.png"),
     chapters: [
       { key: "c1", title: "The four readings", at: 0 },
       { key: "c2", title: "Reading them in order", at: 402 },
@@ -97,6 +99,7 @@ export const catalog: PodcastEpisode[] = [
     summary:
       "Where points come from, what they are worth, and why settlement waits for the week to close rather than paying out the moment you earn them.",
     durationSec: 980,
+    artwork: require("@/assets/images/podcaster/podcaster_3.png"),
     chapters: [
       { key: "c1", title: "Earning", at: 0 },
       { key: "c2", title: "Why weekly", at: 344 },
@@ -109,6 +112,7 @@ export const catalog: PodcastEpisode[] = [
     summary:
       "Picking a leader is the easy half. This one is about the other half: sizing your stake, reading a track record honestly, and knowing when to stop copying.",
     durationSec: 1810,
+    artwork: require("@/assets/images/podcaster/podcaster_1.png"),
     chapters: [
       { key: "c1", title: "Reading a track record", at: 0 },
       { key: "c2", title: "Sizing the stake", at: 520 },
@@ -122,6 +126,7 @@ export const catalog: PodcastEpisode[] = [
     summary:
       "Three locks, three different jobs. What each one actually protects, and what happens to your account when you lose the device holding them.",
     durationSec: 1120,
+    artwork: require("@/assets/images/podcaster/podcaster_2.png"),
     chapters: [
       { key: "c1", title: "Three locks, three jobs", at: 0 },
       { key: "c2", title: "Losing the device", at: 615 },
@@ -199,9 +204,30 @@ export const episodes: Episode[] = catalog.map((episode) => ({
 }));
 
 export const authors: Author[] = [
-  { key: "amara", name: "Amara O.", accentClassName: "border-brand" },
-  { key: "zainab", name: "Zainab K." },
-  { key: "tobi", name: "Tobi A." },
-  { key: "kelechi", name: "Kelechi N." },
-  { key: "dami", name: "Dami F." },
+  {
+    key: "amara",
+    name: "Amara O.",
+    accentClassName: "border-brand",
+    artwork: require("@/assets/images/authors/author_1.png"),
+  },
+  {
+    key: "zainab",
+    name: "Zainab K.",
+    artwork: require("@/assets/images/authors/author_2.png"),
+  },
+  {
+    key: "tobi",
+    name: "Tobi A.",
+    artwork: require("@/assets/images/authors/author_3.png"),
+  },
+  {
+    key: "kelechi",
+    name: "Kelechi N.",
+    artwork: require("@/assets/images/authors/author_4.png"),
+  },
+  {
+    key: "dami",
+    name: "Dami F.",
+    artwork: require("@/assets/images/authors/author_1.png"),
+  },
 ];

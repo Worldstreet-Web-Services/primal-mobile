@@ -1,4 +1,5 @@
 import { router, type Href } from "expo-router";
+import { useCallback, useState } from "react";
 
 import {
   TABS,
@@ -40,11 +41,6 @@ const FEATURE_ROUTES: Record<string, Href> = {
  * endpoint lands, and not before.
  */
 const PREVIEW_SURFACES = new Set(["auto-earn", "copy-trading"]);
-
-const MEDIA_ROUTES: Record<string, Href> = {
-  podcast: "/podcast",
-  news: "/news",
-};
 
 /**
  * Where the tab bar goes. Read off `TABS` rather than written out again, so a
@@ -300,6 +296,49 @@ function portfolioView(
   return { state: "total", amount, legs };
 }
 
+/* --------------------------------------------------------------- the pull */
+
+/**
+ * Pull to refresh, over both legs of the figure.
+ *
+ * One pull re-reads both: `reload` re-asks LinkPay for the account, and the
+ * balance request keys off the version it ticks, so that single call covers
+ * the whole naira side; `refresh` re-reads the chains.
+ *
+ * The spinner is held for the crypto read alone, because that is the only one
+ * of the two that reports finishing. `reload` answers through state rather
+ * than a promise, and watching that state settle would mean clearing the
+ * spinner from inside an effect — the cascading render the compiler rejects.
+ * Little is lost to that: the crypto read is the slower of the two in practice
+ * (seven chains and a price lookup, against one account call), and a naira leg
+ * still in the air says so for itself inside the card, which is where this
+ * screen states everything else it does not yet know.
+ *
+ * `refresh` resolves on every outcome — the store catches its own failures and
+ * flags them rather than throwing — so the spinner cannot be left up.
+ */
+function usePullToRefresh(
+  fiat: FiatBalanceState,
+  crypto: ReturnType<typeof useCryptoPortfolio>,
+) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { reload } = fiat;
+  const { refresh } = crypto;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    reload();
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reload, refresh]);
+
+  return { refreshing, onRefresh };
+}
+
 /**
  * Home.
  *
@@ -317,6 +356,7 @@ export default function Home() {
   const fiat = useFiatBalance();
   const crypto = useCryptoPortfolio();
   const [masked, toggleMasked] = useBalanceMasked();
+  const { refreshing, onRefresh } = usePullToRefresh(fiat, crypto);
 
   return (
     <HomeScreen
@@ -325,12 +365,13 @@ export default function Home() {
       portfolio={portfolioView(fiat, crypto)}
       masked={masked}
       onToggleMasked={toggleMasked}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       features={TILES}
       activity={showSampleActivity ? sampleActivity : []}
       tab="home"
       onSelectTab={(key) => open(TAB_ROUTES, key)}
       onOpenFeature={(key) => open(FEATURE_ROUTES, key)}
-      onOpenMedia={(key) => open(MEDIA_ROUTES, key)}
       onNotifications={() => router.push("/pulse")}
       onOpenProfile={() => router.push("/profile")}
       onDeposit={() => router.push("/fund")}

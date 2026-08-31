@@ -2,7 +2,7 @@ import { Image, type ImageContentPosition, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { View, type ViewStyle } from "react-native";
 
-import { C } from "../../theme/tokens";
+import { C, withAlpha } from "../../theme/tokens";
 
 /**
  * Artwork well used by the hero and the ecosystem cards. Renders the supplied
@@ -57,7 +57,15 @@ export function ArtSlot({
   );
 }
 
-/** Placeholder: a tilted glass capsule catching a rim light. */
+/**
+ * Placeholder: a tilted glass capsule catching a rim light.
+ *
+ * The capsule is mixed from `C.text` rather than from white. In dark that is
+ * the same thing to within two points, so nothing about this placeholder
+ * changes there; in light it is what stops the whole object disappearing —
+ * every face, edge and highlight here was a white wash, and this sits on a
+ * card that is now white.
+ */
 function GlassObject({ size, tint }: { size: number; tint: string }) {
   return (
     <View
@@ -77,7 +85,7 @@ function GlassObject({ size, tint }: { size: number; tint: string }) {
         }}
       />
       <LinearGradient
-        colors={["rgba(255,255,255,0.22)", "rgba(255,255,255,0.04)"]}
+        colors={[withAlpha(C.text, 0.22), withAlpha(C.text, 0.04)]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={{
@@ -85,7 +93,7 @@ function GlassObject({ size, tint }: { size: number; tint: string }) {
           height: size * 0.72,
           borderRadius: size * 0.24,
           borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.22)",
+          borderColor: withAlpha(C.text, 0.22),
           transform: [{ rotate: "-12deg" }],
           overflow: "hidden",
         }}
@@ -109,7 +117,7 @@ function GlassObject({ size, tint }: { size: number; tint: string }) {
             width: size * 0.18,
             height: size * 0.18,
             borderRadius: size * 0.09,
-            backgroundColor: "rgba(255,255,255,0.35)",
+            backgroundColor: withAlpha(C.text, 0.35),
           }}
         />
       </LinearGradient>

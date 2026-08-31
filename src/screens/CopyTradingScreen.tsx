@@ -96,7 +96,7 @@ function SectionHeader({
 /** Icon tile — the same square in front of every summary row on this screen. */
 function Glyph({ children }: { children: React.ReactNode }) {
   return (
-    <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/5">
+    <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card">
       {children}
     </View>
   );
@@ -184,7 +184,7 @@ export default function CopyTradingScreen({
           Copy top traders. Grow together.
         </Body> */}
 
-        <View className="mt-5 flex-row items-center gap-3 rounded-3xl border border-white/10 bg-canvas-raised p-4">
+        <View className="mt-5 flex-row items-center gap-3 rounded-3xl border border-rule bg-canvas-raised p-4">
           <Glyph>
             <WalletIcon size={22} color={C.silver} />
           </Glyph>
@@ -206,7 +206,7 @@ export default function CopyTradingScreen({
           scale={0.99}
           accessibilityLabel={`${copyingLine}. Open your copy positions`}
         >
-          <View className="mt-4 flex-row items-center gap-3 rounded-3xl border border-white/10 bg-canvas-raised p-4">
+          <View className="mt-4 flex-row items-center gap-3 rounded-3xl border border-rule bg-canvas-raised p-4">
             <Glyph>
               <UsersIcon size={21} color={C.silver} />
             </Glyph>

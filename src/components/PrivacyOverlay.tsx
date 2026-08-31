@@ -29,7 +29,6 @@ export function PrivacyOverlay() {
   const [mounted, setMounted] = useState(
     () => AppState.currentState !== "active",
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const opacity = useMemo(
     () => new Animated.Value(AppState.currentState !== "active" ? 1 : 0),
     [],

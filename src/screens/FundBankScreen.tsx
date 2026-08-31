@@ -26,7 +26,7 @@ import {
 } from "../lib/gateway/linkpay";
 import { formatMoney } from "../lib/gateway/money";
 import { SessionExpiredError, type Deposit } from "../lib/gateway/types";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import { cn } from "@/lib/cn";
 
 /**
@@ -135,15 +135,15 @@ function Gate({
 }) {
   const edge =
     tone === "bad"
-      ? "rgba(246,165,165,0.35)"
+      ? withAlpha(C.down, 0.35)
       : tone === "warn"
-        ? "rgba(245,184,61,0.32)"
+        ? withAlpha(C.amber, 0.32)
         : C.border;
   return (
     <View
       className="mt-[28px] border rounded-[20px] p-[20px] overflow-hidden"
       style={{
-        backgroundColor: tone === "bad" ? "rgba(246,165,165,0.08)" : C.raised,
+        backgroundColor: tone === "bad" ? withAlpha(C.down, 0.08) : C.raised,
         borderColor: edge,
       }}
     >
@@ -501,7 +501,7 @@ export default function FundBankScreen({
         <View
           className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            borderColor: "rgba(124,231,176,0.35)",
+            borderColor: withAlpha(C.up, 0.35),
           }}
         >
           <CheckSeal />
@@ -623,7 +623,7 @@ export default function FundBankScreen({
           <View
             className="px-[18px] pt-[16px] pb-[14px] bg-brand-glow border-b"
             style={{
-              borderBottomColor: "rgba(131,190,96,0.28)",
+              borderBottomColor: withAlpha(C.brand, 0.28),
             }}
           >
             <Label className="text-brand-soft">Your naira account</Label>

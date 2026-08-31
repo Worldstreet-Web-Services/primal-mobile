@@ -87,6 +87,35 @@ const ORBIT_CY = 0.42;
  */
 const ORBIT_H = 0.97;
 
+/**
+ * The arrival spin: the system turns on its rings, then settles.
+ *
+ * `ORBIT_TURNS` is WHOLE turns on purpose, and that is the whole trick. The
+ * composition is built on the angles in `SATELLITES` — 130 degrees, 221 — and
+ * those angles are where the objects belong, so the run has to end exactly
+ * where it started. Stop the sweep on a fraction of a turn and the diagram
+ * comes to rest in a layout nobody composed, different every build.
+ *
+ * It runs ONCE. An orbit that never stops is a spinner, and a spinner on a
+ * sign-in screen says the screen is still loading — the motion here is the
+ * system introducing itself, so it has to finish.
+ */
+const ORBIT_TURNS = 5;
+/**
+ * Long, because the count is high, and lengthened again once it was on screen:
+ * five turns in a hurry is a blur, and a blur cannot be read as four objects on
+ * rings. Paired with the sinusoidal in-out this peaks at about two thirds of a
+ * turn a second — roughly half the first pass — and spends most of the run
+ * below that, which is slow enough to follow one object all the way round.
+ *
+ * Speed here is duration, not turn count: the run has to end on a WHOLE number
+ * of turns (see above), so slowing the sweep means taking longer over the same
+ * five, never taking fewer.
+ */
+const ORBIT_SPIN_MS = 12000;
+/** Held until the field's own fade-in (`step(1)`) has it on screen to watch. */
+const ORBIT_SPIN_DELAY = 260;
+
 type Satellite = {
   id: string;
   /**
@@ -156,57 +185,150 @@ const SATELLITES: Satellite[] = [
   },
 ];
 
+/**
+ * Orbital radius, in fractions of the field width. The centre object has none —
+ * a ring of zero is exactly what "parked at the middle" means, which is what
+ * lets `place` and `Orbiter` below treat it as an ordinary satellite instead of
+ * carrying a special case each.
+ */
+function radiusOf(s: Satellite) {
+  return s.ring < 0 ? 0 : RINGS[s.ring];
+}
+
 /** Where a satellite lands, in fractions of the field width. */
 function place(s: Satellite) {
-  if (s.ring < 0) return { x: ORBIT_CX, y: ORBIT_CY };
-  const r = RINGS[s.ring];
+  const r = radiusOf(s);
   const t = (s.angle * Math.PI) / 180;
   // Screen y grows downward, so the sine subtracts rather than adds.
   return { x: ORBIT_CX + r * Math.cos(t), y: ORBIT_CY - r * Math.sin(t) };
 }
 
 /**
- * One object in its halo. The halo is the reason a placeholder does not read as
- * a hole: a lit object on true black needs something around it to stand in, or
- * it reads as a sticker laid on the glass.
+ * Turns for a given ring, and the reason the rings do not move as one dial.
+ *
+ * `ORBIT_TURNS` is the count for ring 1 — the ring the design hangs two of its
+ * four objects on — and every ring outward of it takes one turn fewer over the
+ * same duration. So the outer objects sweep slower than the inner ones, which
+ * is both what an orbit does and what stops four objects at four radii reading
+ * as one rotating plate. Same duration for all of them, so they come to rest
+ * together rather than trailing in one by one.
+ *
+ * Zero for the centre object: it has no ring to travel, so it never rotates.
+ */
+function turnsFor(ring: number) {
+  if (ring < 0) return 0;
+  return Math.max(1, ORBIT_TURNS - (ring - 1));
+}
+
+/**
+ * One object in its halo, and the machinery that walks it round its ring.
+ *
+ * THREE nested views, each with exactly one transform, because the composition
+ * of them is the point:
+ *
+ *   carrier   a square whose centre IS the ring centre, rotating. Rotating a
+ *             box about its own middle is what carries the child round the
+ *             circle — no per-frame trigonometry, an exact circle rather than
+ *             the polygon a multi-point `interpolate` would trace, and it stays
+ *             on the native driver. The square is sized to the orbit's own
+ *             bounding box (`2r + d`) so the child can never reach outside it:
+ *             Android clips children that overflow their parent, and a carrier
+ *             sized any smaller would eat the object for half of every turn.
+ *   upright   the object's box, counter-rotating by exactly what the carrier
+ *             turns. Without it the artwork tumbles as it travels — the halo is
+ *             a circle and would not show it, but what sits inside is not.
+ *   drift     the idle bob. Innermost, so it is a screen-vertical translate
+ *             rather than one in whatever frame the sweep has rotated into.
+ *
+ * The centre object falls out of all this on its own: its radius is zero, so
+ * the carrier collapses onto the object itself, and `turnsFor` gives it no
+ * rotation to do.
  */
 function Orbiter({
   satellite,
   width,
   drift,
+  spin,
 }: {
   satellite: Satellite;
   /** Field width in points — everything below is a fraction of it. */
   width: number;
   /** 0→1 driver for the idle float. Each object reads it at its own phase. */
   drift: Animated.Value;
+  /** 0→1 driver for the arrival spin, shared by the whole system. */
+  spin: Animated.Value;
 }) {
   const { x, y } = place(satellite);
   const d = satellite.size * width;
+  const r = radiusOf(satellite) * width;
+  const turns = turnsFor(satellite.ring);
+  const carrier = 2 * r + d;
+
+  // Clockwise, which RN gives on POSITIVE degrees. Note that this runs against
+  // the convention `place` reads its angles in — degrees anticlockwise from
+  // east — so the sweep and the coordinates count in opposite directions. That
+  // costs nothing while the run is whole turns: the objects pass through every
+  // composed angle either way and land back on their own.
+  const sweep = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", `${turns * 360}deg`],
+  });
+  // Exactly what the carrier turns, back the other way, so the object stays
+  // upright while it travels.
+  const upright = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", `${-turns * 360}deg`],
+  });
 
   return (
     <Animated.View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={satellite.label}
-      className="absolute items-center justify-center bg-card border border-rule"
       style={{
-        left: x * width - d / 2,
-        top: y * width - d / 2,
-        width: d,
-        height: d,
-        borderRadius: d / 2,
-        transform: [
-          {
-            translateY: drift.interpolate({
-              inputRange: [0, 0.5, 1],
-              outputRange: [0, -d * 0.06, 0],
-            }),
-          },
-        ],
+        position: "absolute",
+        left: ORBIT_CX * width - carrier / 2,
+        top: ORBIT_CY * width - carrier / 2,
+        width: carrier,
+        height: carrier,
+        transform: turns > 0 ? [{ rotate: sweep }] : undefined,
       }}
     >
-      <ArtSlot source={satellite.art} size={d * 0.68} tint={satellite.tint} />
+      <Animated.View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={satellite.label}
+        className="absolute"
+        style={{
+          // The satellite's offset from the ring centre, which is the middle of
+          // the carrier: `(x - ORBIT_CX) * width` is `r·cos` by construction.
+          left: carrier / 2 + (x - ORBIT_CX) * width - d / 2,
+          top: carrier / 2 + (y - ORBIT_CY) * width - d / 2,
+          width: d,
+          height: d,
+          transform: turns > 0 ? [{ rotate: upright }] : undefined,
+        }}
+      >
+        <Animated.View
+          className="items-center justify-center bg-card border border-rule"
+          style={{
+            width: d,
+            height: d,
+            borderRadius: d / 2,
+            transform: [
+              {
+                translateY: drift.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0, -d * 0.06, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          <ArtSlot
+            source={satellite.art}
+            size={d * 0.68}
+            tint={satellite.tint}
+          />
+        </Animated.View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -216,7 +338,6 @@ function OrbitField({ width }: { width: number }) {
 
   // One driver per object so they float out of phase; a shared one makes four
   // objects bob in lockstep, which reads as the whole screen breathing.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const drifts = useMemo(() => SATELLITES.map(() => new Animated.Value(0)), []);
 
   useEffect(() => {
@@ -235,6 +356,35 @@ function OrbitField({ width }: { width: number }) {
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
   }, [drifts]);
+
+  /**
+   * The arrival spin — ONE driver for the whole system, unlike the drifts.
+   *
+   * Shared on purpose, and the opposite call from the bobs above: the bobs are
+   * four objects idling independently, but the sweep is the system turning, so
+   * every ring reads the same clock and they all settle on the same frame. The
+   * rings still move at different rates — that is `turnsFor`, not a second
+   * timer.
+   *
+   * `timing`, never `loop`. It runs once and stops on the layout it started on.
+   */
+  const spin = useMemo(() => new Animated.Value(0), []);
+
+  useEffect(() => {
+    const run = Animated.timing(spin, {
+      toValue: 1,
+      duration: ORBIT_SPIN_MS,
+      delay: ORBIT_SPIN_DELAY,
+      // Starts from rest and returns to rest: the system spins up as the field
+      // fades in and eases down onto its composed position. `out` alone would
+      // have it already at full speed on the first frame, which reads as a cut
+      // from another animation rather than as a beginning.
+      easing: Easing.inOut(Easing.sin),
+      useNativeDriver: true,
+    });
+    run.start();
+    return () => run.stop();
+  }, [spin]);
 
   return (
     <View
@@ -257,7 +407,13 @@ function OrbitField({ width }: { width: number }) {
         ))}
       </Svg>
       {SATELLITES.map((s, i) => (
-        <Orbiter key={s.id} satellite={s} width={width} drift={drifts[i]} />
+        <Orbiter
+          key={s.id}
+          satellite={s}
+          width={width}
+          drift={drifts[i]}
+          spin={spin}
+        />
       ))}
       {/* The field does not end, it dissolves. Without this the lowest ring
           crosses the headline and the two compete; with it the diagram sinks
@@ -409,15 +565,15 @@ export default function SignInScreen({
           the headline off the rings. */}
       <Animated.View
         pointerEvents="none"
-        className="absolute left-[0px]"
+        className="absolute left-[0px] w-full"
         style={[
           {
-            top: insets.top + 75 + lockup + FIELD_GAP,
+            top: insets.top + 85 + lockup + FIELD_GAP,
           },
           step(1),
         ]}
       >
-        <OrbitField width={width} />
+        <OrbitField width={width - 20} />
       </Animated.View>
 
       <View

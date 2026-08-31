@@ -1,5 +1,4 @@
-import { Image, type ImageSource } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import React, {
   useCallback,
   useEffect,
@@ -12,12 +11,9 @@ import {
   Easing,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,6 +27,7 @@ import {
   PulseDot,
   QuietButton,
 } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import { decimalsFor, formatMoney, toBigInt } from "@/lib/gateway/money";
 import * as subs from "@/lib/gateway/subscription";
 import { formatCountdown, toDate } from "@/lib/gateway/time";
@@ -41,8 +38,7 @@ import {
   type PrimalAppState,
   type Subscription,
 } from "@/lib/gateway/types";
-import { C } from "@/theme/tokens";
-import { cn } from "@/lib/cn";
+import { C, withAlpha } from "@/theme/tokens";
 
 /**
  * The paywall — and, for someone who already pays, the membership page.
@@ -64,49 +60,55 @@ import { cn } from "@/lib/cn";
 
 /* ------------------------------------------------------------------ pitch */
 
-interface Benefit {
-  key: string;
-  title: string;
-  art: ImageSource;
-}
-
 /**
- * The carousel's contents — DATA, so the shelf renders exactly as many cards as
- * there is artwork for.
+ * The pitch — three lines of plain English, and DATA so the panel renders
+ * exactly what is on this list.
  *
- * A card with no image is a black rectangle with a caption, which on a paywall
- * reads as a broken app rather than as a benefit. So an entry only lands here
- * once its art is on disk beside these two; the dots count themselves off this
- * list, and nothing else needs touching.
+ * It was a carousel of artwork cards until the reference replaced it with a
+ * bulleted list on a white panel. A benefit is a sentence here, not a picture:
+ * nothing needs art on disk before it can be sold, and the list cannot fall
+ * below the fold the way a 330pt shelf could.
  */
-const BENEFITS: readonly Benefit[] = [
-  {
-    key: "top-traders",
-    title: "Access to top traders",
-    art: require("@/assets/images/top_traders.png") as ImageSource,
-  },
-  {
-    key: "kash-engine",
-    title: "Kash Engine",
-    art: require("@/assets/images/kash_engine.png") as ImageSource,
-  },
+const BENEFITS: readonly string[] = [
+  "Access to copy top traders",
+  "Seamless international payments",
+  "Auto Earn (Kash Engine)",
 ];
 
+const RAYS = require("@/assets/images/star_behind.png");
+const PHONE = require("@/assets/images/phone_mockup.png");
+
+/** The ray artwork's own ratio — drawn tall, bleeding off the bottom. */
+const RAYS_ASPECT = 660 / 1395;
 /**
- * The design's card is 300×330 and the artwork was exported to match (293×311,
- * 293×327). On a phone that is ~76% of the viewport, which is what puts the next
- * card's edge on screen — the peek IS the affordance that says "these scroll".
- * Capped rather than fixed so a narrow device shrinks the card instead of
- * pushing the peek off the right edge entirely.
+ * Where the rays converge, as a fraction of the artwork's height. The burst is
+ * drawn off-centre in its own file, so anchoring the layout to the file's top
+ * would put the light source wherever the export happened to leave it.
  */
-const CARD_MAX_W = 300;
-const CARD_RATIO = 330 / 300;
-const CARD_GAP = 14;
-const CARD_RADIUS = 18;
-/** Below this the artwork stops being a card and starts being a thumbnail. */
-const CARD_MIN_H = 236;
-/** Dots plus their breathing room — reserved so they never fall off the page. */
-const DOTS_BLOCK = 34;
+const RAYS_EYE = 0.34;
+/** Oversized so every ray leaves through an edge instead of ending in a cut. */
+const RAYS_OVERSCAN = 1.35;
+/**
+ * The lockup's row height — a 26pt mark beside 27pt display type.
+ *
+ * A constant rather than a measurement because it is what the burst is aimed
+ * at: WelcomeAboardScreen anchors its eye to a fraction of the screen, which
+ * works when the light comes out of an object floating mid-page, but here it
+ * comes out of the WORDMARK. Aimed at a fraction, the eye drifts away from the
+ * mark on every handset whose insets differ from the one it was tuned on.
+ */
+const LOCKUP_H = 34;
+
+/** The handset render's own ratio (1312x2656) — width drives, height follows. */
+const PHONE_ASPECT = 1312 / 2656;
+/**
+ * How much of the width the handset takes, capped so it stays an object rather
+ * than a backdrop. At this fraction its height always exceeds the room above
+ * the panel, which is what guarantees the panel overlaps it — the composition
+ * is a card sitting ON the phone, and a gap between them reads as a mistake.
+ */
+const PHONE_WIDTH = 0.82;
+const PHONE_MAX_W = 340;
 
 /** Page gutter. Matches SignInScreen, because the lockup has to sit identically. */
 const GUTTER = 26;
@@ -172,86 +174,50 @@ function Lockup() {
   );
 }
 
-function BenefitCard({
-  benefit,
-  width,
-  height,
-}: {
-  benefit: Benefit;
-  width: number;
-  height: number;
-}) {
+/**
+ * The pitch, set on white.
+ *
+ * The reference lifts the offer off the dark composition and onto a bright card
+ * that overlaps the handset — so this is the one surface in the app whose ink is
+ * measured against ITS ground rather than the canvas, which is what the `panel`
+ * tokens exist for. Using `text-text` here would put near-white type on white.
+ *
+ * It renders the price the caller already formatted rather than the `Money`, so
+ * there is exactly one place in this file that decides how a price is set.
+ */
+function Pitch({ price, period }: { price: string; period: string }) {
   return (
-    <View
-      className="overflow-hidden bg-sheet"
-      style={{
-        width,
-        height,
-        borderRadius: CARD_RADIUS,
-      }}
-      accessible
-      accessibilityLabel={benefit.title}
-    >
-      {/* The artwork is a cut-out on transparency, so the card has to supply its
-          own ground. Cast toward the brand rather than neutral: the accent
-          sitting on plain charcoal goes muddy, on a green-biased black it keeps
-          its lit edge. Re-cast off the gold 2026-08-22 with the brand; kept a
-          hair darker than the old #3A3222 so the text tiers measured against
-          this slab in `C` only gain contrast. */}
-      <LinearGradient
-        colors={["#26331C", "#121410"]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <Image
-        source={benefit.art}
-        contentFit="cover"
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Scrim, not a caption bar. The title sits ON the image, and the only
-          thing between them is enough falloff to keep it readable. */}
-      <LinearGradient
-        colors={["rgba(10,10,10,0)", "rgba(10,10,10,0.88)"]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: Math.round(height * 0.46),
-        }}
-      />
-      <Body
-        className="text-[15px] font-body-semibold absolute left-[16px] right-[16px] bottom-[15px]"
+    <View className="bg-panel rounded-[28px] px-[24px] pt-[26px] pb-[24px]">
+      <Text className="font-display-bold text-[24px] leading-[30px] tracking-[-0.5px] text-panel-ink">
+        Get exclusive benefits with KashPlus subscription
+      </Text>
 
-        numberOfLines={2}
-      >
-        {benefit.title}
-      </Body>
-    </View>
-  );
-}
+      <View className="mt-[22px] gap-[11px]">
+        {BENEFITS.map((benefit) => (
+          <View key={benefit} className="flex-row items-start gap-[11px]">
+            {/* Optically centred on the first line rather than top-aligned:
+                a 5pt dot on the cap line of 21pt leading sits at 8. */}
+            <View className="w-[5px] h-[5px] rounded-[3px] bg-panel-ink mt-[8px]" />
+            <Text className="flex-1 font-body-medium text-[14.5px] leading-[21px] text-panel-ink">
+              {benefit}
+            </Text>
+          </View>
+        ))}
+      </View>
 
-/** Page position. The active dot elongates rather than brightening, so the
- *  shelf's position is legible at a glance instead of by comparing two greys. */
-function Dots({ count, active }: { count: number; active: number }) {
-  if (count < 2) return null;
-  return (
-    <View className="flex-row items-center justify-center gap-[6px] mt-[18px]">
-      {Array.from({ length: count }, (_, i) => (
-        <View
-          key={i}
-          className={cn(
-            "h-[6px] rounded-[3px]",
-            i === active ? "bg-brand" : "bg-border-strong",
-          )}
-          style={{
-            width: i === active ? 20 : 6,
-          }}
-        />
-      ))}
+      {/* The price, inset into its own well so the figure reads as the terms
+          rather than as a fourth benefit. */}
+      <View className="bg-panel-inset rounded-[16px] px-[16px] py-[14px] mt-[22px]">
+        <Text className="font-body text-[14.5px] leading-[22px] text-panel-sub">
+          {"Get access to these and more in the KashPlus ecosystem for "}
+          {/* `Mono` for the tabular numerals, and inked to the panel's own dark
+              rung — the figure is the one word in this sentence being sold. */}
+          <Mono className="text-[14.5px] text-panel-ink font-mono-semibold">
+            {price}
+          </Mono>
+          {` per ${period}.`}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -316,8 +282,8 @@ function Notice({
       accessibilityLabel="Dismiss"
       className="border rounded-[16px] p-[14px]"
       style={{
-        backgroundColor: "rgba(246,165,165,0.1)",
-        borderColor: "rgba(246,165,165,0.35)",
+        backgroundColor: withAlpha(C.down, 0.1),
+        borderColor: withAlpha(C.down, 0.35),
       }}
     >
       <Body className="text-[12.5px] text-down font-body-semibold">
@@ -380,13 +346,7 @@ export default function SubscriptionScreen({
   const [confirmImmediate, setConfirmImmediate] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [rechecking, setRechecking] = useState(false);
-  const [page, setPage] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  // Measured, because the headline is the one block whose height cannot be
-  // predicted — it wraps to three lines or four depending on the device, and
-  // the shelf has to live in whatever is left.
-  const [viewportH, setViewportH] = useState(0);
-  const [shelfY, setShelfY] = useState(0);
 
   const alive = useRef(true);
   useEffect(() => {
@@ -519,53 +479,28 @@ export default function SubscriptionScreen({
 
   const price = priceText(subs.priceOf(membership));
 
-  // 76% of the viewport, capped at the design's 300. The cap is what holds the
-  // artwork at its exported size on a normal phone; the fraction is what keeps
-  // the next card peeking on a narrow one instead of pushing it off the edge.
-  const baseW = Math.min(CARD_MAX_W, Math.round(width * 0.76));
-  // Then fit that to the room the headline actually left. At the design size the
-  // shelf's foot lands a few points past the fold on a 6.1" phone, which puts
-  // the dots — the only thing saying how many cards there are — out of sight.
-  // Shrinking the card by those few points is a far smaller lie than hiding the
-  // pagination, and the ratio is held either way so the artwork never distorts.
-  const room =
-    viewportH > 0 && shelfY > 0 ? viewportH - shelfY - DOTS_BLOCK : 0;
-  const cardH =
-    room > 0
-      ? Math.max(CARD_MIN_H, Math.min(Math.round(baseW * CARD_RATIO), room))
-      : Math.round(baseW * CARD_RATIO);
-  const cardW = Math.min(baseW, Math.round(cardH / CARD_RATIO));
-  const stride = cardW + CARD_GAP;
-
   /**
-   * The trailing inset that makes the pagination TRUE.
+   * The burst, and the handset it lights.
    *
-   * Snap points sit at `k * stride`, and card `k` only lands on the left gutter
-   * at that offset. With a symmetric gutter the content simply ends too soon:
-   * the shelf can be dragged no further than `content - viewport`, which for two
-   * 300pt cards on a 393pt phone is ~40pt short of the second snap point, and
-   * for three is a whole card short of the third. The dots then advertise a
-   * position the shelf physically cannot take — the last one worst of all, since
-   * it can never be the card resting at the gutter.
-   *
-   * Padding the tail by exactly the empty space to the right of a gutter-aligned
-   * card makes the scrollable range `(n - 1) * stride` for ANY n: every snap
-   * point is reachable, the last card comes fully to the gutter, and the dot for
-   * it lights up because the content got there rather than because the offset
-   * happened to round up. The `GUTTER` floor is a safety net for a viewport too
-   * narrow to leave any tail; the card cap (76% of width) keeps it unused.
+   * Both are laid out in POINTS off the width rather than in percentages: a
+   * percentage `top` resolves against the parent's height while the artwork is
+   * sized off its own aspect, so the composition would drift with the shape of
+   * the handset it is running on.
    */
-  const shelfTail = Math.max(GUTTER, width - GUTTER - cardW);
+  const raysW = width * RAYS_OVERSCAN;
+  const raysH = raysW / RAYS_ASPECT;
+  const raysBox = {
+    position: "absolute" as const,
+    width: raysW,
+    height: raysH,
+    left: (width - raysW) / 2,
+    // The eye lands on the middle of the lockup — same arithmetic the padded
+    // column below uses to place it, so the two cannot drift apart.
+    top: insets.top + 14 + LOCKUP_H / 2 - raysH * RAYS_EYE,
+  };
 
-  const onShelfScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (stride <= 0) return;
-      const raw = Math.round(event.nativeEvent.contentOffset.x / stride);
-      const next = Math.max(0, Math.min(BENEFITS.length - 1, raw));
-      setPage((current) => (current === next ? current : next));
-    },
-    [stride],
-  );
+  const phoneW = Math.min(PHONE_MAX_W, Math.round(width * PHONE_WIDTH));
+  const phoneH = Math.round(phoneW / PHONE_ASPECT);
 
   const frame = useMemo(
     () => ({
@@ -638,7 +573,6 @@ export default function SubscriptionScreen({
             />
             <Mono
               size={10}
-
               className={cn(
                 "tracking-[1.4px]",
                 ending ? "text-amber" : "text-up",
@@ -685,8 +619,8 @@ export default function SubscriptionScreen({
                   <View
                     className="border rounded-[20px] p-[18px]"
                     style={{
-                      backgroundColor: "rgba(246,165,165,0.08)",
-                      borderColor: "rgba(246,165,165,0.3)",
+                      backgroundColor: withAlpha(C.down, 0.08),
+                      borderColor: withAlpha(C.down, 0.3),
                     }}
                   >
                     <Body className="text-[14px] text-down font-body-semibold">
@@ -710,7 +644,7 @@ export default function SubscriptionScreen({
                         loading={cancelling}
                         style={{
                           flex: 1,
-                          borderColor: "rgba(246,165,165,0.45)",
+                          borderColor: withAlpha(C.down, 0.45),
                         }}
                       />
                     </View>
@@ -776,26 +710,52 @@ export default function SubscriptionScreen({
   // back rather than sell a second one.
   const resumable = pending !== null || state === "payment_pending";
 
+  /**
+   * The reference's composition, top to bottom: the burst, the lockup it comes
+   * out of, the handset, and the white panel sitting ON the handset with the
+   * CTA under it.
+   *
+   * NOT a ScrollView, unlike the shelf version this replaced. Every block here
+   * is fixed or flexes, so the page is exactly one screen tall on any handset —
+   * and a paywall whose CTA can be scrolled off is a paywall with a way to miss
+   * the button.
+   */
   return (
-    <View style={frame}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
-        onLayout={(event) => setViewportH(event.nativeEvent.layout.height)}
+    <View className="flex-1 bg-canvas">
+      {/* Outside the padded column on purpose: the burst bleeds to the edges,
+          and inside it the insets would inset the light source too. */}
+      <View pointerEvents="none" style={raysBox}>
+        <Image
+          source={RAYS}
+          contentFit="fill"
+          style={{ width: raysW, height: raysH, opacity: 0.55 }}
+        />
+      </View>
+
+      <View
+        className="flex-1"
+        style={{
+          paddingTop: insets.top + 14,
+          paddingBottom: Math.max(insets.bottom, 24) + 6,
+        }}
       >
+        {/* The lockup is CENTRED, which is why the exit is absolute rather than
+            a row sibling: pushed apart with a spacer, the wordmark would sit
+            wherever the word "Sign out" left room for it, and move when the
+            label changes. */}
         <Animated.View
-          className="flex-row items-center"
-          style={[
-            {
-              paddingHorizontal: GUTTER,
-            },
-            step(0),
-          ]}
+          className="flex-row items-center justify-center"
+          style={[{ paddingHorizontal: GUTTER }, step(0)]}
         >
           <Lockup />
-          <View className="flex-1" />
           {onBack ? (
-            <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
+            <Pressable
+              onPress={onBack}
+              hitSlop={12}
+              accessibilityRole="button"
+              className="absolute"
+              style={{ right: GUTTER }}
+            >
               <Body className="text-[13px] text-sub">{backLabel}</Body>
             </Pressable>
           ) : null}
@@ -803,7 +763,7 @@ export default function SubscriptionScreen({
 
         {syncing || resumable || state === "expired" ? (
           <Animated.View
-            className="mt-[22px]"
+            className="mt-[18px]"
             style={[{ paddingHorizontal: GUTTER }, step(1)]}
           >
             {syncing ? (
@@ -839,98 +799,73 @@ export default function SubscriptionScreen({
           </Animated.View>
         ) : null}
 
-        <Animated.View
-          className="mt-[26px]"
-          style={[{ paddingHorizontal: GUTTER }, step(2)]}
-        >
-          <Text
-            className="font-display-bold tracking-[-1px] text-text"
-            style={{
-              // The headline is the screen. It steps down on narrow devices
-              // rather than wrapping to five lines and pushing the shelf under
-              // the fold.
-              fontSize: width < 380 ? 33 : 38,
-              lineHeight: width < 380 ? 40 : 46,
-            }}
+        {/* The stage. The handset is pinned to the TOP of whatever room is left
+            and the panel to the bottom of it, so the two meet in the middle
+            wherever that lands — the overlap is the composition, and clipping
+            is what keeps the render off the CTA on a short device.
+
+            The handset is deliberately narrower than the panel: they overlap
+            across its full width, so no part of the cropped render can peek out
+            beside the panel's rounded corners. */}
+        <View className="flex-1 mt-[16px] overflow-hidden">
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: "absolute",
+                top: 0,
+                left: (width - phoneW) / 2,
+                width: phoneW,
+                height: phoneH,
+              },
+              step(2),
+            ]}
           >
-            Get exclusive benefits with KashPlus subscription
-          </Text>
+            <Image
+              source={PHONE}
+              contentFit="contain"
+              contentPosition="top center"
+              style={{ width: phoneW, height: phoneH }}
+              accessibilityLabel="The KashPlus home screen"
+            />
+          </Animated.View>
 
-          <Body className="text-[15px] text-sub mt-[14px] leading-[23px]">
-            Get exclusive benefits with KashPlus Subscription{" "}
-            {/* The figure goes through `Mono` for the tabular numerals, and
-                `monoSemibold` — the same cut `bodySemibold` resolves to — so it
-                keeps the weight the design gives it against the sentence. */}
-            <Mono className="text-[15px] text-text font-mono-semibold">
-              {price}
-            </Mono>{" "}
-            per {subs.MEMBERSHIP_PERIOD}.
-          </Body>
-        </Animated.View>
-
-        <Animated.View className="mt-[34px]" style={step(3)}>
-          <Label style={{ paddingHorizontal: GUTTER }}>Premium Benefits</Label>
-        </Animated.View>
-
-        {/* Its own block, and the same slice of the stagger, so the label and the
-            shelf still arrive together — split only so this wrapper's `y` is the
-            shelf's own offset in the page, which is what sizes the cards. */}
-        <Animated.View
-          className="mt-[16px]"
-          style={step(3)}
-          onLayout={(event) => setShelfY(event.nativeEvent.layout.y)}
-        >
-          {/* Full-bleed shelf: the gutter lives in the content inset, not on the
-              ScrollView, so a card can scroll past the page margin instead of
-              being clipped at it. */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            decelerationRate="fast"
-            snapToInterval={stride}
-            snapToAlignment="start"
-            onScroll={onShelfScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={{
-              paddingLeft: GUTTER,
-              paddingRight: shelfTail,
-              gap: CARD_GAP,
-            }}
+          <Animated.View
+            className="flex-1 justify-end"
+            style={[{ paddingHorizontal: GUTTER }, step(3)]}
           >
-            {BENEFITS.map((benefit) => (
-              <BenefitCard
-                key={benefit.key}
-                benefit={benefit}
-                width={cardW}
-                height={cardH}
-              />
-            ))}
-          </ScrollView>
+            <Pitch price={price} period={subs.MEMBERSHIP_PERIOD} />
+          </Animated.View>
+        </View>
 
-          <Dots count={BENEFITS.length} active={page} />
+        {/* No `Notice` here on purpose: nothing this face can do produces a
+            gateway failure. It creates no checkout and cancels nothing — the two
+            calls that can fail both live on the entitled face, and a slot for an
+            error that cannot happen is a slot that eventually shows the wrong
+            one. */}
+        <Animated.View
+          className="mt-[20px]"
+          style={[{ paddingHorizontal: GUTTER }, step(4)]}
+        >
+          {syncing ? (
+            // Nothing to buy: the money has landed and the account is being
+            // switched on. The only honest action is to ask again.
+            <QuietButton
+              label="Check again"
+              onPress={() => void recheck()}
+              loading={rechecking}
+            />
+          ) : (
+            // The reference's label, and the one press that opens the checkout
+            // sheet over this screen — `onCheckout` is the hand-off, and this
+            // screen still creates nothing itself.
+            <MetalButton
+              label={resumable ? "Resume your payment" : "Get Access"}
+              onPress={() => onCheckout(pending?.subscription.id ?? null)}
+            />
+          )}
         </Animated.View>
-      </ScrollView>
-
-      {/* No `Notice` here on purpose: nothing this face can do produces a
-          gateway failure. It creates no checkout and cancels nothing — the two
-          calls that can fail both live on the entitled face, and a slot for an
-          error that cannot happen is a slot that eventually shows the wrong one. */}
-      <Animated.View style={[{ paddingHorizontal: GUTTER }, step(4)]}>
-        {syncing ? (
-          // Nothing to buy: the money has landed and the account is being
-          // switched on. The only honest action is to ask again.
-          <QuietButton
-            label="Check again"
-            onPress={() => void recheck()}
-            loading={rechecking}
-          />
-        ) : (
-          <MetalButton
-            label={resumable ? "Resume your payment" : "Get it now"}
-            onPress={() => onCheckout(pending?.subscription.id ?? null)}
-          />
-        )}
-      </Animated.View>
+      </View>
     </View>
   );
 }

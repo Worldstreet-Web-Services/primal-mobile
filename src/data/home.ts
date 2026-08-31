@@ -56,7 +56,7 @@ export const spaces: Space[] = [
 export const features: Feature[] = [
   {
     key: "auto-earn",
-    title: "Yield",
+    title: "Auto Earn",
     kicker: "Points settle weekly",
     poweredBy: "Ark",
     artwork: require("@/assets/images/features/auto-earn.png"),

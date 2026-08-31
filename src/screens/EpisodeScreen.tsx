@@ -134,10 +134,10 @@ export default function EpisodeScreen({ episode, onBack }: EpisodeScreenProps) {
                 style={{ width: PLAY, height: PLAY }}
               >
                 {playing ? (
-                  <PauseIcon size={19} color={t.ink} />
+                  <PauseIcon size={19} color={t.amberInk} />
                 ) : (
                   <View style={{ marginLeft: 3 }}>
-                    <PlayIcon size={21} color={t.ink} />
+                    <PlayIcon size={21} color={t.amberInk} />
                   </View>
                 )}
               </View>

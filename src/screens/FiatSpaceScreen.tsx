@@ -28,7 +28,7 @@ import {
 } from "../lib/gateway/linkpay";
 import { formatMoney } from "../lib/gateway/money";
 import { isTerminalTransfer } from "../lib/gateway/types";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import { cn } from "@/lib/cn";
 
 // Design 2c: fiat space — its own balance, actions, fiat-only activity. The
@@ -65,15 +65,15 @@ function StatePanel({
 }) {
   const edge =
     tone === "bad"
-      ? "rgba(246,165,165,0.35)"
+      ? withAlpha(C.down, 0.35)
       : tone === "warn"
-        ? "rgba(245,184,61,0.32)"
+        ? withAlpha(C.amber, 0.32)
         : C.border;
   const fill =
     tone === "bad"
-      ? "rgba(246,165,165,0.08)"
+      ? withAlpha(C.down, 0.08)
       : tone === "warn"
-        ? "rgba(245,184,61,0.07)"
+        ? withAlpha(C.amber, 0.07)
         : C.card;
 
   return (

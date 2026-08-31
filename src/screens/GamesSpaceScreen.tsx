@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Easing, View, Text } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import {
   Screen,
   PressableScale,
@@ -347,7 +347,7 @@ export default function GamesSpaceScreen({
         <View
           className="mt-[18px] flex-row items-center gap-[14px] rounded-[20px] border bg-up-tint py-[15px] px-[16px]"
           style={{
-            borderColor: "rgba(124,231,176,0.26)",
+            borderColor: withAlpha(C.up, 0.26),
           }}
         >
           <View className="flex-1">
@@ -374,8 +374,8 @@ export default function GamesSpaceScreen({
               accessibilityLabel="Claim winnings"
               className="rounded-[999px] border py-[10px] px-[18px]"
               style={{
-                borderColor: "rgba(124,231,176,0.45)",
-                backgroundColor: "rgba(124,231,176,0.12)",
+                borderColor: withAlpha(C.up, 0.45),
+                backgroundColor: withAlpha(C.up, 0.12),
                 opacity: claiming ? 0.6 : 1,
               }}
             >

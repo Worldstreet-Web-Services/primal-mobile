@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body } from "@/components/ui";
-import { C } from "@/theme/tokens";
+import { C, withAlpha } from "@/theme/tokens";
 
 export type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -71,25 +71,25 @@ const VARIANTS: Record<
   // gain token rather than the lime brand color — brand and success stay separate.
   success: {
     accent: C.up,
-    tint: "rgba(124,231,176,0.12)",
+    tint: withAlpha(C.up, 0.12),
     glyph: "✓",
     role: "status",
   },
   error: {
     accent: C.down,
-    tint: "rgba(246,165,165,0.12)",
+    tint: withAlpha(C.down, 0.12),
     glyph: "!",
     role: "alert",
   },
   warning: {
     accent: C.amber,
-    tint: "rgba(245,184,61,0.12)",
+    tint: withAlpha(C.amber, 0.12),
     glyph: "!",
     role: "alert",
   },
   info: {
     accent: C.silver,
-    tint: "rgba(199,204,209,0.12)",
+    tint: withAlpha(C.silver, 0.12),
     glyph: "i",
     role: "status",
   },

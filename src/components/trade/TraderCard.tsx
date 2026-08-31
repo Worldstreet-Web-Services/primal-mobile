@@ -95,7 +95,7 @@ export function TraderCard({
       accessibilityLabel={`${trader.name}, ${trader.roi} return. Open profile`}
     >
       <View
-        className="rounded-3xl border border-white/10 bg-canvas-raised p-4"
+        className="rounded-3xl border border-rule bg-canvas-raised p-4"
         style={{ width }}
       >
         <View className="flex-row items-start justify-between">
@@ -205,7 +205,7 @@ export function TraderRow({
           card's full width instead of stopping short at the gutter. */}
       <View
         className={`flex-row items-center gap-3 px-4 py-3.5 ${
-          last ? "" : "border-b border-white/10"
+          last ? "" : "border-b border-rule"
         }`}
       >
         <Portrait trader={trader} size={44} />
@@ -307,7 +307,7 @@ export function TraderList({
     // The card chrome stays on the wrapper rather than on the list: the border
     // and the clip belong to the surface, and the list is only what fills it.
     <View
-      className={`overflow-hidden rounded-3xl border border-white/10 bg-canvas-raised ${
+      className={`overflow-hidden rounded-3xl border border-rule bg-canvas-raised ${
         scrollable ? "flex-1" : ""
       }`}
     >

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { C, F } from "../theme/tokens";
+import { C, F, withAlpha } from "../theme/tokens";
 import {
   Display,
   Body,
@@ -226,7 +226,7 @@ export default function ReceiveSheet({
                     backgroundColor: C.raised,
                     borderWidth: 1,
                     borderColor:
-                      copied === "va" ? "rgba(124,231,176,0.4)" : C.border,
+                      copied === "va" ? withAlpha(C.up, 0.4) : C.border,
                     borderRadius: 20,
                     paddingVertical: 16,
                   }}
@@ -354,7 +354,7 @@ export default function ReceiveSheet({
                     backgroundColor: C.card,
                     borderWidth: 1,
                     borderColor:
-                      copied === "addr" ? "rgba(124,231,176,0.4)" : C.border,
+                      copied === "addr" ? withAlpha(C.up, 0.4) : C.border,
                     borderRadius: 16,
                     paddingVertical: 14,
                     paddingHorizontal: 16,

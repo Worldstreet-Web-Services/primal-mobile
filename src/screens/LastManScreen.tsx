@@ -8,7 +8,7 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from "react-native-svg";
-import { C, F } from "../theme/tokens";
+import { C, F, withAlpha } from "../theme/tokens";
 import {
   Screen,
   Card,
@@ -452,7 +452,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
           <Card
             className="mt-[18px] flex-row items-center gap-[14px] rounded-[20px] py-[15px] px-[16px] bg-canvas-raised"
             style={{
-              borderColor: iAmKing ? "rgba(124,231,176,0.28)" : C.hairline,
+              borderColor: iAmKing ? withAlpha(C.up, 0.28) : C.hairline,
             }}
           >
             <View
@@ -461,7 +461,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 iAmKing ? "bg-up-tint" : "bg-canvas-inset",
               )}
               style={{
-                borderColor: iAmKing ? "rgba(124,231,176,0.32)" : C.hairline,
+                borderColor: iAmKing ? withAlpha(C.up, 0.32) : C.hairline,
               }}
             >
               <Text
@@ -498,7 +498,7 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
           <View
             className="mt-[12px] flex-row items-center gap-[14px] rounded-[20px] border bg-up-tint py-[15px] px-[16px]"
             style={{
-              borderColor: "rgba(124,231,176,0.26)",
+              borderColor: withAlpha(C.up, 0.26),
             }}
           >
             <View className="flex-1">
@@ -518,8 +518,8 @@ export default function LastManScreen({ onBack }: { onBack?: () => void }) {
                 accessibilityLabel="Claim winnings"
                 className="rounded-[999px] border py-[10px] px-[18px]"
                 style={{
-                  borderColor: "rgba(124,231,176,0.45)",
-                  backgroundColor: "rgba(124,231,176,0.12)",
+                  borderColor: withAlpha(C.up, 0.45),
+                  backgroundColor: withAlpha(C.up, 0.12),
                   opacity: claiming ? 0.6 : 1,
                 }}
               >

@@ -62,14 +62,12 @@ falls back to stand-ins for **both** halves of the identity stack:
 |---|---|
 | Decane wallet | `src/lib/auth/placeholder.ts` — a persisted `0xdead…` wallet, minted fresh per sign-in |
 | `api.tsion.io` | `src/lib/gateway/placeholder.ts` — answers `client.ts`'s one `fetch` on-device |
-| Face ID / fingerprint | `src/lib/auth/biometrics.ts` — a simulated prompt, when the device has none |
 
-The biometric stand-in engages only when a real check is impossible here: no
-enrolled biometric, or iOS Expo Go (whose binary carries no
-`NSFaceIDUsageDescription`, so reaching for Face ID terminates the process —
-`getCapability()` now reports that device as having none, which closes the crash
-for every caller). Anything it touches carries `placeholder: true`, and the
-setup screen says so on its face.
+**Biometrics are NOT stood in for.** The device does the real check or offers
+nothing — on a simulator, enrol a face under Features › Face ID and use Matching
+Face. A stand-in was tried here and removed: the lock screen prompts on mount,
+so a stand-in that always says yes turned the lock into a screen that opened
+itself a beat later with nothing entered.
 
 **Nothing is skipped.** The app performs its real sequence — SIWE handshake,
 entitlement probe, subscription create, payment poll, entitlement re-probe —
@@ -85,10 +83,25 @@ The placeholder payment moves `AWAITING_TRANSFER → PROCESSING → SETTLED` ove
 entitlement — decided in the stand-in for the server, never by the app, exactly
 as the real rule requires.
 
+The app locks itself once it has been **off screen** for two minutes — one
+minute in a dev build, `EXPO_PUBLIC_DEV_LOCK_AFTER_MS` to lengthen that.
+`src/hooks/useInactive.ts` decides when, `LockGate` decides where a locked app
+may be, and `AuthContext.lock()` is the transition.
+
+Off screen means backgrounded, switched away from, or frontmost on a phone whose
+screen is locked — one rule, since both platforms report all three as
+`background`. Time with the app OPEN is never counted, however idle it looks: a
+person reading a statement or watching a payment settle is present, and the
+phone is in their hand. iOS `inactive` (Control Centre, the app switcher, a Face
+ID sheet) is not leaving either, or raising a biometric prompt would lock the app
+underneath it. The verdict is reached on return by comparing timestamps rather
+than by a timer that fires while away — iOS suspends background JS timers and
+Android does not, so a timer would mean two behaviours.
+
 The app lock is real either way: the PIN is a salted SHA-256 in the keychain,
-and the biometric preference is now honoured at unlock — a user who answers
-"Maybe later" gets the keypad, where before they got a Face ID sheet on every
-launch regardless of what they chose.
+and the biometric preference is honoured at unlock — a user who answers "Maybe
+later" gets the keypad, where before they got a Face ID sheet on every launch
+regardless of what they chose.
 
 Signing out drops the placeholder wallet, so the next sign-in is a new account
 and walks the whole sequence again. Membership is keyed to the wallet, so a

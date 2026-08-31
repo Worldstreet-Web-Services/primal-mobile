@@ -74,7 +74,7 @@ export function QrPlate({
           // Matches the kit's `Shine` exactly (0.28). It was mixed at 0.22 for
           // the near-black ground; on the lighter bezel a white lip carries
           // less, so parity with the kit is what keeps the milled read.
-          backgroundColor: "rgba(255,255,255,0.28)",
+          backgroundColor: C.shine,
         }}
       />
       <CornerTicks inset={7} />

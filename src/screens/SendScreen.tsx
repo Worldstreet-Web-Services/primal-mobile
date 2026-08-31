@@ -40,7 +40,7 @@ import {
   type Bank,
   type Money,
 } from "../lib/gateway/types";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import { cn } from "@/lib/cn";
 
 /**
@@ -191,7 +191,7 @@ function Panel({
       className="bg-canvas-raised border rounded-[20px] overflow-hidden"
       style={[
         {
-          borderColor: accent ? "rgba(131,190,96,0.32)" : C.hairline,
+          borderColor: accent ? withAlpha(C.brand, 0.32) : C.hairline,
         },
         style,
       ]}
@@ -211,7 +211,7 @@ function Tile({ text, accent }: { text: string; accent?: boolean }) {
       )}
       style={{
         borderRadius: accent ? 21 : 14,
-        borderColor: accent ? "rgba(131,190,96,0.28)" : C.hairline,
+        borderColor: accent ? withAlpha(C.brand, 0.28) : C.hairline,
       }}
     >
       <Text
@@ -600,7 +600,7 @@ export default function SendScreen({
             <View
               className="w-[42px] h-[42px] rounded-[21px] bg-brand-glow border items-center justify-center"
               style={{
-                borderColor: "rgba(131,190,96,0.34)",
+                borderColor: withAlpha(C.brand, 0.34),
               }}
             >
               <Check size={17} />

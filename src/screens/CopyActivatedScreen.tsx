@@ -98,7 +98,7 @@ export default function CopyActivatedScreen({
       </View>
 
       {/* What was agreed ---------------------------------------------------- */}
-      <View className="mt-7 rounded-3xl border border-white/10 bg-canvas-raised p-5">
+      <View className="mt-7 rounded-3xl border border-rule bg-canvas-raised p-5">
         <Body className="text-[17px] font-body-semibold">Setup Summary</Body>
         <View className="mb-2 mt-4 h-px bg-rule" />
 
@@ -148,8 +148,8 @@ export default function CopyActivatedScreen({
       </View>
 
       {/* What happens from here --------------------------------------------- */}
-      <View className="mt-4 flex-row items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-white/[0.06]">
+      <View className="mt-4 flex-row items-center gap-3 rounded-2xl border border-rule bg-card p-4">
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-card">
           <SyncIcon size={17} color={C.silver} />
         </View>
         <Body className="flex-1 text-[13px] leading-[18px] text-dim">

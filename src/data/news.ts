@@ -40,7 +40,11 @@ export const featured: FeaturedArticle = {
     "Making the Most of Outdoor Space for a Bountiful and Beautiful Vegetable Garden",
   channel: "Nature Channel",
   age: "36min ago",
-  gallery: [undefined, undefined, undefined],
+  gallery: [
+    require("@/assets/images/news/news_2.png"),
+    require("@/assets/images/news/news_4.png"),
+    require("@/assets/images/news/news_3.png"),
+  ],
 };
 
 export const latest: Article[] = [
@@ -49,18 +53,21 @@ export const latest: Article[] = [
     title: "Climate change: Arctic warming linked to colder winters",
     channel: "Nature Channel",
     age: "4min ago",
+    image: require("@/assets/images/news/news_2.png"),
   },
   {
     key: "tokyo-paralympics",
     title: "Tokyo Paralympics: Great Britain win gold and pass 100 medals",
     channel: "BBC Sport",
     age: "12min ago",
+    image: require("@/assets/images/news/news_1.png"),
   },
   {
     key: "energy-prices",
     title: "Energy prices ease as storage levels beat winter forecasts",
     channel: "Reuters",
     age: "38min ago",
+    image: require("@/assets/images/news/news_4.png"),
   },
 ];
 
@@ -70,17 +77,20 @@ export const recommended: Article[] = [
     title: "US jobs growth disappoints as recovery falters",
     channel: "Financial Times",
     age: "1h ago",
+    image: require("@/assets/images/news/news_1.png"),
   },
   {
     key: "chip-supply",
     title: "Chipmakers signal the supply crunch is finally turning",
     channel: "Bloomberg",
     age: "2h ago",
+    image: require("@/assets/images/news/news_5.png"),
   },
   {
     key: "housing-starts",
     title: "Housing starts climb for a third straight month",
     channel: "Reuters",
     age: "3h ago",
+    image: require("@/assets/images/news/news_4.png"),
   },
 ];

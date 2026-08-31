@@ -22,7 +22,7 @@ import {
   traderStats,
   type Trader,
 } from "@/data/traders";
-import { C } from "@/theme/tokens";
+import { C, withAlpha } from "@/theme/tokens";
 import { cn } from "@/lib/cn";
 
 /** Clears the pinned action bar so the note above it is never trapped under it. */
@@ -67,7 +67,7 @@ function StatTile({
 }) {
   return (
     // Half the row minus half the gap — a two-up grid without a grid.
-    <View className="w-[48.5%] rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+    <View className="w-[48.5%] rounded-2xl border border-rule bg-card p-3.5">
       <Body className="text-[12.5px] text-dim">{label}</Body>
       <Mono className="text-[17px] mt-[6px]" color={color}>
         {value}
@@ -85,7 +85,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <View className="mt-4 rounded-3xl border border-white/10 bg-canvas-raised p-4">
+    <View className="mt-4 rounded-3xl border border-rule bg-canvas-raised p-4">
       {title ? (
         <Body className="text-[17px] font-body-semibold mb-[14px]">
           {title}
@@ -251,7 +251,7 @@ export default function TraderProfileScreen({
           <View
             className="mt-3.5 flex-row items-center rounded-full px-5 h-[58px] border border-brand"
             style={{
-              backgroundColor: "rgba(255,255,255,0.03)",
+              backgroundColor: C.card,
             }}
           >
             <Display className="text-[20px] leading-[21px] text-brand">
@@ -319,7 +319,7 @@ export default function TraderProfileScreen({
             className="h-9 w-9 items-center justify-center rounded-full"
             // A step stronger than the box it sits on, or the disc disappears
             // into it and the glyph looks unplaced.
-            style={{ backgroundColor: "rgba(131,190,96,0.16)" }}
+            style={{ backgroundColor: withAlpha(C.brand, 0.16) }}
           >
             <ShieldCheckIcon size={18} color={C.brand} />
           </View>

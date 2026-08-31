@@ -4,6 +4,7 @@ import {
   type GlassStyle,
 } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
+import { useColorScheme } from "nativewind";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
@@ -11,6 +12,7 @@ import {
   Animated,
   Easing,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextStyle,
@@ -19,7 +21,7 @@ import {
 } from "react-native";
 import Svg, { Path, Polyline } from "react-native-svg";
 import { cn } from "../lib/cn";
-import { C, F, metalStops } from "../theme/tokens";
+import { C, F, LIFT, metalStops, useTokens, withAlpha } from "../theme/tokens";
 import { KashPlusLoader } from "./KashPlusMark";
 
 export function Screen({
@@ -30,6 +32,8 @@ export function Screen({
   center = false,
   showsScrollIndicator = false,
   keyboardShouldPersistTaps,
+  refreshing = false,
+  onRefresh,
 }: {
   children: React.ReactNode;
   pad?: number;
@@ -46,11 +50,35 @@ export function Screen({
    * pressing twice — which on a form reads as a button that does not work.
    */
   keyboardShouldPersistTaps?: "always" | "never" | "handled";
+  /**
+   * Pull to refresh. The spinner is drawn only when `onRefresh` is given, so a
+   * page with nothing to re-read keeps the plain bounce it has today.
+   *
+   * `refreshing` is controlled: the caller owns it, and the spinner stays up
+   * until the caller says the re-read has landed — not until the finger lifts.
+   */
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) {
+  const tokens = useTokens();
+
   return (
     <ScrollView
       className="flex-1 bg-canvas"
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+      refreshControl={
+        onRefresh ? (
+          // Inked from the palette on both platforms: the stock spinner is iOS
+          // grey and Android blue, and neither belongs on this canvas.
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={tokens.brand}
+            colors={[tokens.brand]}
+            progressBackgroundColor={tokens.raised}
+          />
+        ) : undefined
+      }
       contentContainerStyle={{
         paddingHorizontal: pad,
         paddingTop: top,
@@ -123,12 +151,6 @@ export function PressableScale({
 // see-through fill — no live blur, but still see-through.
 export const LIQUID_GLASS = isLiquidGlassAvailable();
 
-// The tint laid over the glass. Native sits on a live blur so it tints from the
-// canvas value; the fallback has no blur to sit on, so it tints from the raised
-// value — that step is what keeps a flat fill reading as a surface, not a hole.
-const GLASS_TINT_RGB = "10,11,13";
-const GLASS_FILL_RGB = "20,21,25";
-
 /**
  * Translucent backing layer for floating chrome (tab bar, nav header, drawers).
  * Renders as an absolutely-filled sibling *behind* its container's children, so
@@ -137,7 +159,16 @@ const GLASS_FILL_RGB = "20,21,25";
  * `effect` sets how hard the native blur bites — `clear` is the thin, barely
  * frosted one; `regular` is app chrome; `none` drops to a plain tint. `tintOpacity`
  * is the separate dial: 0 is untinted glass, 1 is an opaque slab. They compose,
- * so a clear blur under a heavy tint is a legitimate (if dark) surface.
+ * so a clear blur under a heavy tint is a legitimate surface.
+ *
+ * `tintOpacity` is a WEIGHT, not a darkness. It used to be the latter: the tint
+ * channels were the module constants `"10,11,13"` and `"20,21,25"` and the
+ * `GlassView` was pinned to `colorScheme="dark"`, so every piece of floating
+ * chrome in the app — the tab bar, the nav header, both drawers, the mini
+ * player — stayed a near-black slab in light mode with the page showing through
+ * it. The channels are `glassTintRgb` / `glassFillRgb` now and flip with the
+ * theme, so the same 0.5 that reads as a dark frost on black reads as a white
+ * one on the light ground.
  */
 export function GlassSurface({
   radius = 0,
@@ -154,6 +185,11 @@ export function GlassSurface({
   tintOpacity?: number;
   style?: ViewStyle;
 }) {
+  // Subscribed, not `C`: this layer IS the theme-dependent surface, so it has
+  // to repaint when the theme changes rather than at its parent's convenience.
+  const { colorScheme: scheme } = useColorScheme();
+  const t = useTokens();
+
   const shape: ViewStyle = {
     position: "absolute",
     top: 0,
@@ -162,7 +198,7 @@ export function GlassSurface({
     bottom: 0,
     borderRadius: radius,
     borderWidth: bordered ? 1 : 0,
-    borderColor: LIQUID_GLASS ? C.border : C.hairline,
+    borderColor: LIQUID_GLASS ? t.border : t.hairline,
   };
 
   if (LIQUID_GLASS) {
@@ -170,11 +206,14 @@ export function GlassSurface({
       <GlassView
         pointerEvents="none"
         glassEffectStyle={effect}
-        colorScheme="dark"
+        // Which way UIKit's own glass leans. Following the app's scheme rather
+        // than pinned to "dark" — the two disagreeing is what made a light-mode
+        // tab bar frost the page down toward black.
+        colorScheme={scheme === "light" ? "light" : "dark"}
         tintColor={
           tintOpacity === undefined
-            ? C.glassTint
-            : `rgba(${GLASS_TINT_RGB},${tintOpacity})`
+            ? t.glassTint
+            : `rgba(${t.glassTintRgb},${tintOpacity})`
         }
         style={[shape, style]}
       />
@@ -188,10 +227,10 @@ export function GlassSurface({
         {
           backgroundColor:
             tintOpacity === undefined
-              ? C.glass
+              ? t.glass
               : // No blur to hide behind here, so the same dial has to carry a
                 // little more weight to keep type off the content underneath.
-                `rgba(${GLASS_FILL_RGB},${Math.min(tintOpacity + 0.22, 1)})`,
+                `rgba(${t.glassFillRgb},${Math.min(tintOpacity + 0.22, 1)})`,
         },
         style,
       ]}
@@ -264,14 +303,21 @@ export function CircleAction({
   );
 }
 
+/**
+ * The specular hairline along the top edge of a raised surface.
+ *
+ * Now a token (`bg-shine`) rather than a literal white. It is what sells a
+ * lifted card on black — one bright line where the edge catches the light — and
+ * it has nothing to describe on a white card, where the lift comes from the
+ * card being brighter than the canvas instead. So `--shine` is transparent in
+ * light and this renders a no-op there, which is the correct drawing rather
+ * than a missing one.
+ */
 export function Shine() {
   return (
     <View
       pointerEvents="none"
-      className="absolute top-[0px] left-[12px] right-[12px] h-[1px]"
-      style={{
-        backgroundColor: "rgba(255,255,255,0.28)",
-      }}
+      className="absolute top-[0px] left-[12px] right-[12px] h-[1px] bg-shine"
     />
   );
 }
@@ -333,10 +379,16 @@ export function Card({
   return (
     <View
       className={cn(
-        "overflow-hidden rounded-[20px] border border-border bg-card p-4",
+        // `bg-canvas-raised`, not `bg-card`: this is a raised surface, and the
+        // two tokens only look interchangeable on black (1.07 vs 1.08 off the
+        // ground). On the light ground they point opposite ways — `card` is a
+        // darker wash, `canvas-raised` is white — so a screen mixing this with
+        // `PortfolioCard` got one recessed card and one raised one.
+        "overflow-hidden rounded-[20px] border border-border bg-canvas-raised p-4",
         className,
       )}
-      style={style}
+      // `LIFT` is inert in dark, so this is the same tree there. See tokens.ts.
+      style={[LIFT, style]}
     >
       <Shine />
       {children}
@@ -437,64 +489,117 @@ export function MetallicButton({
 export const AUTH_PILL_HEIGHT = 58;
 
 /**
- * The bevel, lifted from Ark's button spec so the two apps share one object.
+ * The bevel's geometry, lifted from Ark's button spec so the two apps share one
+ * object. Colour lives in `SKINS` below; this is the part that is the same on
+ * every ground.
  *
  * `ring` is drawn as the OUTER gradient and shows only through `border` points
  * of padding — it is the rim, not a backdrop. Both gradients run top-to-bottom;
  * the rim's bright-to-dark fall is what reads as a machined edge, and running it
- * on any other axis loses the effect. Values are Ark's, kept exact rather than
- * re-derived from our palette: the ask was the same button, and a silver rim is
- * the same silver on any ground.
+ * on any other axis loses the effect.
  */
 const BEVEL = {
   border: 4,
   axis: { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },
-  metal: {
-    ring: ["#D4D4D8", "#3C3C3C"] as [string, string],
-    fill: ["#B1B6BA", "#C9CACC"] as [string, string],
-    text: "#3C3C3C",
-  },
-  metalOff: {
-    ring: ["#9EA2A6", "#4A4A4A"] as [string, string],
-    fill: ["#A9ADB1", "#B8B9BB"] as [string, string],
-    text: "#6B6E71",
-  },
-  quiet: {
-    ring: ["#0F0F0F", "#3C3C3C"] as [string, string],
-    fill: ["#1C1C1C", "#3C3C3C"] as [string, string],
-    text: "#DCDCDC",
-  },
-  /**
-   * The outline tier, added 2026-08-21 for the sign-in reference — and NOT one
-   * of Ark's three, because it is not a bevel at all.
-   *
-   * `fill` is transparent and means it: the canvas runs straight through this
-   * button, so the only things on screen are the line and the label. That is
-   * what lets it recede beside the `MetalButton` it is stacked with while still
-   * reading as a control, where a dark filled face on true black gives you one
-   * solid button and one smudge.
-   *
-   * Which is why `AuthPill` draws this tone as a BORDERED BOX rather than with
-   * the ring-as-padding trick the other two use. That trick works by laying an
-   * opaque fill over a ring layer so only `rim` points of the ring survive
-   * round the edge — put a transparent fill on top instead and the ring shows
-   * through the whole face, which renders the pill as a solid grey slab. `ring`
-   * is therefore the border colour here, and one flat grey rather than a fall
-   * from light to dark: a bevel describes a raised face catching light, and
-   * there is no face here to raise.
-   */
-  outline: {
-    ring: ["#4E4E51", "#4E4E51"] as [string, string],
-    fill: ["transparent", "transparent"] as [string, string],
-    // A GETTER, not a value. `BEVEL` is module scope, so a plain `C.text` here
-    // is read once at import — before the app has settled its theme — and the
-    // label bakes to whatever palette happened to be active then. Every
-    // theme-dependent value on a module-scope constant has to defer like this.
-    get text() {
-      return C.text;
+} as const;
+
+/**
+ * The three tiers. `outline` is not one of Ark's and is not a bevel at all: its
+ * `fill` is transparent and means it, so the canvas runs straight through the
+ * button and the only things on screen are the line and the label. That is what
+ * lets it recede beside the `MetalButton` it is stacked with while still reading
+ * as a control.
+ *
+ * Which is why `AuthPill` draws it as a BORDERED BOX rather than with the
+ * ring-as-padding trick the other two use. That trick works by laying an opaque
+ * fill over a ring layer so only `rim` points of the ring survive round the
+ * edge — put a transparent fill on top instead and the ring shows through the
+ * whole face, rendering the pill as a solid slab. `ring` is therefore the border
+ * colour here, and one flat value rather than a fall from light to dark: a bevel
+ * describes a raised face catching light, and there is no face here to raise.
+ */
+type Tone = "metal" | "quiet" | "outline";
+
+/** One tier's three surfaces: the rim gradient, the face gradient, the ink. */
+type Skin = {
+  ring: [string, string];
+  fill: [string, string];
+  text: string;
+};
+
+/**
+ * The bevel tiers, per theme.
+ *
+ * Ark's values are the DARK set and are kept exact — the ask was the same
+ * button, and a silver rim is the same silver on a black ground. What they are
+ * not is theme-independent, which is how they were written: one fixed table,
+ * read on every ground. On the light canvas that put a #B1B6BA silver pill and
+ * a near-black #1C1C1C one side by side on a near-white page — the primary
+ * washed out, the secondary a hole punched in the screen.
+ *
+ * Light re-derives them the way `--metal-*` does in global.css: the same
+ * OBJECT, lit from the same angle, in the register that ground can carry. The
+ * loud tier is graphite with white ink (matching the light `metal` stops), and
+ * the quiet tier is the one that flips — it is "the tier that recedes", which
+ * on black means darker than the canvas and on white means barely off it.
+ */
+const SKINS: Record<"dark" | "light", Record<Tone | "metalOff", Skin>> = {
+  dark: {
+    metal: {
+      ring: ["#D4D4D8", "#3C3C3C"],
+      fill: ["#B1B6BA", "#C9CACC"],
+      text: "#3C3C3C",
+    },
+    metalOff: {
+      ring: ["#9EA2A6", "#4A4A4A"],
+      fill: ["#A9ADB1", "#B8B9BB"],
+      text: "#6B6E71",
+    },
+    quiet: {
+      ring: ["#0F0F0F", "#3C3C3C"],
+      fill: ["#1C1C1C", "#3C3C3C"],
+      text: "#DCDCDC",
+    },
+    outline: {
+      ring: ["#4E4E51", "#4E4E51"],
+      fill: ["transparent", "transparent"],
+      text: "#F2F4F6",
     },
   },
-} as const;
+  light: {
+    // Graphite, raked the same way — the light-mode metal object. Its ink is
+    // white for the same reason `--metal-ink` flips: the face is now the dark
+    // thing on the screen, so the label has to be the light one.
+    //
+    // This tier alone stays hue-neutral on the cream ground. It is an OBJECT —
+    // a milled face catching light — and the other two are chrome mixed against
+    // the ground, which is why they warm with it and this does not.
+    metal: {
+      ring: ["#767D86", "#171A1F"],
+      fill: ["#454B54", "#2B3037"],
+      text: "#FFFFFF",
+    },
+    metalOff: {
+      ring: ["#BCB6AC", "#827C73"],
+      fill: ["#A5A097", "#8E8981"],
+      text: "#F5F2EC",
+    },
+    // Receding on a light ground means going UP toward the canvas, not down
+    // away from it: a white face with a grey rim, carrying the text ink. The
+    // dark tier's own logic, mirrored — not its values.
+    quiet: {
+      ring: ["#FDFAF4", "#CFC8BA"],
+      fill: ["#FDFAF4", "#EBE5D8"],
+      text: "#332E27",
+    },
+    outline: {
+      ring: ["#9A9185", "#9A9185"],
+      fill: ["transparent", "transparent"],
+      text: "#1A1612",
+    },
+  },
+};
+
 
 /**
  * Rim width per tone. Ark's 4pt band IS the bevel; on the outline tier that
@@ -511,6 +616,21 @@ const RIM = { metal: 4, metalOff: 4, quiet: 4, outline: 1.5 } as const;
 const FACE = (height: number, radius: number, rim: number): ViewStyle => ({
   height: height - rim * 2,
   borderRadius: radius - rim,
+  // Deliberately NO padding. The press wash is an absolutely positioned child,
+  // and an absolute child is laid out against its parent's PADDING box — give
+  // this box an inset and the wash stops short of the ends by exactly that
+  // much, leaving two unpainted crescents behind the label. The padding lives
+  // on `ROW` instead, one level in, where nothing is positioned against it.
+  overflow: "hidden",
+});
+
+/**
+ * The row the mark and the label actually sit on, inside the painted face.
+ * Both of `AuthPill`'s paths use it, so a metal pill and an outline pill
+ * stacked together put their contents on exactly the same line.
+ */
+const ROW = (height: number): ViewStyle => ({
+  flex: 1,
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
@@ -534,6 +654,22 @@ type PillProps = {
   /** Swaps the label for the falling mark and blocks presses. */
   loading?: boolean;
   disabled?: boolean;
+  /**
+   * Answer a press visually. On by default, and what it does depends on the
+   * tier:
+   *
+   *   metal            the face goes to a lit brand green, the label and rim to
+   *                    a deep one, and a brand halo blooms off the rim
+   *   quiet / outline  the pill sinks to 0.97 and dims, quickly
+   *
+   * One loud tier and one quiet one, on purpose: a stack of these should have a
+   * single member that lights up, not three competing for the eye.
+   *
+   * Turn it off where a press already has a louder answer — a sheet opening
+   * over the button, an immediate navigation — so the two do not fire at once.
+   * The pill then falls back to a plain held dim.
+   */
+  animatePress?: boolean;
   style?: ViewStyle;
 };
 
@@ -566,15 +702,136 @@ function AuthPill({
   height = AUTH_PILL_HEIGHT,
   loading = false,
   disabled = false,
+  animatePress = true,
   style,
-}: PillProps & { tone: "metal" | "quiet" | "outline" }) {
+}: PillProps & { tone: Tone }) {
   const metal = tone === "metal";
   const inert = loading || disabled;
   const key = metal && disabled ? "metalOff" : tone;
-  const skin = BEVEL[key];
   const rim = RIM[key];
   const radius = height / 2;
   const outline = tone === "outline";
+  const tokens = useTokens();
+  // Subscribed rather than read from `C`: the whole face is theme-dependent,
+  // and a pill that keeps its old skin until its parent happens to re-render is
+  // the bug this table was split to fix.
+  const { colorScheme: scheme } = useColorScheme();
+  const skin = SKINS[scheme === "light" ? "light" : "dark"][key];
+
+  /**
+   * 0 at rest, 1 while held. One driver for all four layers so the face, the
+   * rim, the label and the halo can never disagree about how far through the
+   * press they are.
+   *
+   * Driven on the JS thread because the label interpolates a COLOUR, which the
+   * native driver cannot carry. The alternative — cross-fading two absolutely
+   * positioned labels to keep everything native — buys the native driver at the
+   * cost of the label no longer being laid out by the row it sits in, which is
+   * how a button's text drifts off centre. Four interpolations on press-in,
+   * with nothing else running, is well inside what JS handles at 60fps.
+   */
+  const press = useMemo(() => new Animated.Value(0), []);
+  /**
+   * The lit press belongs to the METAL tier alone.
+   *
+   * It works there because that tier is a bright face with dark ink: the green
+   * arrives as a change of hue on something already lit, and the halo has a
+   * bright object to come off. The quiet and outline tiers have neither — a
+   * dark or empty face flooding green reads as a different button appearing
+   * rather than as this one being pressed, and a halo around a hairline is
+   * light coming from nothing.
+   *
+   * Also off whenever the button cannot be pressed: a disabled pill that lights
+   * up on touch is telling the user the opposite of what `disabled` means.
+   */
+  const lit = animatePress && !inert && tone === "metal";
+  /**
+   * What the other two tiers do instead: sink and dim.
+   *
+   * They have no lit face for the green to arrive on, so they get the
+   * conventional answer — the pill drops slightly and fades under the finger,
+   * which reads as the surface taking the press rather than as the button
+   * changing into something else. Same driver, same guarantee, different
+   * output; only the metal tier is loud.
+   */
+  const damped = animatePress && !inert && !metal;
+  const reacts = lit || damped;
+
+  /**
+   * `lit` interpolates a COLOUR, which the native driver cannot carry; sink and
+   * dim are a transform and an opacity, which it can. A tone is one or the
+   * other for the life of the component, so this node is never asked to run
+   * both ways — which is the thing that would throw.
+   */
+  const native = !lit;
+
+  /** Finger currently down. */
+  const down = useRef(false);
+  /** The bloom has reached full, so a release is allowed to start. */
+  const bloomed = useRef(false);
+
+  useEffect(() => {
+    // `lit` goes false mid-press whenever a tap starts a load. `onPressOut`
+    // never arrives in that case, so without this the pill would come back from
+    // its loading state still fully lit, with nothing holding it.
+    if (!reacts) {
+      down.current = false;
+      bloomed.current = false;
+      press.setValue(0);
+    }
+  }, [reacts, press]);
+
+  /**
+   * The metal bloom is deliberately slow and eased at both ends: a quick
+   * press-in reads as the button switching state, while taking this long over
+   * it reads as the face being lit. Release runs longer still, so the halo
+   * fades rather than being cut.
+   *
+   * Sink-and-dim is the opposite brief. It is not an effect to be admired, it
+   * is the button acknowledging a touch, and an acknowledgement that arrives
+   * late has failed. So it is quick, and eased out only.
+   */
+  const IN_MS = lit ? 640 : 130;
+  const OUT_MS = lit ? 950 : 260;
+  const EASE = lit ? Easing.inOut(Easing.quad) : Easing.out(Easing.quad);
+
+  /**
+   * The bloom always runs to completion, however briefly the button was held.
+   *
+   * Tying the animation to the length of the press is what made this look like
+   * it only worked on a hard press: a tap is around 100ms, the ramp takes
+   * 640ms, and reversing at 100ms peaks the halo at under 2% opacity — real,
+   * and completely invisible. A press is a discrete event, not a duration, so
+   * it gets a discrete answer. Lifting early only queues the release; the
+   * bloom's own completion is what fires it.
+   */
+  const runOut = () => {
+    if (!bloomed.current) return;
+    Animated.timing(press, {
+      toValue: 0,
+      duration: OUT_MS,
+      easing: EASE,
+      useNativeDriver: native,
+    }).start();
+  };
+
+  const runIn = () => {
+    down.current = true;
+    bloomed.current = false;
+    Animated.timing(press, {
+      toValue: 1,
+      duration: IN_MS,
+      easing: EASE,
+      useNativeDriver: native,
+    }).start(({ finished }) => {
+      // Superseded by a newer animation — that one owns the value now.
+      if (!finished) return;
+      bloomed.current = true;
+      // The finger came up while this was still running, so the release was
+      // deferred to here.
+      if (!down.current) runOut();
+    });
+  };
 
   // Hoisted so both paths below lay the row out from the SAME numbers. When
   // this was duplicated per path, the outline tier's mark and label sat a
@@ -587,7 +844,7 @@ function AuthPill({
   ) : (
     <>
       {icon}
-      <Text
+      <Animated.Text
         numberOfLines={1}
         style={{
           fontFamily: F.display,
@@ -595,17 +852,135 @@ function AuthPill({
           lineHeight: 22,
           // Ark's spec is -0.7% of the size.
           letterSpacing: -0.112,
-          color: skin.text,
+          color: lit
+            ? press.interpolate({
+                inputRange: [0, 1],
+                outputRange: [skin.text, tokens.brandPressInk],
+              })
+            : skin.text,
         }}
       >
         {label}
-      </Text>
+      </Animated.Text>
     </>
   );
+
+  /**
+   * Sink and dim, for the tiers that do not light up.
+   *
+   * A wrapper rather than styles on the `Pressable` itself: a caller's
+   * `style={{ flex: 1 }}` lands on the Pressable, and scaling the thing that
+   * carries the flex would fight the row it is stretching inside. This sits
+   * one level in, where it can only affect what it draws. Returns the children
+   * untouched on the metal tier, so that tree is unchanged.
+   */
+  const sink = (children: React.ReactNode) =>
+    damped ? (
+      <Animated.View
+        style={{
+          transform: [
+            {
+              scale: press.interpolate({
+                inputRange: [0, 1],
+                // 0.97 is the house figure — see `PressableScale`.
+                outputRange: [1, 0.97],
+              }),
+            },
+          ],
+          opacity: press.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0.62],
+          }),
+        }}
+      >
+        {children}
+      </Animated.View>
+    ) : (
+      children
+    );
+
+  /** The halo, thrown outside the rim. Sized to the pill, painted behind it. */
+  const glow = lit ? (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: radius,
+        // A real blur rather than a stack of fading rings. `boxShadow` cannot
+        // be animated — it is a string, not a number — so the STATIC shadow
+        // rides on a view whose opacity is what actually moves.
+        //
+        // Spread and blur are tuned against each other: the spread pushes the
+        // halo out from the rim, the blur has to be wide enough to soften that
+        // edge before it lands. Spread at or above the blur radius is what
+        // turns it into a hard second rim, so keep blur comfortably ahead.
+        boxShadow: `0px 0px 11px 2px ${tokens.brandPressGlow}`,
+        opacity: press,
+      }}
+    />
+  ) : null;
+
+  /** The lit face, laid over the fill gradient and under the label. */
+  const face_wash = lit ? (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: radius - rim,
+        backgroundColor: tokens.brandPressFace,
+        opacity: press,
+      }}
+    />
+  ) : null;
+
+  /**
+   * The rim, going the other way to the face.
+   *
+   * A border on a transparent box rather than a fill: only the `rim` band
+   * paints, so the lit face below shows straight through the middle. On the
+   * outline tier this lands exactly on the border it is replacing.
+   *
+   * Mounted as a sibling of the whole bevel rather than inside it: the outer
+   * gradient's own `padding: rim` IS the ring, so an absolute child of it would
+   * be inset by the very band this needs to cover.
+   */
+  const rim_wash = lit ? (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: radius,
+        borderWidth: rim,
+        borderColor: tokens.brandPressInk,
+        opacity: press,
+      }}
+    />
+  ) : null;
 
   return (
     <Pressable
       onPress={inert ? undefined : onPress}
+      onPressIn={reacts ? runIn : undefined}
+      onPressOut={
+        reacts
+          ? () => {
+              down.current = false;
+              runOut();
+            }
+          : undefined
+      }
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: loading }}
@@ -616,41 +991,62 @@ function AuthPill({
           // rather than as unavailable when it fades. The outline tier dims
           // with the silver: it has no face to read as dark, so the line at
           // full strength would be the only thing still saying "button".
+          //
+          // The held dim is skipped wherever a press is animating. On the
+          // metal tier the colour change IS the feedback, and dimming as well
+          // drags the lit face — halo included — back down the moment it
+          // arrives; on the other two the animated dim below replaces it. What
+          // is left here is the fallback for `animatePress={false}`.
           opacity:
-            disabled && tone !== "quiet" ? 0.45 : pressed && !inert ? 0.85 : 1,
+            disabled && tone !== "quiet"
+              ? 0.45
+              : pressed && !inert && !reacts
+                ? 0.85
+                : 1,
         },
         style,
       ]}
     >
-      {outline ? (
-        // A border, not a ring layer — see the note on `BEVEL.outline`. The
-        // border eats its own `rim` off the box, so the inner row lands on the
-        // same metrics as the bevelled path without any padding of its own.
-        <View
-          style={{
-            borderRadius: radius,
-            borderWidth: rim,
-            borderColor: skin.ring[0],
-          }}
-        >
-          <View style={FACE(height, radius, rim)}>{face}</View>
-        </View>
-      ) : (
-        <LinearGradient
-          colors={skin.ring}
-          start={BEVEL.axis.start}
-          end={BEVEL.axis.end}
-          style={{ borderRadius: radius, padding: rim }}
-        >
-          <LinearGradient
-            colors={skin.fill}
-            start={BEVEL.axis.start}
-            end={BEVEL.axis.end}
-            style={FACE(height, radius, rim)}
-          >
-            {face}
-          </LinearGradient>
-        </LinearGradient>
+      {glow}
+      {sink(
+        <>
+          {outline ? (
+            // A border, not a ring layer — see the note on `BEVEL.outline`. The
+            // border eats its own `rim` off the box, so the inner row lands on the
+            // same metrics as the bevelled path without any padding of its own.
+            <View
+              style={{
+                borderRadius: radius,
+                borderWidth: rim,
+                borderColor: skin.ring[0],
+              }}
+            >
+              <View style={FACE(height, radius, rim)}>
+                {face_wash}
+                <View style={ROW(height)}>{face}</View>
+              </View>
+            </View>
+          ) : (
+            <LinearGradient
+              colors={skin.ring}
+              start={BEVEL.axis.start}
+              end={BEVEL.axis.end}
+              style={{ borderRadius: radius, padding: rim }}
+            >
+              <LinearGradient
+                colors={skin.fill}
+                start={BEVEL.axis.start}
+                end={BEVEL.axis.end}
+                style={FACE(height, radius, rim)}
+              >
+                {face_wash}
+                <View style={ROW(height)}>{face}</View>
+              </LinearGradient>
+            </LinearGradient>
+          )}
+          {/* After the bevel, so the deep rim paints over the ring. */}
+          {rim_wash}
+        </>,
       )}
     </Pressable>
   );
@@ -976,11 +1372,22 @@ export function PulseDot({
   );
 }
 
+/**
+ * The filled fraction of something.
+ *
+ * The bar runs from the theme's `figureTail` up into its `text` — a fill that
+ * gets brighter as it travels on black, and darker as it travels on white. It
+ * was a fixed `#7a7a7a -> #e8e8ea`, which resolves the wrong way round in light
+ * mode: the leading end of the bar was the palest thing on the screen, sitting
+ * on a track only 1.08:1 off the canvas, so the progress ran off into nothing.
+ * The track is the well the rest of the app recesses into for the same reason.
+ */
 export function ProgressBar({ pct }: { pct: number }) {
+  const t = useTokens();
   return (
-    <View className="h-1.5 overflow-hidden rounded-[99px] bg-card">
+    <View className="h-1.5 overflow-hidden rounded-[99px] bg-canvas-inset">
       <LinearGradient
-        colors={["#7a7a7a", "#e8e8ea"]}
+        colors={[t.figureTail, t.text]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         // `colors` is a prop, not a style; the width is computed from `pct`.
@@ -1103,10 +1510,20 @@ export function SegTabs({
   );
 }
 
-/** The empty bead's resting ground, and the one it is rejected in. */
-const DOT_EMPTY = "rgba(199,204,209,0.22)";
-/** `C.down` at the same weight — a wrong PIN colours the row it was typed into. */
-const DOT_REJECTED = "rgba(246,165,165,0.42)";
+/**
+ * The empty bead's resting ground, and the one it is rejected in.
+ *
+ * Both were fixed values — a pale grey at 22% and the dark theme's rose at 42%.
+ * On black that grey is a visible well; on the light ground it is nothing, and
+ * four beads you cannot see is a PIN field with no length. They read from the
+ * palette now: the well the theme already uses for a recessed shape, and the
+ * theme's own `down`, so a rejection is the same red the rest of the app fails
+ * in.
+ *
+ * Resolved inside `PinDots` rather than here. At module scope `C` is read once,
+ * at import, and bakes to whichever theme happened to be active then.
+ */
+const DOT_REJECTED_ALPHA = 0.42;
 
 /** Where each leg of the shake lands, in px, and how long a leg takes. */
 const SHAKE_LEGS = [-9, 9, -7, 7, -3, 0];
@@ -1133,6 +1550,7 @@ export function PinDots({
   /** Bump to reject the entry: the row shakes, buzzes and flushes red. */
   shake?: number;
 }) {
+  const t = useTokens();
   const x = useMemo(() => new Animated.Value(0), []);
   const flush = useMemo(() => new Animated.Value(0), []);
   // Mounting is not a rejection — only a change to `shake` is one. Read in the
@@ -1177,7 +1595,7 @@ export function PinDots({
 
   const ground = flush.interpolate({
     inputRange: [0, 1],
-    outputRange: [DOT_EMPTY, DOT_REJECTED],
+    outputRange: [t.inset, withAlpha(t.down, DOT_REJECTED_ALPHA)],
   });
 
   return (
@@ -1213,7 +1631,10 @@ export function Keypad({ onKey }: { onKey: (k: string) => void }) {
           onPress={() => onKey(k)}
           className={cn(
             "h-14 w-[31%] grow items-center justify-center rounded-2xl",
-            k && k !== "del" ? "bg-key" : "bg-transparent",
+            // The hairline is what separates a white key from the light ground;
+            // on black the key is already a step up and the line just sharpens
+            // it. Only the digits are keys — blank and delete are bare glyphs.
+            k && k !== "del" ? "bg-key border border-rule" : "bg-transparent",
           )}
         >
           <Text
@@ -1532,6 +1953,7 @@ export function OutlineButton({
   height,
   radius = PILL,
   color = C.brandSoft,
+  fill = C.card,
   loading = false,
   disabled = false,
   style,
@@ -1543,8 +1965,22 @@ export function OutlineButton({
   tone?: "brand" | "auth";
   height?: number;
   radius?: number;
-  /** Stroke and ink. The gold is deliberately both. `auth` ignores it. */
+  /**
+   * Stroke AND ink — the two move together on purpose, which is what makes an
+   * outline button read as one object rather than as a box with a label in it.
+   * Set this rather than reaching through `style` for `borderColor`: that
+   * changes the stroke and leaves the label behind.
+   *
+   * `auth` ignores it — that tier is drawn by `AuthPill`.
+   */
   color?: string;
+  /**
+   * The face behind the stroke. Defaults to the card wash, because this tier
+   * usually sits ON a raised surface and a fully transparent face there shows
+   * the surface straight through and stops reading as a control at all. Pass
+   * `"transparent"` deliberately when the button is over the canvas.
+   */
+  fill?: string;
   /** Swaps the label for the falling mark and blocks presses. */
   loading?: boolean;
   disabled?: boolean;
@@ -1582,7 +2018,7 @@ export function OutlineButton({
           borderRadius: radius,
           borderWidth: 1,
           borderColor: color,
-          backgroundColor: C.card,
+          backgroundColor: fill,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
@@ -1597,15 +2033,18 @@ export function OutlineButton({
       ) : (
         <>
           {icon}
-          <Text
-            style={{
-              fontFamily: F.monoSemibold,
-              fontSize: 13,
-              letterSpacing: 1.6,
-              color,
-            }}
-          >
-            {label.toUpperCase()}
+          {/*
+            `font-body-semibold` is the FAMILY (Urbanist-SemiBold). It was
+            `font-semibold`, which is a WEIGHT utility — font-weight: 600 with
+            no family attached — so the label silently dropped to the system
+            face. RN resolves a concrete font from the family, not from a
+            numeric weight, which is why nothing errored.
+
+            The colour stays inline: it is `color`, the prop, so that the
+            stroke and the ink cannot drift apart.
+          */}
+          <Text className="font-body-semibold text-[14px]" style={{ color }}>
+            {label}
           </Text>
         </>
       )}

@@ -57,6 +57,10 @@ module.exports = {
         // way they read — `border-hairline border-rule` is a hairline-width
         // rule. The CSS variable keeps the design's own word for it.
         rule: raw("hairline"),
+        // The specular top edge on a raised surface. Transparent in light —
+        // white on a white card is nothing to catch — so the class is a no-op
+        // there by design rather than by a branch in the component.
+        shine: raw("shine"),
 
         // ------------------------------------------------------------- brand
         brand: {
@@ -65,6 +69,10 @@ module.exports = {
           soft: solid("brand-soft"),
           "soft-ink": solid("brand-soft-ink"),
           glow: raw("brand-glow"),
+          // The held state of a bevelled pill — see global.css.
+          "press-face": solid("brand-press-face"),
+          "press-ink": solid("brand-press-ink"),
+          "press-glow": raw("brand-press-glow"),
         },
         green: {
           DEFAULT: solid("green"),
@@ -79,8 +87,17 @@ module.exports = {
 
         // ----------------------------------------------------------- signals
         live: solid("live"),
-        amber: solid("amber"),
+        amber: { DEFAULT: solid("amber"), ink: solid("amber-ink") },
         highlight: { DEFAULT: solid("highlight"), ink: solid("highlight-ink") },
+
+        // ------------------------------------------------------------- panel
+        // Fixed white, both themes — see the note in global.css.
+        panel: {
+          DEFAULT: solid("panel"),
+          ink: solid("panel-ink"),
+          sub: solid("panel-sub"),
+          inset: raw("panel-inset"),
+        },
 
         // ------------------------------------------------------- metal/glass
         // The four gradient stops stay out of here: they are a LinearGradient

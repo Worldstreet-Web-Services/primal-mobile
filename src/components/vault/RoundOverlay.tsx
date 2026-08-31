@@ -11,7 +11,7 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { Body, Mono, PressableScale } from "@/components/ui";
 import { formatUsd, truncateAddress } from "@/lib/vault/format";
 import { useVaultStore } from "@/store/vault";
-import { C } from "@/theme/tokens";
+import { C, withAlpha } from "@/theme/tokens";
 import { cn } from "@/lib/cn";
 
 // Confetti in the house palette — the money-in green for the win, brand and
@@ -207,7 +207,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
       <Animated.View
         className="mx-[32px] items-center rounded-[28px] border bg-canvas-raised px-[32px] py-[32px]"
         style={{
-          borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
+          borderColor: youWon ? withAlpha(C.up, 0.32) : C.hairline,
           opacity: pop,
           transform: [
             {
@@ -225,7 +225,7 @@ export function RoundOverlay({ myAddress }: { myAddress: string | null }) {
             youWon ? "bg-up-tint" : "bg-canvas-inset",
           )}
           style={{
-            borderColor: youWon ? "rgba(124,231,176,0.32)" : C.hairline,
+            borderColor: youWon ? withAlpha(C.up, 0.32) : C.hairline,
           }}
         >
           <CrownMark color={youWon ? C.up : C.silver} size={26} />

@@ -40,7 +40,7 @@ import {
   type CryptoPayment,
   type Subscription,
 } from "@/lib/gateway/types";
-import { C } from "@/theme/tokens";
+import { C, withAlpha } from "@/theme/tokens";
 import { cn } from "@/lib/cn";
 
 /**
@@ -79,13 +79,13 @@ import { cn } from "@/lib/cn";
 /** Dims the paywall behind without erasing it — the sheet is a step within
  *  that decision, not a different place the user has been taken to. */
 const SCRIM = "rgba(10,10,11,0.5)";
-const DANGER_TINT = "rgba(246,165,165,0.10)";
-const DANGER_EDGE = "rgba(246,165,165,0.32)";
-const BRAND_EDGE = "rgba(131,190,96,0.42)";
+const DANGER_TINT = withAlpha(C.down, 0.10);
+const DANGER_EDGE = withAlpha(C.down, 0.32);
+const BRAND_EDGE = withAlpha(C.brand, 0.42);
 /** Amber, at the danger pair's alphas: a locked wallet is a precondition the
  *  user has not met yet, not something that has gone wrong. */
-const HOLD_TINT = "rgba(245,184,61,0.10)";
-const HOLD_EDGE = "rgba(245,184,61,0.32)";
+const HOLD_TINT = withAlpha(C.amber, 0.10);
+const HOLD_EDGE = withAlpha(C.amber, 0.32);
 
 /**
  * The published settlement figure, built the way `readSettlementText` builds the

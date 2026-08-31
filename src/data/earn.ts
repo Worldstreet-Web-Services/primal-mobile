@@ -60,3 +60,19 @@ export const portfolio: Asset[] = [
     delta: "+6.9%",
   },
 ];
+
+/**
+ * The Auto Earn deposit form (PRD §F7).
+ *
+ * The rate is QUOTED, not derived — the yield engine publishes it and the
+ * screen only multiplies the entered amount by it, so a rate change is one edit
+ * here rather than a formula scattered across the view.
+ */
+export const autoEarn = {
+  /** Spendable balance the deposit is drawn from — what `Max` and 100% mean. */
+  available: 1500,
+  /** Current variable rate, as a percentage per year. */
+  apy: 12.4,
+  /** How that rate has moved over the last week, already signed. */
+  apyDelta: "+0.85% this week",
+};

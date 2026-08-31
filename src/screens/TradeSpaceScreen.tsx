@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import {
   Screen,
   Card,
@@ -34,7 +34,7 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
         <View
           className="w-[30px] h-[30px] rounded-[16px] items-center justify-center"
           style={{
-            backgroundColor: "rgba(255,255,255,0.08)",
+            backgroundColor: C.card,
           }}
         >
           <Svg width={15} height={15} viewBox="0 0 24 24">
@@ -61,7 +61,7 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
         <View
           className="border rounded-[99px] px-[9px] py-[3px]"
           style={{
-            borderColor: "rgba(255,255,255,0.2)",
+            borderColor: C.border,
           }}
         >
           <Body className="text-[10px] text-dim">Worldstreet</Body>
@@ -115,7 +115,7 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
             <View
               className="w-[42px] h-[42px] rounded-[21px] items-center justify-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.08)",
+                backgroundColor: C.card,
               }}
             >
               <Text className="font-display text-[14px] text-accent">
@@ -131,7 +131,7 @@ export default function TradeSpaceScreen({ onBack }: { onBack?: () => void }) {
                   <View
                     className="rounded-[5px] px-[6px] py-[2px]"
                     style={{
-                      backgroundColor: "rgba(245,184,61,0.12)",
+                      backgroundColor: withAlpha(C.amber, 0.12),
                     }}
                   >
                     <Text className="font-body-semibold text-[9.5px] text-amber">

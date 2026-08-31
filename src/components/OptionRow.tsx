@@ -57,7 +57,7 @@ export function OptionRow({
           <View
             className={cn(
               "w-[46px] h-[46px] rounded-[15px] items-center justify-center",
-              selected ? "bg-ink" : "bg-canvas-inset",
+              selected ? "bg-brand-ink" : "bg-canvas-inset",
             )}
           >
             {option.icon}

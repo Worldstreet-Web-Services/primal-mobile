@@ -2,7 +2,7 @@ import React from "react";
 import { View, Pressable, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";
-import { C, metalStops } from "../theme/tokens";
+import { C, metalStops, withAlpha } from "../theme/tokens";
 import {
   Screen,
   BackChevron,
@@ -232,8 +232,8 @@ export default function CrossBorderScreen({ onBack }: { onBack?: () => void }) {
                 <View
                   className="mt-[12px] rounded-[14px] border px-[14px] py-[12px]"
                   style={{
-                    borderColor: "rgba(245,184,61,0.26)",
-                    backgroundColor: "rgba(245,184,61,0.07)",
+                    borderColor: withAlpha(C.amber, 0.26),
+                    backgroundColor: withAlpha(C.amber, 0.07),
                   }}
                 >
                   <View className="flex-row items-center gap-[7px]">

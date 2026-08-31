@@ -20,8 +20,8 @@ export interface Author {
 export function AuthorRail({
   authors,
   onOpen,
-  size = 68,
-  gap = 18,
+  size = 85,
+  gap = 25,
   bleed = 0,
 }: {
   authors: Author[];

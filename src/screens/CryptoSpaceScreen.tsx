@@ -236,7 +236,7 @@ export default function CryptoSpaceScreen({
                 alignItems: "flex-end",
               }}
             >
-              <View className="w-[22px] h-[22px] rounded-[11px] bg-ink" />
+              <View className="w-[22px] h-[22px] rounded-[11px] bg-metal-ink" />
             </LinearGradient>
           ) : (
             <View className="w-[46px] h-[28px] rounded-[14px] p-[3px] bg-canvas-inset border border-rule">

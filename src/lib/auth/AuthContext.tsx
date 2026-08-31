@@ -19,6 +19,7 @@ import React, {
   useState,
 } from "react";
 
+import { onForeground } from "@/lib/appActive";
 import * as biometrics from "@/lib/auth/biometrics";
 import * as decane from "@/lib/auth/decane";
 import type { AuthMethod, DecaneSession } from "@/lib/auth/decane";
@@ -160,11 +161,28 @@ interface AuthApi extends AuthState {
    */
   signOut: (options?: { forget?: boolean }) => Promise<void>;
   createPin: (pin: string) => Promise<void>;
+  /**
+   * Close the app lock without ending the session.
+   *
+   * The counterpart to `unlockWithPin` — what an idle timeout, a long spell in
+   * the background, or a "lock now" control asks for. Nothing is signed out and
+   * nothing is forgotten: the Decane session, the Primal tokens and the stored
+   * PIN all stand, and the next unlock resumes exactly where this left off.
+   */
+  lock: () => void;
   unlockWithPin: (pin: string) => Promise<boolean>;
   unlockWithBiometrics: () => Promise<biometrics.BiometricOutcome>;
   enableBiometrics: () => Promise<biometrics.BiometricOutcome>;
   skipBiometrics: () => Promise<void>;
   capability: biometrics.BiometricCapability | null;
+  /**
+   * Ask the device again what it can do, and answer with what it said.
+   *
+   * Returns the capability rather than only storing it, because the callers
+   * that matter act on it in the same tick they asked — `capability` on this
+   * context is a render value and will still be the old one for them.
+   */
+  refreshCapability: () => Promise<biometrics.BiometricCapability>;
 
   /** Gateway layer. Route on `primal.state`, not on `status`, for anything
    *  that costs money or touches LinkPay. */
@@ -314,6 +332,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  /**
+   * Ask the device again what it can do.
+   *
+   * The launch read above is not enough on its own, and the failure it caused
+   * is invisible from the inside: enrol a face (Settings on a handset, Features
+   * › Face ID on a simulator) while the app is running and the answer captured
+   * at launch is stale forever — `available: false` — so the lock screen offers
+   * no biometric button no matter what the hardware is now capable of, and the
+   * only cure is a relaunch.
+   *
+   * Two triggers, both cheap (three native calls, no prompt, nothing shown):
+   *
+   * - **Every return to the foreground.** Enrolling means leaving the app, so
+   *   this is the transition that follows every change of the answer.
+   * - **Every time the app locks**, because the lock screen is the surface that
+   *   acts on it, and it is about to be the thing on screen.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    const reread = () => {
+      void (async () => {
+        const next = await biometrics.getCapability();
+        if (!cancelled) setCapability(next);
+      })();
+    };
+
+    if (state.status === "locked") reread();
+    const off = onForeground(reread);
+
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, [state.status]);
 
   // First-time key generation covers the Shamir split, the unlock-tier probe
   // and the first enclave session — the SDK asks us to show progress for it.
@@ -762,6 +816,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [state.session],
   );
 
+  /**
+   * Only from `ready`, and that guard is the whole of it.
+   *
+   * Every other status either has no lock to close or must not be interrupted:
+   * `signedOut` has nothing behind it, `locked` is already there, and
+   * `onboarding` is the window in which the PIN is still being chosen — locking
+   * a user who has not set one yet would strand them at a keypad that can never
+   * accept anything, with no way out but reinstalling. `ready` is the one state
+   * that implies a PIN exists, because it is only ever reached through one
+   * being set or verified.
+   */
+  const lock = useCallback(() => {
+    setState((s) => (s.status === "ready" ? { ...s, status: "locked" } : s));
+  }, []);
+
   const unlockWithPin = useCallback(async (pin: string) => {
     const ok = await storage.verifyPin(pin);
     if (!ok) return false;
@@ -789,6 +858,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, status: "ready", step: "complete" }));
     }
     return outcome;
+  }, []);
+
+  const refreshCapability = useCallback(async () => {
+    const next = await biometrics.getCapability();
+    setCapability(next);
+    return next;
   }, []);
 
   const enableBiometrics = useCallback(async () => {
@@ -820,11 +895,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...state,
       addresses: state.session?.addresses ?? null,
       capability,
+      refreshCapability,
       signIn,
       startEmailSignIn,
       verifyEmailCode,
       signOut,
       createPin,
+      lock,
       unlockWithPin,
       unlockWithBiometrics,
       enableBiometrics,
@@ -836,11 +913,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       state,
       capability,
+      refreshCapability,
       signIn,
       startEmailSignIn,
       verifyEmailCode,
       signOut,
       createPin,
+      lock,
       unlockWithPin,
       unlockWithBiometrics,
       enableBiometrics,

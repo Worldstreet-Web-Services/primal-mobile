@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import { TrendUpIcon } from "./icons";
 import { AmountText, Display, PressableScale } from "./ui";
 
@@ -78,7 +78,7 @@ export function BalanceCard({
               className="flex-row items-center gap-[5px] px-[9px] py-[5px] rounded-[8px]"
               style={{
                 backgroundColor: delta.negative
-                  ? "rgba(246,165,165,0.12)"
+                  ? withAlpha(C.down, 0.12)
                   : C.upBg,
               }}
             >

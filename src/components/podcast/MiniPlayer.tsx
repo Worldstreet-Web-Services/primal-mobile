@@ -64,10 +64,10 @@ export function MiniPlayer() {
         >
           <View className="h-[34px] w-[34px] items-center justify-center rounded-full bg-amber">
             {playing ? (
-              <PauseIcon size={14} color={t.ink} />
+              <PauseIcon size={14} color={t.amberInk} />
             ) : (
               <View style={{ marginLeft: 2 }}>
-                <PlayIcon size={15} color={t.ink} />
+                <PlayIcon size={15} color={t.amberInk} />
               </View>
             )}
           </View>

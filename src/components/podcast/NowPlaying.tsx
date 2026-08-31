@@ -186,12 +186,12 @@ export function NowPlaying({
               style={{ width: PLAY, height: PLAY }}
             >
               {playing ? (
-                <PauseIcon size={27} color={t.ink} />
+                <PauseIcon size={27} color={t.amberInk} />
               ) : (
                 // Nudged right: a triangle's optical centre sits left of its
                 // box, so a centred one reads as sitting too far left.
                 <View style={{ marginLeft: 4 }}>
-                  <PlayIcon size={29} color={t.ink} />
+                  <PlayIcon size={29} color={t.amberInk} />
                 </View>
               )}
             </View>

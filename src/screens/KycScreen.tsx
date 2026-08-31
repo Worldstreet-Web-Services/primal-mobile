@@ -32,7 +32,7 @@ import {
   NetworkError,
   SessionExpiredError,
 } from "../lib/gateway/types";
-import { C, F } from "../theme/tokens";
+import { C, F, withAlpha } from "../theme/tokens";
 
 /**
  * Opening a naira account: the one form in the app that asks for a BVN.
@@ -149,7 +149,7 @@ function Field({
       <View
         className="mt-[8px] bg-canvas-raised border rounded-[14px] px-[14px] overflow-hidden"
         style={{
-          borderColor: error ? "rgba(246,165,165,0.45)" : C.hairline,
+          borderColor: error ? withAlpha(C.down, 0.45) : C.hairline,
         }}
       >
         <Shine />
@@ -494,7 +494,7 @@ export default function KycScreen({
         <View
           className="mt-[30px] bg-canvas-raised border rounded-[20px] p-[20px] overflow-hidden"
           style={{
-            borderColor: "rgba(245,184,61,0.3)",
+            borderColor: withAlpha(C.amber, 0.3),
           }}
         >
           <Shine />
@@ -534,7 +534,7 @@ export default function KycScreen({
         <View
           className="w-[62px] h-[62px] rounded-[31px] bg-up-tint border items-center justify-center"
           style={{
-            borderColor: "rgba(124,231,176,0.35)",
+            borderColor: withAlpha(C.up, 0.35),
           }}
         >
           <Check />
@@ -568,7 +568,7 @@ export default function KycScreen({
         <View
           className="mt-[30px] bg-canvas-raised border rounded-[20px] p-[20px] overflow-hidden"
           style={{
-            borderColor: "rgba(245,184,61,0.3)",
+            borderColor: withAlpha(C.amber, 0.3),
           }}
         >
           <Shine />
@@ -624,8 +624,8 @@ export default function KycScreen({
         <View
           className="mt-[30px] border rounded-[20px] p-[20px]"
           style={{
-            backgroundColor: "rgba(246,165,165,0.08)",
-            borderColor: "rgba(246,165,165,0.35)",
+            backgroundColor: withAlpha(C.down, 0.08),
+            borderColor: withAlpha(C.down, 0.35),
           }}
         >
           <Display className="text-[18px] leading-[18.9px]">
@@ -713,8 +713,8 @@ export default function KycScreen({
           accessibilityLabel="Dismiss"
           className="mt-[16px] border rounded-[16px] p-[13px]"
           style={{
-            backgroundColor: "rgba(246,165,165,0.1)",
-            borderColor: "rgba(246,165,165,0.35)",
+            backgroundColor: withAlpha(C.down, 0.1),
+            borderColor: withAlpha(C.down, 0.35),
           }}
         >
           <Body className="text-[12px] text-down leading-[17.5px]">

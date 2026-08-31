@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Pressable } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import {
   BackHeader,
   MetallicButton,
@@ -259,7 +259,7 @@ export default function WithdrawScreen({
               <View
                 className="w-[74px] h-[74px] rounded-[37px] bg-brand-glow border items-center justify-center"
                 style={{
-                  borderColor: "rgba(131,190,96,0.35)",
+                  borderColor: withAlpha(C.brand, 0.35),
                 }}
               >
                 <Svg width={32} height={32} viewBox="0 0 24 24">
@@ -482,7 +482,7 @@ export default function WithdrawScreen({
               <View
                 className="mt-[12px] p-[14px] rounded-[14px] bg-canvas-inset border"
                 style={{
-                  borderColor: "rgba(246,165,165,0.3)",
+                  borderColor: withAlpha(C.down, 0.3),
                 }}
               >
                 <Label className="text-down">Not signed</Label>

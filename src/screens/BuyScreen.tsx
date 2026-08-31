@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import {
   BackHeader,
   MetallicButton,
@@ -143,7 +143,7 @@ export default function BuyScreen({
               <View
                 className="w-[76px] h-[76px] rounded-[38px] bg-brand-glow border items-center justify-center"
                 style={{
-                  borderColor: "rgba(131,190,96,0.35)",
+                  borderColor: withAlpha(C.brand, 0.35),
                 }}
               >
                 <Svg width={34} height={34} viewBox="0 0 24 24">

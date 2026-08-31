@@ -25,7 +25,7 @@ import {
   type VasTransaction,
 } from "../lib/gateway/services";
 import type { TransferStatus } from "../lib/gateway/types";
-import { C } from "../theme/tokens";
+import { C, withAlpha } from "../theme/tokens";
 import type { BillDraft } from "./BillsScreen";
 
 /**
@@ -393,7 +393,7 @@ export default function BillCheckoutScreen({
         <Card
           className="mt-[16px] p-[16px]"
           style={{
-            borderColor: "rgba(246,165,165,0.35)",
+            borderColor: withAlpha(C.down, 0.35),
           }}
         >
           <Body className="text-[12.5px] text-down" semibold>

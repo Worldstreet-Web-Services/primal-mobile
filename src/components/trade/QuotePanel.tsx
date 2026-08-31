@@ -1,6 +1,6 @@
 import { Text, View, type ViewStyle } from "react-native";
 
-import { C } from "../../theme/tokens";
+import { C, withAlpha } from "../../theme/tokens";
 import { TrendDownIcon, TrendUpIcon } from "../icons";
 import { AmountText, PulseDot } from "../ui";
 
@@ -51,7 +51,7 @@ export function QuotePanel({
           <View
             className="flex-row items-center gap-[4px] px-[8px] py-[4px] rounded-[8px]"
             style={{
-              backgroundColor: down ? "rgba(246,165,165,0.12)" : C.upBg,
+              backgroundColor: down ? withAlpha(C.down, 0.12) : C.upBg,
             }}
           >
             {down ? (

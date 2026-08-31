@@ -1,42 +1,63 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-import { C } from "../../theme/tokens";
+import { cn } from "../../lib/cn";
+import { C, useTokens, withAlpha } from "../../theme/tokens";
 import { AlertIcon } from "../icons";
 
-export type NoticeTone = "warning" | "info";
+export type NoticeTone = "warning" | "info" | "positive";
 
 /**
- * Standing warning above an irreversible action. Tinted rather than filled, so
- * it reads as a caution the user must clear — not as an error that already
+ * Standing note beside a consequential action. Tinted rather than filled, so it
+ * reads as something the user must take in — not as an error that already
  * happened.
+ *
+ * `positive` is the same shape turned the other way: a reassurance sitting
+ * under the thing it reassures about ("you can still get out of this"), so it
+ * takes the brand hairline rather than the rose one.
  */
 export function NoticeBanner({
   message,
   tone = "warning",
   icon,
+  className,
 }: {
   message: string;
   tone?: NoticeTone;
   icon?: React.ReactNode;
+  className?: string;
 }) {
-  const warning = tone === "warning";
-  const accent = warning ? C.down : C.silver;
+  const t = useTokens();
+
+  // Ink and stroke move together — a banner is one object, not a box with a
+  // label in it. Only `info` splits them, because chrome has no tinted face.
+  const skin = {
+    warning: {
+      ink: t.down,
+      fill: withAlpha(C.down, 0.07),
+      stroke: withAlpha(C.down, 0.34),
+    },
+    info: { ink: t.silver, fill: t.raised, stroke: t.hairline },
+    positive: { ink: t.brandSoft, fill: t.brandGlow, stroke: t.brandGlow },
+  }[tone];
 
   return (
     <View
       accessibilityRole="alert"
-      className="flex-row gap-[12px] p-[16px] rounded-[16px] border"
+      className={cn(
+        "flex-row gap-[12px] p-[16px] rounded-[16px] border",
+        className,
+      )}
       style={{
-        backgroundColor: warning ? "rgba(246,165,165,0.07)" : C.raised,
-        borderColor: warning ? "rgba(246,165,165,0.34)" : C.hairline,
+        backgroundColor: skin.fill,
+        borderColor: skin.stroke,
       }}
     >
-      {icon ?? <AlertIcon size={18} color={accent} />}
+      {icon ?? <AlertIcon size={18} color={skin.ink} />}
       <Text
         className="flex-1 font-body text-[12.5px] leading-[18px]"
         style={{
-          color: accent,
+          color: skin.ink,
         }}
       >
         {message}
